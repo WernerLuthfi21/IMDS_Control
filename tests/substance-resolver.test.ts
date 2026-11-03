@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { normalizeCas, resolveSubstance } from "@/lib/judgement/substance-resolver";
 
 describe("automatic CAS → GADSL → TSZ → appendices resolver", () => {
-  it("normalizes valid CAS values and rejects checksum errors", () => {
-    expect(normalizeCas("0117-81-7")).toBe("117-81-7");
+  it("preserves CAS leading zeroes and rejects checksum errors", () => {
+    expect(normalizeCas("0117-81-7")).toBe("0117-81-7");
     expect(normalizeCas("117-81-8")).toBeNull();
   });
 
@@ -16,8 +16,8 @@ describe("automatic CAS → GADSL → TSZ → appendices resolver", () => {
     expect(result.remainingRequirements).toContain("Select destination code from the approved G-CATS destination list");
   });
 
-  it("keeps unknown CAS values out of automatic OK/NG decisions", () => {
-    const result = resolveSubstance("999-99-9");
+  it("keeps valid but unlisted CAS values out of automatic OK/NG decisions", () => {
+    const result = resolveSubstance("999-99-5");
     expect(result.status).toBe("NO_REFERENCE_MATCH");
     expect(result.remainingRequirements.length).toBeGreaterThan(0);
   });
