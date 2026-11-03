@@ -122,7 +122,7 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
 
  function updateMass<K extends keyof MassForm>(key:K,value:MassForm[K]){
   setMassForm(old=>({...old,[key]:value}));
-  if(key==="supplierConfirmation")setMassEvaluation(null);
+  if(key!=="supplierConfirmation")setMassEvaluation(null);
  }
  function appendProcedure(note:string){
   setDraft(old=>({...old,judgement_procedure:old.judgement_procedure?old.judgement_procedure+"\n"+note:note}));
