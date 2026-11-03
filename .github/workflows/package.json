@@ -1,0 +1,45 @@
+{
+  "name": "toyota-imds-gcats-intelligence-control-center",
+  "version": "0.2.2",
+  "private": true,
+  "engines": {
+    "node": ">=22.16.0",
+    "npm": ">=11.21.1"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:reset": "npx supabase db reset",
+    "db:start": "npx supabase start"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.88.0",
+    "decimal.js": "^10.6.0",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.563.0",
+    "next": "16.4.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "16.4.3",
+    "typescript": "^5.9.3",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "vitest": "4.1.11"
+  },
+  "packageManager": "npm@11.21.1"
+}

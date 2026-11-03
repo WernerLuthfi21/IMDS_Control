@@ -1,0 +1,42 @@
+{
+  "source": "Master Data All IMDS Project_new.xlsx / template email sheet",
+  "notice": "Templates are generalized from the supplied historical workbook. Verify current judgement criteria and supplier-specific facts before sending.",
+  "templates": [
+    {
+      "key": "mass-tolerance-range",
+      "labels": ["mass tolerance range"],
+      "title": "Mass tolerance range",
+      "body": "{{greeting}}\n\nWe found that the mass submitted in IMDS appears to be outside the drawing tolerance range for the part below. Please confirm which statement applies:\n\nA. The submitted value is the actual / calculated mass.\nB. The submitted value is an input mistake and requires correction.\n\nPart Number: {{partNo}}\nSupplier Code: {{supplierCode}}\n\nPlease provide the applicable drawing reference and supporting weighing or calculation evidence. The final G-CATS judgement will be recorded only after the evidence is reviewed.\n\nThank you for your support."
+    },
+    {
+      "key": "prohibited-substance",
+      "labels": ["prohibited substance", "sccp", "dbt", "dot", "cl paraffins"],
+      "title": "Substance confirmation",
+      "body": "{{greeting}}\n\nA substance declaration in the submitted IMDS requires confirmation before the judgement can be completed. Please confirm which statement applies:\n\nA. The substance remains in the final product / article as declared.\nB. The substance entry was made by mistake and requires correction.\n\nPart Number: {{partNo}}\nSupplier Code: {{supplierCode}}\nError Type: {{errorType}}\n\nPlease provide the material composition, concentration and supporting evidence relevant to this part. Do not assume that the substance is acceptable solely from this request; the applicable Toyota rule and evidence will be reviewed separately.\n\nThank you for your support."
+    },
+    {
+      "key": "application-id",
+      "labels": ["application44error", "elv (pb)", "battery (pb)"],
+      "title": "Application ID confirmation",
+      "body": "{{greeting}}\n\nThe application information declared for the substance requires confirmation against the applicable Toyota policy and destination. Please confirm whether the application ID and destination information are correct, or whether the submitted information was entered by mistake.\n\nPart Number: {{partNo}}\nSupplier Code: {{supplierCode}}\nApplication ID: [please confirm]\nDestination: [please confirm]\n\nPlease provide the technical justification and supporting evidence. The judgement will remain under review until the applicable application criteria are confirmed.\n\nThank you for your support."
+    },
+    {
+      "key": "sms-mass",
+      "labels": ["sms mass"],
+      "title": "SMS mass confirmation",
+      "body": "{{greeting}}\n\nWe need to confirm the actual mass of the part below because the mass information available in SMS is insufficient for our check. Please confirm whether the reported mass in IMDS is the actual / calculated mass and provide the supporting measurement or calculation evidence.\n\nPart Number: {{partNo}}\nSupplier Code: {{supplierCode}}\nReported IMDS Mass: [please confirm]\n\nThank you for your support."
+    },
+    {
+      "key": "application-generic",
+      "labels": ["application id"],
+      "title": "Application ID / destination check",
+      "body": "{{greeting}}\n\nPlease confirm the application ID, application description and destination relevant to the declared substance. Include supporting technical evidence and the affected part number.\n\nPart Number: {{partNo}}\nSupplier Code: {{supplierCode}}\nError Type: {{errorType}}\n\nThank you for your support."
+    },
+    {
+      "key": "general",
+      "labels": [],
+      "title": "General IMDS clarification",
+      "body": "{{greeting}}\n\nWe found an item in the IMDS submission that needs clarification before the G-CATS judgement can be completed. Please review the relevant IMDS data and supporting documents and reply with your confirmation and evidence.\n\nPart Number: {{partNo}}\nSupplier Code: {{supplierCode}}\nError Type: {{errorType}}\n\nThank you for your support."
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "source_file": "Master Data All IMDS Project_new.xlsx",
+  "source_sheet": "G-CATS Error Log Master Data",
+  "header_row": 4,
+  "data_rows": 5515,
+  "types": {
+    "Mass tolerance range": 426,
+    "WARP Part number": 1482,
+    "Prohibited substance": 2227,
+    "SMS Mass": 117,
+    "Mass deviation": 71,
+    "ELV (Pb)": 112,
+    "Prohibited substance(DBT)": 184,
+    "Not specified substances": 76,
+    "Prohibited substance(DOT)": 217,
+    "Part number": 49,
+    "Material module nor Semi-component": 25,
+    "Prohibited substance(Cl paraffins)": 40,
+    "Supplied is not SMS": 16,
+    "Battery (Pb)": 304,
+    "Supplier Code": 2,
+    "Application44ERROR": 31,
+    "Tokusetsu Part number": 78,
+    "Battery (Cd)": 55,
+    "Prohibited substance(SCCP)": 3
+  },
+  "classification": "Historical distribution only; not an approved rule catalog."
+}
