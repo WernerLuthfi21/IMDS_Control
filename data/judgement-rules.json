@@ -1,0 +1,248 @@
+{
+  "rules": [
+    {
+      "id": "RULE-06-SMS-MASS",
+      "errorType": 6,
+      "title": "SMS Mass",
+      "status": "DRAFT_FOR_OWNER_APPROVAL",
+      "source": "2.G-CATS Manual Flow Ver.6, PDF page 3; 1.G-CATS Manual Operation Ver.6, Appendix I, PDF page 19",
+      "requiredFields": [
+        "supplierConfirmation"
+      ],
+      "branches": [
+        {
+          "when": "supplierConfirmation == ACTUAL_OR_CALCULATED_MASS",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Confirmed by Supplier."
+        },
+        {
+          "when": "supplierConfirmation == INPUT_MISTAKE",
+          "recommendation": "RECOMMEND_NG",
+          "comment": "Mass is incorrect."
+        },
+        {
+          "when": "missing or unknown",
+          "recommendation": "MANUAL_REVIEW"
+        }
+      ]
+    },
+    {
+      "id": "RULE-07-MASS-TOLERANCE",
+      "errorType": 7,
+      "title": "Mass tolerance range",
+      "status": "DRAFT_FOR_OWNER_APPROVAL",
+      "source": "2.G-CATS Manual Flow Ver.6, PDF page 3; 7.G-CATS operation - How to, PDF pages 21–25; 5.How to find Mass tolerance in drawing.pdf, pages 4–8",
+      "requiredFields": [
+        "drawingMass",
+        "toleranceClass",
+        "tsz2900Range",
+        "supplierConfirmation when applicable",
+        "rawMaterial branch evidence"
+      ],
+      "branches": [
+        {
+          "when": "drawing measurement is within approved tolerance range",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Confirmed with Drawing."
+        },
+        {
+          "when": "outside tolerance and not raw material; supplier confirms actual/calculated mass",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Confirmed by Supplier."
+        },
+        {
+          "when": "outside tolerance and not raw material; supplier confirms input mistake",
+          "recommendation": "RECOMMEND_NG",
+          "comment": "Mass is incorrect."
+        },
+        {
+          "when": "raw material; drawing weight comparison unavailable or ambiguous",
+          "recommendation": "HOLD"
+        }
+      ]
+    },
+    {
+      "id": "RULE-08-MASS-DEVIATION",
+      "errorType": 8,
+      "title": "Mass deviation",
+      "status": "PARTIAL_MANUAL_REVIEW",
+      "source": "1.G-CATS Manual Operation Ver.6, Appendix I, PDF page 19",
+      "requiredFields": [
+        "componentPartMass",
+        "totalMaterialMass",
+        "approvedPercentageDenominator",
+        "approvedRoundingMethod"
+      ],
+      "branches": [
+        {
+          "when": "approved percentage calculation is <= 1%",
+          "recommendation": "AUTO_CHECKED_REVIEW_REQUIRED"
+        },
+        {
+          "when": "approved percentage calculation is > 1%",
+          "recommendation": "RECOMMEND_NG"
+        },
+        {
+          "when": "denominator/rounding basis is not approved",
+          "recommendation": "MANUAL_REVIEW"
+        }
+      ],
+      "note": "Source criterion states > +/-1% but does not define denominator/rounding in extracted source. Never invent the basis."
+    },
+    {
+      "id": "RULE-09-NOT-SPECIFIED",
+      "errorType": 9,
+      "title": "Not specific substance / wildcard",
+      "status": "DRAFT_FOR_OWNER_APPROVAL",
+      "source": "2.G-CATS Manual Flow Ver.6, PDF page 4",
+      "requiredFields": [
+        "isToyotaSuppliedPart",
+        "isImdsCommitteeMaterial",
+        "wildcardPercentage",
+        "isMultiMaterial",
+        "baseMaterialWildcardPercentage when applicable"
+      ],
+      "branches": [
+        {
+          "when": "Toyota supplied part",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Component is ‘TOYOTA supplied part’"
+        },
+        {
+          "when": "IMDS Committee / Stahl und Eisen Liste / ILI-Metals",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Material is IMDS Committee data"
+        },
+        {
+          "when": "total wildcard percentage <= 10",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Not specified substances is 10% or less"
+        },
+        {
+          "when": "multi material and base material wildcard <= 10",
+          "recommendation": "RECOMMEND_OK"
+        },
+        {
+          "when": "non-multi material or base material wildcard > 10",
+          "recommendation": "RECOMMEND_NG"
+        }
+      ]
+    },
+    {
+      "id": "RULE-10-PB",
+      "errorType": 10,
+      "title": "ELV (Pb) and Application ID",
+      "status": "MANUAL_REVIEW_REQUIRED",
+      "source": "2.G-CATS Manual Flow Ver.6, PDF pages 9–18; Pb TOYOTA Policy Table embedded in Appendix 3–6 workbook",
+      "requiredFields": [
+        "applicationId",
+        "verifiedDestination",
+        "applicablePolicyRow",
+        "supplierConfirmation when required",
+        "TMC type approval date when required"
+      ],
+      "branches": [
+        {
+          "when": "policy table and destination explicitly confirm applicable exemption",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "The substance is within exemption."
+        },
+        {
+          "when": "policy is NG, Application ID missing/unclear, or date needs TMC confirmation",
+          "recommendation": "HOLD / MANUAL_REVIEW"
+        }
+      ],
+      "note": "Application Code 71 requires separate aluminium material, Pb <= 0.4 wt%, and supplier machining-purpose checks."
+    },
+    {
+      "id": "RULE-11-13-ELV",
+      "errorType": "11-13",
+      "title": "ELV (Cd / Hg / Cr6+)",
+      "status": "MANUAL_REVIEW_REQUIRED",
+      "source": "1.G-CATS Manual Operation Ver.6, Section II and Appendix I, PDF page 19; 2.G-CATS Manual Flow Ver.6, pages 19–21",
+      "requiredFields": [
+        "CAS",
+        "substance identity",
+        "material/use context",
+        "required human confirmation"
+      ],
+      "branches": [
+        {
+          "when": "system identifies regulated substance",
+          "recommendation": "MANUAL_REVIEW",
+          "note": "Do not infer final outcome from a generic rule; verify exact substance and source flow."
+        }
+      ]
+    },
+    {
+      "id": "RULE-14-PROHIBITED",
+      "errorType": 14,
+      "title": "Prohibited substance family flows",
+      "status": "MANUAL_REVIEW_REQUIRED",
+      "source": "2.G-CATS Manual Flow Ver.6, substance-specific Appendix flows",
+      "requiredFields": [
+        "CAS",
+        "GADSL result",
+        "TSZ membership",
+        "substance group flow",
+        "destination",
+        "material/product/use context"
+      ],
+      "branches": [
+        {
+          "when": "CAS/group or branch inputs missing",
+          "recommendation": "HOLD"
+        },
+        {
+          "when": "specific supported flow selected",
+          "recommendation": "MANUAL_REVIEW"
+        }
+      ],
+      "note": "No universal 0.1 wt% rule."
+    },
+    {
+      "id": "RULE-19-CONFLICT",
+      "errorType": 19,
+      "title": "Error Type 19 source conflict",
+      "status": "HOLD_FOR_OWNER_RECONCILIATION",
+      "source": "1.G-CATS Manual Operation Ver.6, Section II and Appendix I, PDF page 19",
+      "branches": [
+        {
+          "when": "source section selected",
+          "recommendation": "HOLD",
+          "note": "Section II: Benzene; Appendix I: Application44ERROR. Owner must reconcile."
+        }
+      ]
+    },
+    {
+      "id": "RULE-MCCP-DRAFT",
+      "errorType": "HISTORICAL/DRAFT",
+      "title": "MCCP judgement flow",
+      "status": "DRAFT_NOT_APPROVED",
+      "source": "Appendix 3 - 6, MCCP judgeflow.xlsx, sheet MCCP judgement, embedded DRAFT image",
+      "branches": [
+        {
+          "when": "non-regulated destination",
+          "recommendation": "DRAFT_RECOMMEND_OK",
+          "comment": "Only non-Regulated destination."
+        },
+        {
+          "when": "regulated destination and input mistake",
+          "recommendation": "DRAFT_RECOMMEND_NG"
+        },
+        {
+          "when": "contains MCCP or chlorination rate >= 45%",
+          "recommendation": "ESCALATE_TO_TMA_TME_TMNA_TMC"
+        }
+      ],
+      "note": "Do not apply as active rule until owner approves."
+    }
+  ],
+  "globalGuardrails": [
+    "Missing values route to UNKNOWN / MANUAL_REVIEW, never false.",
+    "Recommendation is not final decision.",
+    "Only authorized human reviewer can set final OK/NG.",
+    "Any source conflict results in HOLD.",
+    "All rule runs retain version and source citation."
+  ]
+}
