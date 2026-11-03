@@ -1,5 +1,6 @@
 import Decimal from "decimal.js";
 import massRanges from "@/data/reference/tsz2900-mass-ranges.json";
+import { resolveSubstance } from "@/lib/judgement/substance-resolver";
 import type { JudgementEvaluation, JudgementResult, RecommendationState } from "@/lib/types";
 
 const SRC = {
@@ -96,6 +97,9 @@ export type JudgementInput = {
   policyOutcome?: "OK" | "NG" | "UNKNOWN";
   approvedApplication71?: boolean;
   sourceNote?: string;
+  casNo?: string;
+  destinationCode?: string;
+  materialUse?: string;
 };
 
 export function evaluateJudgement(input: JudgementInput): JudgementResult {
@@ -224,8 +228,23 @@ export function evaluateJudgement(input: JudgementInput): JudgementResult {
 
   if ([11,12,13].includes(n)) return baseResult(et, `RULE-${n}-ELV`, "MANUAL_REVIEW_REQUIRED", "MANUAL_REVIEW", "ELV substance identified. Exact source flow and evidence must be reviewed; no final decision is automated.", [evaluation(`ELV-${n}`, "Is exact substance and supporting context verified?", input.sourceNote ?? null, "EXTERNAL_CONFIRMATION", "MANUAL_REVIEW", SRC.flow, "Manual or owner confirmation is required for applicability and final judgement.")], ["Verify CAS and material evidence", "Review corresponding Version 6 flow", "Obtain human confirmation and evidence"], commonSource);
 
-  if (n === 14 || [15,16,17,18].includes(n) || /Prohibited substance/i.test(et)) return baseResult(et, "RULE-14-SUBSTANCE-SPECIFIC", "MANUAL_REVIEW_REQUIRED", "HOLD", "Prohibited-substance judgement is substance-specific. First run CAS → GADSL → TSZ → applicable family flow; no universal threshold is assumed.", [evaluation("SUB-LOOKUP", "Has CAS, GADSL, TSZ group, and specific flow been identified?", input.sourceNote ?? null, "UNKNOWN", "HOLD", "2.G-CATS Manual Flow Ver.6, Appendix II, substance lookup pages 6–8", "Missing or conflicting reference membership routes to HOLD.")], ["Search CAS in GADSL 2026 V1", "Find TSZ0001G group in Appendix 3", "Select POPs / REACH / dedicated flow", "Verify destination and material/use context", "Owner reviews final recommendation"], ["2.G-CATS Manual Flow Ver.6, Appendix II, pages 6–8", "Appendix 3–6 TSZ0001G reference workbooks"]);
-
+  if (n === 14 || [15,16,17,18].includes(n) || /Prohibited substance/i.test(et)) {
+    const resolved = resolveSubstance(input.casNo || "", input.destinationCode, input.materialUse);
+    const source = "GADSL Reference List 2026 V1; TSZ0001G Appendix 3; Appendix 4 POPs; Appendix 5 REACH Annex XVII; Appendix 6 REACH Annex XIV";
+    const evaluations: JudgementEvaluation[] = [
+      evaluation("SUB-CAS", "Is the source CAS valid?", input.casNo ?? null, resolved.casNormalized ? "VALID_CAS" : "INVALID_OR_MISSING", resolved.casNormalized ? "AUTO_CHECKED_REVIEW_REQUIRED" : "HOLD", source, "CAS format and checksum are checked automatically."),
+      evaluation("SUB-GADSL", "Does this CAS match GADSL 2026 V1?", resolved.gadsl.map(x => ({ name:x.name, class:x.classification, row:x.sourceRow })), resolved.gadsl.length ? "EXACT_CAS_MATCH" : "NO_EXACT_MATCH", resolved.gadsl.length ? "AUTO_CHECKED_REVIEW_REQUIRED" : "HOLD", source, "Exact CAS matches are returned with source rows and classification."),
+      evaluation("SUB-TSZ", "Which TSZ0001G group matches this CAS in Appendix 3?", resolved.tszGroups, resolved.tszGroups.length ? "GROUP_MATCHED" : "NO_GROUP_MATCH", resolved.tszGroups.length ? "AUTO_CHECKED_REVIEW_REQUIRED" : "HOLD", source, "Appendix 3 is searched automatically; various and table references are not guessed."),
+      evaluation("SUB-APPENDICES", "Which substance-family appendix rows apply?", resolved.appendices, resolved.appendices.length ? "APPENDIX_ROWS_MATCHED" : "NO_APPENDIX_ROW", resolved.appendices.length ? "AUTO_CHECKED_REVIEW_REQUIRED" : "HOLD", source, "Appendices 4–6 are searched by the matched TSZ group."),
+      evaluation("SUB-DESTINATION", "Has the destination code been selected?", resolved.destinationCode, resolved.destinationCode ? "DESTINATION_PROVIDED" : "DESTINATION_REQUIRED", resolved.destinationCode ? "AUTO_CHECKED_REVIEW_REQUIRED" : "MANUAL_REVIEW", source, "Destination selection remains a human input; the selected code is retained for policy lookup."),
+      evaluation("SUB-USE", "Is material / component use available from the source or confirmed?", resolved.materialUse, resolved.materialUse ? "USE_CONTEXT_AVAILABLE" : "USE_CONTEXT_REQUIRED", resolved.materialUse ? "AUTO_CHECKED_REVIEW_REQUIRED" : "MANUAL_REVIEW", source, "Use context is read from the IMDS source record where available; only missing context should be requested.")
+    ];
+    const unresolved = resolved.status === "INVALID_CAS" || resolved.status === "NO_REFERENCE_MATCH" || resolved.status === "FLOW_UNMAPPED";
+    const recommendation: RecommendationState = unresolved ? "HOLD" : "MANUAL_REVIEW";
+    return baseResult(et, "RULE-SUBSTANCE-CAS-APPENDIX", "AUTOMATED_REFERENCE_MATCH_PENDING_POLICY_RULE", recommendation,
+      "Automatic substance reference check: " + resolved.status + ". " + resolved.tszGroups.length + " TSZ group(s), " + resolved.appendices.length + " Appendix 4–6 row(s), family flow(s): " + (resolved.familyFlows.join(", ") || "not identified") + ".",
+      evaluations, resolved.remainingRequirements, [source, ...resolved.trace]);
+  }
   if ([1,2,3,4,5,20,21,22,23].includes(n)) return baseResult(et, `RULE-${String(n).padStart(2,"0")}-MANUAL`, "SOURCE_LISTED_MANUAL_CHECK", "MANUAL_REVIEW", "This Error Type requires source-system, supplier, purchasing, TMC or document verification. The application does not infer external facts.", [evaluation(`ET-${n}`, "Has the required source evidence been verified?", input.sourceNote ?? null, "UNKNOWN", "MANUAL_REVIEW", SRC.operation, "The source procedure requires human or external confirmation.")], ["Open the referenced SMS/WARP/New SMS/Purchasing evidence", "Record the source and reviewer", "Obtain final approval"], [SRC.operation]);
 
   return baseResult(et, "RULE-UNKNOWN", "UNMAPPED", "HOLD", "Error Type is not mapped to an approved rule. Retain the original label and request owner mapping.", [evaluation("UNKNOWN-ERROR-TYPE", "Is this Error Type mapped to an approved rule?", et, "NO", "HOLD", "Historical master workbook / source conflict register", "Unknown label is not silently assigned to another Error Type.")], ["Add label to source conflict register", "Obtain owner-approved mapping"], ["Master Data All IMDS Project_new.xlsx, G-CATS Error Log Master Data"]);
