@@ -16,10 +16,14 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22.16.0"
-      - name: Expand application source
+      - name: Reassemble private application source archive
         run: |
+          set -euo pipefail
           mkdir -p /tmp/imds-source
-          tar -xJf bootstrap/IMDS_Control_Source.tar.xz -C /tmp/imds-source
+          cat bootstrap/chunks/part-*.b64 | base64 --decode > /tmp/IMDS_Control_Source.tar.xz
+          xz -t /tmp/IMDS_Control_Source.tar.xz
+          tar -tJf /tmp/IMDS_Control_Source.tar.xz >/dev/null
+          tar -xJf /tmp/IMDS_Control_Source.tar.xz -C /tmp/imds-source
           cp -a /tmp/imds-source/. .
           rm -rf bootstrap
       - name: Install dependencies
