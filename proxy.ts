@@ -41,13 +41,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
   if (user && pathname === "/login") {
-    const requestedNext = request.nextUrl.searchParams.get("next");
-    let destination = "/workspace";
-    if (requestedNext) {
-      const target = new URL(requestedNext, request.url);
-      if (target.origin === request.nextUrl.origin && target.pathname !== "/") destination = target.pathname + target.search + target.hash;
-    }
-    return NextResponse.redirect(new URL(destination, request.url));
+    return NextResponse.redirect(new URL("/workspace", request.url));
   }
   return response;
 }
