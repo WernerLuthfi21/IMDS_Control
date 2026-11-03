@@ -37,10 +37,18 @@ export async function proxy(request: NextRequest) {
   // API handlers return JSON 401 responses; do not redirect fetch clients to the login page.
   if (!user && !isApi && pathname !== "/login" && !isSetupPage) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
-  if (user && pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
+  if (user && pathname === "/login") {
+    const requestedNext = request.nextUrl.searchParams.get("next");
+    let destination = "/workspace";
+    if (requestedNext) {
+      const target = new URL(requestedNext, request.url);
+      if (target.origin === request.nextUrl.origin && target.pathname !== "/") destination = target.pathname + target.search + target.hash;
+    }
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
   return response;
 }
 
