@@ -31,35 +31,48 @@
       "errorType": 7,
       "title": "Mass tolerance range",
       "status": "DRAFT_FOR_OWNER_APPROVAL",
-      "source": "2.G-CATS Manual Flow Ver.6, PDF page 3; 7.G-CATS operation - How to, PDF pages 21–25; 5.How to find Mass tolerance in drawing.pdf, pages 4–8",
+      "source": "Master Data All IMDS Project_new.xlsx, sheet Mass Check (TSZ2900), TSZ2900G Rev.9; G-CATS Error Type 7 workflow",
+      "calculation": {
+        "toleranceLookup": "Use Drawing Mass and the drawing's Mass Tolerance Class (MA, MB, MC, MD, ME, or MF) to look up the TSZ2900 tolerance.",
+        "coreRange": "Min = Drawing Mass - tolerance; Max = Drawing Mass + tolerance.",
+        "additionalBuffer": "Min (-10%) = Min * 0.9; Max (+10%) = Max * 1.1.",
+        "screening": "Compare IMDS mass against the additional buffer; missing/invalid class or mass returns HOLD / MANUAL_REVIEW."
+      },
       "requiredFields": [
+        "imdsMass",
         "drawingMass",
-        "toleranceClass",
-        "tsz2900Range",
-        "supplierConfirmation when applicable",
-        "rawMaterial branch evidence"
+        "toleranceClass MA–MF",
+        "TSZ2900G Rev.9 applicability",
+        "supplierConfirmation A/B when outside the additional buffer",
+        "rawMaterial branch evidence when applicable"
       ],
       "branches": [
         {
-          "when": "drawing measurement is within approved tolerance range",
+          "when": "IMDS mass is within the core TSZ2900 Min/Max range",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Confirmed by Supplier: Actual or calculated mass."
+        },
+        {
+          "when": "IMDS mass is outside the core range but within Min × 0.9 and Max × 1.1",
           "recommendation": "RECOMMEND_OK",
           "comment": "Confirmed with Drawing."
         },
         {
-          "when": "outside tolerance and not raw material; supplier confirms actual/calculated mass",
+          "when": "IMDS mass is outside the additional 10% buffer and supplier confirms actual/calculated mass",
           "recommendation": "RECOMMEND_OK",
           "comment": "Confirmed by Supplier."
         },
         {
-          "when": "outside tolerance and not raw material; supplier confirms input mistake",
+          "when": "IMDS mass is outside the additional 10% buffer and supplier confirms input mistake",
           "recommendation": "RECOMMEND_NG",
           "comment": "Mass is incorrect."
         },
         {
-          "when": "raw material; drawing weight comparison unavailable or ambiguous",
-          "recommendation": "HOLD"
+          "when": "raw material or missing/ambiguous drawing evidence",
+          "recommendation": "HOLD / MANUAL_REVIEW"
         }
-      ]
+      ],
+      "note": "This remains a draft recommendation. Historical workbook comments are not uniform; do not train or infer the current branch from historical free text. Process-owner approval and controlled-standard applicability remain required."
     },
     {
       "id": "RULE-08-MASS-DEVIATION",
