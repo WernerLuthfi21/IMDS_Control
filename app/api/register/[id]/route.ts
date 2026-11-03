@@ -32,10 +32,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { data: before, error: readError } = await supabase.from("gcat_error_items").select([...fields, "source_judge_label", "source_km_judge_label", "assigned_person_override", "starting_date_override", "judgement_procedure_override", "judge_override", "ok_comment_override", "imds_reject_comment_override", "km_judge_override", "km_comment_override", "last_change_date_override"].join(",")).eq("id", id).single();
   if (readError || !before) return NextResponse.json({ error: readError?.message || "Register row not found." }, { status: 404 });
+  const beforeValues = before as Record<string, unknown>;
   // Only mark the field explicitly overridden when the user actually changed it.
   // Other AO–AV fields remain eligible for refresh from the next daily G-CATS snapshot.
   for (const key of requested as RegisterField[]) {
-    if (before[key] !== update[key]) update[`${key}_override`] = true;
+    if (beforeValues[key] !== update[key]) update[`${key}_override`] = true;
   }
   if ("judge" in update) update.judge_status = update.judge ?? null;
   update.last_change_date = new Date().toISOString();
