@@ -18,13 +18,59 @@ function baseResult(errorType: string | number, ruleId: string, ruleStatus: stri
 }
 
 export function findMassTolerance(mass: string | number, toleranceClass: string) {
-  const input = new Decimal(String(mass));
+  let input: Decimal;
+  try {
+    input = new Decimal(String(mass));
+    if (!input.isFinite() || input.lessThanOrEqualTo(0)) return { found: false as const, reason: "Drawing mass must be a positive numeric value." };
+  } catch {
+    return { found: false as const, reason: "Drawing mass is missing or is not numeric." };
+  }
+  const classKey = String(toleranceClass || "").trim().toUpperCase();
+  const allowedClasses = ["MA", "MB", "MC", "MD", "ME", "MF"];
+  if (!allowedClasses.includes(classKey)) return { found: false as const, reason: `Tolerance class "${classKey || "blank"}" is not a valid TSZ2900 class (MA–MF).` };
   const ranges = (massRanges as { ranges: Array<{minRaw:string;maxRaw:string;min:number;max:number;tolerances:Record<string,number|null>;sourceRow:number}> }).ranges;
   const row = ranges.find((range) => input.greaterThanOrEqualTo(new Decimal(range.minRaw)) && input.lessThanOrEqualTo(new Decimal(range.maxRaw)));
-  if (!row) return { found: false as const, reason: "Mass does not fall in an imported TSZ2900 range." };
-  const value = row.tolerances[toleranceClass.toUpperCase()];
-  if (value === null || value === undefined) return { found: false as const, reason: `Tolerance class ${toleranceClass} is blank in the source row.` };
+  if (!row) return { found: false as const, reason: "Drawing mass does not fall in an imported TSZ2900 range." };
+  const value = row.tolerances[classKey];
+  if (value === null || value === undefined) return { found: false as const, reason: `Tolerance class ${classKey} is blank in TSZ2900 source row ${row.sourceRow}.` };
   return { found: true as const, tolerance: new Decimal(value), minRaw: row.minRaw, maxRaw: row.maxRaw, sourceRow: row.sourceRow, unit: "g", revision: (massRanges as {revision:string}).revision };
+}
+
+export function calculateMassToleranceBands(imdsMass: string | number, drawingMass: string | number, toleranceClass: string) {
+  const lookup = findMassTolerance(drawingMass, toleranceClass);
+  if (!lookup.found) return lookup;
+  try {
+    const imds = new Decimal(String(imdsMass));
+    const drawing = new Decimal(String(drawingMass));
+    if (!imds.isFinite() || imds.lessThanOrEqualTo(0)) return { found: false as const, reason: "IMDS mass must be a positive numeric value." };
+    const min = drawing.minus(lookup.tolerance);
+    const max = drawing.plus(lookup.tolerance);
+    const bufferMin = min.times("0.9");
+    const bufferMax = max.times("1.1");
+    const withinCore = imds.greaterThanOrEqualTo(min) && imds.lessThanOrEqualTo(max);
+    const withinBuffer = imds.greaterThanOrEqualTo(bufferMin) && imds.lessThanOrEqualTo(bufferMax);
+    return {
+      found: true as const,
+      imdsMass: imds,
+      drawingMass: drawing,
+      toleranceClass: toleranceClass.trim().toUpperCase(),
+      tolerance: lookup.tolerance,
+      min,
+      max,
+      bufferMin,
+      bufferMax,
+      withinCore,
+      withinBuffer,
+      band: withinCore ? "WITHIN_TSZ_RANGE" as const : withinBuffer ? "WITHIN_10_PERCENT_BUFFER" as const : "OUTSIDE_10_PERCENT_BUFFER" as const,
+      tableRangeMin: lookup.minRaw,
+      tableRangeMax: lookup.maxRaw,
+      tableRow: lookup.sourceRow,
+      revision: lookup.revision,
+      unit: "g" as const
+    };
+  } catch {
+    return { found: false as const, reason: "IMDS mass or drawing mass is missing or is not numeric." };
+  }
 }
 
 export type JudgementInput = {
@@ -79,19 +125,62 @@ export function evaluateJudgement(input: JudgementInput): JudgementResult {
   }
 
   if (n === 7 || et === "Mass tolerance range") {
-    if (input.imdsMass === undefined || input.drawingMass === undefined || !input.toleranceClass) return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "MANUAL_REVIEW", "IMDS mass, drawing mass, and tolerance class are required to calculate the tolerance comparison.", [evaluation("MASS-7-INPUT", "Are all source mass inputs available?", { imdsMass: input.imdsMass, drawingMass: input.drawingMass, toleranceClass: input.toleranceClass }, "UNKNOWN", "MANUAL_REVIEW", SRC.mass, "Missing source values are not treated as zero.")], ["Retrieve SMS-BR Drawing Search evidence", "Confirm TSZ2900G Rev.9 class/range is active", "Record source drawing and mass values"], [SRC.mass, "7.G-CATS operation - How to, PDF pages 21–25"]);
-    const tol = findMassTolerance(input.drawingMass, input.toleranceClass);
-    if (!tol.found) return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "HOLD", tol.reason, [evaluation("MASS-7-LOOKUP", "Does drawing mass resolve to a tolerance row?", input.drawingMass, "NO_MATCH", "HOLD", SRC.mass, tol.reason)], ["Check TSZ2900G source row and mass range"], [SRC.mass]);
-    const delta = new Decimal(String(input.imdsMass)).minus(new Decimal(String(input.drawingMass))).abs();
-    if (delta.lessThanOrEqualTo(tol.tolerance)) return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_OK", `Absolute mass difference ${delta.toString()} g is within source tolerance ±${tol.tolerance.toString()} g.`, [evaluation("MASS-7-COMPARE", "Is IMDS-to-drawing mass difference within tolerance?", { imdsMass: input.imdsMass, drawingMass: input.drawingMass, difference: delta.toString(), tolerance: tol.tolerance.toString(), class: input.toleranceClass, range: `${tol.minRaw}-${tol.maxRaw}` }, "WITHIN_TOLERANCE", "RECOMMEND_OK", SRC.mass, "Tolerance lookup uses the imported range row; verify the controlled revision before activation.", "Confirmed with Drawing.")], ["Reviewer validates drawing revision and tolerance class"], [SRC.mass], "Confirmed with Drawing.");
+    if (input.imdsMass === undefined || input.drawingMass === undefined || !input.toleranceClass) {
+      return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "MANUAL_REVIEW",
+        "IMDS mass, drawing mass and the drawing's TSZ2900 tolerance class are required. Missing inputs are never treated as zero.",
+        [evaluation("MASS-7-INPUT", "Are the source mass values and tolerance class available?", { imdsMass: input.imdsMass ?? null, drawingMass: input.drawingMass ?? null, toleranceClass: input.toleranceClass ?? null }, "INPUT_INCOMPLETE", "MANUAL_REVIEW", SRC.mass, "Read the values from G-CATS Master Data and the controlled drawing; resolve blank or nonstandard classes.")],
+        ["Retrieve IMDS mass and drawing mass", "Confirm the drawing's TSZ2900 class (MA–MF)", "Verify drawing reference/revision"], [SRC.mass, "7.G-CATS operation - How to, PDF pages 21–25"]);
+    }
+
+    const bands = calculateMassToleranceBands(input.imdsMass, input.drawingMass, input.toleranceClass);
+    if (!bands.found) {
+      return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "HOLD", bands.reason,
+        [evaluation("MASS-7-LOOKUP", "Can the drawing mass and class be resolved in TSZ2900G Rev.9?", { drawingMass: input.drawingMass, toleranceClass: input.toleranceClass }, "LOOKUP_NOT_RESOLVED", "HOLD", SRC.mass, bands.reason)],
+        ["Correct the mass/class input or confirm applicability of the controlled TSZ2900 revision"], [SRC.mass]);
+    }
+
+    const trace = {
+      imdsMass: bands.imdsMass.toString(),
+      drawingMass: bands.drawingMass.toString(),
+      toleranceClass: bands.toleranceClass,
+      tolerance: bands.tolerance.toString(),
+      min: bands.min.toString(),
+      max: bands.max.toString(),
+      bufferMin: bands.bufferMin.toString(),
+      bufferMax: bands.bufferMax.toString(),
+      band: bands.band,
+      tableRange: `${bands.tableRangeMin}–${bands.tableRangeMax}`,
+      tableRow: bands.tableRow,
+      revision: bands.revision
+    };
+
+    if (bands.band === "WITHIN_TSZ_RANGE") {
+      return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_OK",
+        `IMDS mass ${bands.imdsMass.toString()} g is within the TSZ2900 core range ${bands.min.toString()}–${bands.max.toString()} g for class ${bands.toleranceClass}. The source workflow records supplier confirmation of actual/calculated mass for this branch.`,
+        [evaluation("MASS-7-CORE", "Is IMDS mass within TSZ2900 Min/Max?", trace, "WITHIN_TSZ_RANGE", "RECOMMEND_OK", SRC.mass, "Min/Max are calculated from drawing mass ± the class tolerance. Confirm the source drawing and actual/calculated mass evidence.", "Confirmed by Supplier: Actual or calculated mass.")],
+        ["Attach or reference supplier actual/calculated mass evidence", "Reviewer confirms the drawing revision and source values"],
+        [SRC.mass, "Master Data All IMDS Project_new.xlsx, G-CATS Error Log Master Data, columns AY–BG"], "Confirmed by Supplier: Actual or calculated mass.");
+    }
+
+    if (bands.band === "WITHIN_10_PERCENT_BUFFER") {
+      return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_OK",
+        `IMDS mass ${bands.imdsMass.toString()} g is outside the core TSZ2900 range but within the additional 10% buffer ${bands.bufferMin.toString()}–${bands.bufferMax.toString()} g. The workflow can be confirmed with the drawing after reviewer verification.`,
+        [evaluation("MASS-7-BUFFER", "Is IMDS mass outside Min/Max but within the ±10% buffer?", trace, "WITHIN_10_PERCENT_BUFFER", "RECOMMEND_OK", SRC.mass, "The spreadsheet's Results check compares IMDS mass against Min × 0.9 and Max × 1.1. Verify the exact drawing evidence before applying the recommended comment.", "Confirmed with Drawing.")],
+        ["Reviewer verifies the drawing and the source drawing mass/class"], [SRC.mass, "Master Data All IMDS Project_new.xlsx, G-CATS Error Log Master Data, columns AY–BG"], "Confirmed with Drawing.");
+    }
+
     if (input.isRawMaterial === true) {
       if (input.drawingHeavierThanReference === true) return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_OK", "Raw material branch: drawing comparison is marked heavier; reviewer must validate the visual branch.", [evaluation("MASS-7-RAW", "Raw material drawing heavier?", input.drawingHeavierThanReference, "YES", "RECOMMEND_OK", SRC.flow, "Manual flow shows OK with drawing confirmation on this branch.", "Confirmed with Drawing.", 3)], ["Attach drawing comparison", "Reviewer validates raw material branch"], [SRC.flow], "Confirmed with Drawing.");
       if (input.drawingHeavierThanReference === false) return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_NG", "Raw material branch: drawing comparison is not heavier; verify against the flow diagram before final decision.", [evaluation("MASS-7-RAW", "Raw material drawing heavier?", false, "NO", "RECOMMEND_NG", SRC.flow, "Manual flow branch points to NG; retain evidence and require reviewer.", undefined, 3)], ["Attach drawing comparison", "Reviewer validates raw material branch"], [SRC.flow]);
       return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "MANUAL_REVIEW", "Raw material branch requires a drawing comparison. This evidence is missing.", [evaluation("MASS-7-RAW", "Raw material drawing heavier?", null, "UNKNOWN", "MANUAL_REVIEW", SRC.flow, "Missing value cannot be interpreted as NO.", undefined, 3)], ["Obtain drawing mass comparison"], [SRC.flow]);
     }
-    if (input.supplierConfirmation === "ACTUAL_OR_CALCULATED_MASS") return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_OK", "Supplier confirms actual/calculated mass.", [evaluation("MASS-7-SUPPLIER", "Supplier confirms actual/calculated mass?", input.supplierConfirmation, "A", "RECOMMEND_OK", SRC.flow, "Source flow indicates OK with supplier confirmation.", "Confirmed by Supplier.", 3)], ["Attach supplier response", "Reviewer validates supplier confirmation"], [SRC.flow], "Confirmed by Supplier.");
-    if (input.supplierConfirmation === "INPUT_MISTAKE") return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_NG", "Supplier confirms input mistake.", [evaluation("MASS-7-SUPPLIER", "Supplier confirms input mistake?", input.supplierConfirmation, "B", "RECOMMEND_NG", SRC.flow, "Source flow indicates NG and 'Mass is incorrect'.", "Mass is incorrect.", 3)], ["Request corrected IMDS submission", "Reviewer approves final NG"], [SRC.flow]);
-    return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "MANUAL_REVIEW", "Outside tolerance and not raw material: supplier response A/B is required.", [evaluation("MASS-7-SUPPLIER", "Supplier response", input.supplierConfirmation ?? null, "UNKNOWN", "MANUAL_REVIEW", SRC.flow, "No supplier response; do not infer branch.", undefined, 3)], ["Request supplier confirmation A/B"], [SRC.flow]);
+
+    if (input.supplierConfirmation === "ACTUAL_OR_CALCULATED_MASS") return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_OK", "Supplier confirmed actual or calculated mass for a value outside the additional ±10% buffer.", [evaluation("MASS-7-SUPPLIER", "Supplier response A: actual/calculated mass?", input.supplierConfirmation, "A", "RECOMMEND_OK", SRC.flow, "Supplier evidence must be attached and validated by a reviewer.", "Confirmed by Supplier.")], ["Attach supplier actual/calculated mass evidence", "Reviewer validates supplier confirmation"], [SRC.flow], "Confirmed by Supplier.");
+    if (input.supplierConfirmation === "INPUT_MISTAKE") return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "RECOMMEND_NG", "Supplier confirmed an input mistake; the record requires correction and IMDS resubmission.", [evaluation("MASS-7-SUPPLIER", "Supplier response B: input mistake?", input.supplierConfirmation, "B", "RECOMMEND_NG", SRC.flow, "Supplier confirmation must be retained as evidence.", "Mass is incorrect.", 3)], ["Request corrected IMDS submission", "Reviewer approves final NG"], [SRC.flow], "Mass is incorrect.");
+    return baseResult(et, "RULE-07-MASS-TOLERANCE", "DRAFT_FOR_OWNER_APPROVAL", "MANUAL_REVIEW",
+      `IMDS mass is outside the additional ±10% buffer ${bands.bufferMin.toString()}–${bands.bufferMax.toString()} g. Supplier confirmation A/B is required before judgement.`,
+      [evaluation("MASS-7-SUPPLIER", "Supplier response A/B", trace, "SUPPLIER_CONFIRMATION_REQUIRED", "MANUAL_REVIEW", SRC.flow, "A = actual or calculated mass. B = input mistake. Do not infer either answer.")],
+      ["Request supplier confirmation: A) actual/calculated mass, or B) input mistake", "Attach supplier response", "Reviewer confirms OK/NG"], [SRC.flow]);
   }
 
   if (n === 8 || et === "Mass deviation") {

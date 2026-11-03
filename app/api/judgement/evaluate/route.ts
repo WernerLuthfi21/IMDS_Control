@@ -14,16 +14,26 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     if (process.env.NODE_ENV === "production" && !supabase) return NextResponse.json({ error: "Production judgement access is disabled until Supabase authentication is configured." }, { status: 503 });
+    const dryRun = input.dryRun === true;
     let actorId: string | null = null;
     if (supabase) {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
-      if (!profile || !["admin", "preparer", "reviewer"].includes(profile.role)) return NextResponse.json({ error: "Preparer, reviewer or admin role is required to run a judgement." }, { status: 403 });
-      actorId = auth.user.id;
+      const { data: profile } = await supabase.from("profiles").select("role,supplier_code").eq("id", auth.user.id).maybeSingle();
+      if (!profile) return NextResponse.json({ error: "Profile not found." }, { status: 403 });
+      if (profile.role === "supplier") {
+        const isType7 = String(input.errorType).trim().toLowerCase() === "7" || String(input.errorType).trim().toLowerCase() === "mass tolerance range";
+        if (!dryRun || !isType7 || typeof input.caseId === "string") {
+          return NextResponse.json({ error: "Supplier accounts may only run a non-persistent Type 7 self-check. Internal case judgement is not accessible." }, { status: 403 });
+        }
+      } else if (!["admin", "preparer", "reviewer"].includes(profile.role)) {
+        return NextResponse.json({ error: "Preparer, reviewer or admin role is required to run an internal judgement." }, { status: 403 });
+      } else {
+        actorId = auth.user.id;
+      }
     }
     const result = evaluateJudgement(input as unknown as JudgementInput);
-    if (supabase && actorId) {
+    if (supabase && actorId && !dryRun) {
         const { error: saveError } = await supabase.from("judgement_runs").insert({
           case_id: typeof input.caseId === "string" ? input.caseId : null,
           error_type_label: String(input.errorType),
@@ -40,7 +50,7 @@ export async function POST(request: NextRequest) {
         });
         if (saveError) return NextResponse.json({ error: `Evaluation completed but could not be saved: ${saveError.message}` }, { status: 500 });
     }
-    return NextResponse.json({ result }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ result, dryRun }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Judgement evaluation failed." }, { status: 422 });
   }
