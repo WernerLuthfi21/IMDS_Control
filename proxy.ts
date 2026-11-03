@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
     let destination = "/workspace";
     if (requestedNext) {
       const target = new URL(requestedNext, request.url);
-      if (target.origin === request.nextUrl.origin) destination = target.pathname + target.search + target.hash;
+      if (target.origin === request.nextUrl.origin && target.pathname !== "/") destination = target.pathname + target.search + target.hash;
     }
     return NextResponse.redirect(new URL(destination, request.url));
   }
