@@ -1,0 +1,47 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const supabase = await createClient();
+  if (!supabase) return new NextResponse("IMDS Tracker is unavailable until Supabase authentication is configured.", {
+    status: 503, headers: { "Cache-Control": "no-store" }
+  });
+
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return NextResponse.redirect(new URL("/login?next=%2Fimds-tracker", request.url));
+
+  const { data: profile, error } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
+  if (error) return new NextResponse("Unable to verify workspace permissions. Please retry or contact an administrator.", {
+    status: 503, headers: { "Cache-Control": "no-store" }
+  });
+  if (!canAccessImdsTracker(profile?.role)) return new NextResponse("Internal workspace access required.", {
+    status: 403, headers: { "Cache-Control": "no-store" }
+  });
+
+  try {
+    const html = await readFile(join(process.cwd(), "private", "imds-tracker.html"), "utf8");
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+        "Pragma": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Content-Disposition": "inline; filename=imds-tracker.html"
+      }
+    });
+  } catch (error) {
+    console.error("IMDS Tracker private HTML could not be loaded.", error);
+    return new NextResponse("IMDS Tracker could not be loaded. Please contact the application administrator.", {
+      status: 500, headers: { "Cache-Control": "no-store" }
+    });
+  }
+}
