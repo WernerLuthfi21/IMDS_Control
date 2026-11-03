@@ -1,6 +1,11 @@
-"use client";
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
-import { LockKeyhole, LoaderCircle, LogIn } from "lucide-react";
-export default function LoginPage(){const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [error,setError]=useState("");const [loading,setLoading]=useState(false);const router=useRouter();async function submit(e:React.FormEvent){e.preventDefault();setLoading(true);setError("");const supabase=createClient();if(!supabase){setError("Supabase is not configured. Copy .env.example to .env.local and configure the local project first.");setLoading(false);return;}const {error}=await supabase.auth.signInWithPassword({email,password});if(error)setError(error.message);else { router.replace("/workspace"); }setLoading(false);}return <div className="panel" style={{maxWidth:440,margin:"5vh auto"}}><div className="panel-header"><div><div className="panel-title">Workspace sign in</div><div className="panel-subtitle">Authenticate to import operational data and manage case records.</div></div><LockKeyhole size={18}/></div><form className="panel-body" onSubmit={submit}><div className="form-field"><label>Email</label><input className="field" type="email" required value={email} onChange={e=>setEmail(e.target.value)}/></div><div className="form-field" style={{marginTop:12}}><label>Password</label><input className="field" type="password" required value={password} onChange={e=>setPassword(e.target.value)}/></div>{error&&<div className="callout callout-danger" style={{marginTop:12}}>{error}</div>}<button className="btn btn-primary" style={{width:"100%",marginTop:15}} disabled={loading}>{loading?<LoaderCircle className="spin" size={14}/>:<LogIn size={14}/>} Sign in</button><div className="form-hint" style={{marginTop:12}}>User accounts are managed through Supabase Auth. Role authorization is enforced by database policies, not client-side visibility.</div></form></div>}
+import "./login.css";
+import { LoginForm } from "@/components/login-form";
+import { safeNextPath } from "@/lib/security/next-path";
+
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
+  const params = await searchParams;
+  const next = safeNextPath(Array.isArray(params.next) ? params.next[0] : params.next);
+  return <LoginForm next={next} accessEmail={process.env.NEXT_PUBLIC_ACCESS_REQUEST_EMAIL || ""}/>;
+}

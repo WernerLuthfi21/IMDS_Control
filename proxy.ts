@@ -8,31 +8,30 @@ export async function proxy(request: NextRequest) {
   const isApi = pathname.startsWith("/api/");
   const isSetupPage = pathname === "/setup-required";
 
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set("x-pathname", pathname);
+
   if (!url || !key) {
     if (process.env.NODE_ENV === "production" && !isSetupPage && !isApi) {
       return NextResponse.redirect(new URL("/setup-required", request.url));
     }
-    return NextResponse.next({ request });
+    return NextResponse.next({ request: { headers: forwardedHeaders } });
   }
 
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: forwardedHeaders } });
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = NextResponse.next({ request: { headers: forwardedHeaders } });
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       }
     }
   });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user && !isApi && pathname !== "/login" && !isSetupPage) {
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-    if (profile?.role === "supplier" && pathname !== "/supplier-precheck") {
-      return NextResponse.redirect(new URL("/supplier-precheck", request.url));
-    }
-  }
+  // Local JWT verification + session refresh; role-based routing happens once per request in the layout.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? claimsData.claims : null;
 
   // API handlers return JSON 401 responses; do not redirect fetch clients to the login page.
   if (!user && !isApi && pathname !== "/login" && !isSetupPage) {

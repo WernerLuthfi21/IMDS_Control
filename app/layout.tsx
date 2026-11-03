@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,14 +13,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  let role = "viewer";
-  const supabase = await createClient();
-  if (supabase) {
-    const { data: auth } = await supabase.auth.getUser();
-    if (auth.user) {
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
-      role = profile?.role || "viewer";
-    }
+  const auth = await getAuthContext();
+  const role = auth.role || "viewer";
+  if (auth.userId && auth.role === "supplier") {
+    const pathname = (await headers()).get("x-pathname") || "";
+    const allowed = pathname.startsWith("/supplier-precheck") || pathname.startsWith("/api/") || pathname === "/login" || pathname === "/setup-required";
+    if (pathname && !allowed) redirect("/supplier-precheck");
   }
-  return <html lang="en"><body><AppShell role={role}>{children}</AppShell></body></html>;
+  return <html lang="en"><body><AppShell role={role} email={auth.email}>{children}</AppShell></body></html>;
 }
