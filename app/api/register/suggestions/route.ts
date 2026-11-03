@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 const fields = "source_record_key,judgement_procedure,ok_comment,imds_reject_comment,judge,km_judge,delivery_part_no,supplier_code,cas_no";
+type SuggestionRow = {
+  source_record_key: string;
+  judgement_procedure: string | null;
+  ok_comment: string | null;
+  imds_reject_comment: string | null;
+  judge: string | null;
+  km_judge: string | null;
+  delivery_part_no: string | null;
+  supplier_code: string | null;
+  cas_no: string | null;
+};
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -33,7 +44,7 @@ export async function GET(request: NextRequest) {
   const errorResult = results.find(result => result.error);
   if (errorResult?.error) return NextResponse.json({ error: errorResult.error.message }, { status: 500 });
 
-  const rows = new Map<string, any>();
+  const rows = new Map<string, SuggestionRow>();
   for (const result of results) for (const row of result.data || []) rows.set(row.source_record_key, row);
   const groups = new Map<string, { procedure: string; count: number; okComment?: string; rejectComment?: string; sampleJudge?: string; samePartCount: number; sameSupplierCount: number; sameCasCount: number; latestDate: string | null }>();
   for (const row of rows.values()) {
