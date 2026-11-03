@@ -91,6 +91,16 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
   }
   return [...grouped.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,value])=>({key,name:monthNames[key]||key,...value}));
  },[rows]);
+ const errorSummary=useMemo(()=>{
+  const grouped=new Map<string,{working:number;pending:number;judged:number}>();
+  for(const row of rows){
+   const value=grouped.get(row.error_type_label)||{working:0,pending:0,judged:0};
+   if(row.source_status==="WORKING"){value.working++;if(!row.judge)value.pending++;}
+   if(row.judge)value.judged++;
+   grouped.set(row.error_type_label,value);
+  }
+  return [...grouped.entries()].map(([name,value])=>({name,...value})).sort((a,b)=>b.pending-a.pending||a.name.localeCompare(b.name));
+ },[rows]);
 
  async function runGuidedCheck(row:Item,supplierConfirmation=""){
   setGuidedBusy(true);setGuidedError("");setGuidedEvaluation(null);
@@ -229,6 +239,12 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
    <div className="judgement-section-head"><div><h2>Monthly workload</h2><p>Current-year items from the latest committed snapshot.</p></div><span>{rows.length.toLocaleString("en-US")} current-year rows</span></div>
    <div className="judgement-month-grid">{months.map(month=><button type="button" key={month.key} className="judgement-month" onClick={()=>{setSearch("");setErrorType("All Error Types");setTab("pending");setMonthFilter(monthFilter===month.key?"All Months":month.key);}}><strong>{month.name}</strong><span>{month.pending} pending</span><small>{month.total} total · {month.judged} judged</small></button>)}</div>
    {!months.length&&<div className="judgement-month-empty">No monthly source data.</div>}
+  </section>
+  <section className="judgement-error-summary">
+   <div className="judgement-section-head"><div><h2>Open workload by Error Type</h2><p>Only current-year WORKING records without a Judge count as pending.</p></div><span>{errorSummary.length} error types</span></div>
+   <div className="judgement-error-grid">{errorSummary.map(item=><button type="button" className={"judgement-error-card "+(errorType===item.name?"selected":"")} key={item.name} onClick={()=>{setErrorType(item.name);setTab("pending");setMonthFilter("All Months");setSearch("");}}>
+    <strong>{item.name}</strong><span>{item.pending.toLocaleString("en-US")} pending</span><small>{item.working.toLocaleString("en-US")} WORKING · {item.judged.toLocaleString("en-US")} judged</small>
+   </button>)}</div>
   </section>
   <section className="judgement-board">
    <div className="judgement-list-panel">
