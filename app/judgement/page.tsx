@@ -10,7 +10,7 @@ export default async function JudgementPage() {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?next=%2Fjudgement");
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("role,display_name").eq("id", auth.user.id).maybeSingle();
   const role = profile?.role || "viewer";
   if (role === "supplier") redirect("/supplier-precheck");
   if (!["admin", "preparer", "reviewer", "viewer", "rule_author", "rule_approver"].includes(role)) redirect("/workspace");
@@ -45,6 +45,7 @@ export default async function JudgementPage() {
     rows={rows as never}
     year={year}
     role={role}
+    actorName={profile?.display_name?.trim() || auth.user.email || "Logged-in user"}
     sourceFile="Latest committed G-CATS snapshot"
     sourceSheet="Current-year source records"
     sourceDate={latestSource?.source_last_seen_at || null}

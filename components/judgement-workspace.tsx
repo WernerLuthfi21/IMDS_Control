@@ -42,7 +42,7 @@ function initialMassForm(row:Item):MassForm{
  const classValue=sourceText(row,"Mass Tol. Class",52).toUpperCase();
  return {imdsMass:imds,drawingMass:drawing||(alternateMax&&alternateMax===alternateMin?alternateMax:""),toleranceClass:allowedClasses.includes(classValue)?classValue:"",supplierConfirmation:""};
 }
-export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,sourceDate,queryError}:{rows:Item[];year:number;role:string;sourceFile:string|null;sourceSheet:string|null;sourceDate:string|null;queryError:string|null}) {
+export function JudgementWorkspace({rows,year,role,actorName,sourceFile,sourceSheet,sourceDate,queryError}:{rows:Item[];year:number;role:string;actorName:string;sourceFile:string|null;sourceSheet:string|null;sourceDate:string|null;queryError:string|null}) {
  const router=useRouter();
  const [tab,setTab]=useState<Tab>("pending");
  const [errorType,setErrorType]=useState("All Error Types");
@@ -57,6 +57,7 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
  const [guidedBusy,setGuidedBusy]=useState(false);
  const [guidedError,setGuidedError]=useState("");
  const [guidedSupplierConfirmation,setGuidedSupplierConfirmation]=useState("");
+ const [destinationCode,setDestinationCode]=useState("");
  const [massError,setMassError]=useState("");
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
@@ -105,7 +106,9 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
  async function runGuidedCheck(row:Item,supplierConfirmation=""){
   setGuidedBusy(true);setGuidedError("");setGuidedEvaluation(null);
   try{
-   const body:Record<string,unknown>={errorType:row.error_type_label,caseId:row.case_id||undefined,dryRun:true};
+   const casNo=sourceText(row,"CAS No.",29);
+   const materialUse=sourceText(row,"Component Part Name",22)||sourceText(row,"Material Name",26)||sourceText(row,"Delivery Part Name",18);
+   const body:Record<string,unknown>={errorType:row.error_type_label,caseId:row.case_id||undefined,casNo:casNo||undefined,materialUse:materialUse||undefined,destinationCode:destinationCode||undefined,dryRun:true};
    if(supplierConfirmation)body.supplierConfirmation=supplierConfirmation;
    const response=await fetch("/api/judgement/evaluate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
    const json=await response.json();
@@ -137,14 +140,14 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
  useEffect(()=>{
   if(!selected){setMassEvaluation(null);setMassError("");return;}
   setDraft({
-   assigned_person:selected.assigned_person||"",
-   starting_date:selected.starting_date||"",
+   assigned_person:selected.assigned_person||actorName,
+   starting_date:selected.starting_date||new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10),
    judgement_procedure:selected.judgement_procedure||"",
    judge:selected.judge==="OK"||selected.judge==="NG"?selected.judge:"",
    comment:selected.judge==="OK"?selected.ok_comment||"":selected.judge==="NG"?selected.imds_reject_comment||"":""
   });
   setMessage("");setError("");setMassError("");setMassEvaluation(null);
-  setGuidedEvaluation(null);setGuidedError("");setGuidedSupplierConfirmation("");
+  setGuidedEvaluation(null);setGuidedError("");setGuidedSupplierConfirmation("");setDestinationCode("");
   if(massType(selected.error_type_label)){
    const form=initialMassForm(selected);
    setMassForm(form);
@@ -190,7 +193,7 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
     if(!evaluationResponse.ok)throw new Error(evaluationJson.error||"Could not record the Type 7 evaluation trace.");
    }else{
     const evaluationResponse=await fetch("/api/judgement/evaluate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-     caseId:selected.case_id||undefined,errorType:selected.error_type_label,supplierConfirmation:guidedSupplierConfirmation||undefined
+     caseId:selected.case_id||undefined,errorType:selected.error_type_label,supplierConfirmation:guidedSupplierConfirmation||undefined,casNo:sourceText(selected,"CAS No.",29)||undefined,materialUse:sourceText(selected,"Component Part Name",22)||sourceText(selected,"Material Name",26)||sourceText(selected,"Delivery Part Name",18)||undefined,destinationCode:destinationCode||undefined
     })});
     const evaluationJson=await evaluationResponse.json();
     if(!evaluationResponse.ok)throw new Error(evaluationJson.error||"Could not record the judgement guidance trace.");
@@ -286,7 +289,7 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
       {guidedError&&<div className="judgement-feedback error"><AlertTriangle size={13}/>{guidedError}</div>}
       {guidedEvaluation&&<div className="judgement-guidance-result">
        <div className="judgement-mass-result-head"><div><span>Rule recommendation</span><strong>{guidedEvaluation.recommendation.replaceAll("_"," ")}</strong></div><span className="judgement-mass-badge is-hold">{guidedEvaluation.ruleStatus.replaceAll("_"," ")}</span></div>
-       <p>{guidedEvaluation.reason}</p>
+       {Number(String(selected.error_type_label).match(/\d+/)?.[0]||0)>=14&&Number(String(selected.error_type_label).match(/\d+/)?.[0]||0)<=18&&<div className="judgement-mass-inputs"><label>Destination code (manual selection)<input value={destinationCode} onChange={event=>setDestinationCode(event.target.value.toUpperCase())} placeholder="Enter approved destination code"/></label><button type="button" className="judgement-mass-recheck" onClick={()=>void runGuidedCheck(selected,guidedSupplierConfirmation)} disabled={guidedBusy}>Re-evaluate destination</button></div>}\n       <p>{guidedEvaluation.reason}</p>
        {guidedEvaluation.manualTasks?.length>0&&<div className="judgement-guidance-tasks"><strong>Required actions / evidence</strong><ol>{guidedEvaluation.manualTasks.map((task,index)=><li key={index}>{task}</li>)}</ol></div>}
        {/^(6|sms mass)$/i.test(String(selected.error_type_label).replace(/^Error Type\s*/i,"").trim())&&<div className="judgement-supplier-response"><strong>Supplier confirmation</strong><span>A = actual or calculated mass · B = input mistake</span><div>
         <button type="button" className={guidedSupplierConfirmation==="ACTUAL_OR_CALCULATED_MASS"?"selected":""} onClick={()=>{setGuidedSupplierConfirmation("ACTUAL_OR_CALCULATED_MASS");void runGuidedCheck(selected,"ACTUAL_OR_CALCULATED_MASS");}}>A · Actual / calculated</button>
