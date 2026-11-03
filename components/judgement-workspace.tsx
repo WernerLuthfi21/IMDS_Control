@@ -53,6 +53,10 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
  const [massForm,setMassForm]=useState<MassForm>({imdsMass:"",drawingMass:"",toleranceClass:"",supplierConfirmation:""});
  const [massEvaluation,setMassEvaluation]=useState<EvaluationResult|null>(null);
  const [massBusy,setMassBusy]=useState(false);
+ const [guidedEvaluation,setGuidedEvaluation]=useState<EvaluationResult|null>(null);
+ const [guidedBusy,setGuidedBusy]=useState(false);
+ const [guidedError,setGuidedError]=useState("");
+ const [guidedSupplierConfirmation,setGuidedSupplierConfirmation]=useState("");
  const [massError,setMassError]=useState("");
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
@@ -88,6 +92,25 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
   return [...grouped.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,value])=>({key,name:monthNames[key]||key,...value}));
  },[rows]);
 
+ async function runGuidedCheck(row:Item,supplierConfirmation=""){
+  setGuidedBusy(true);setGuidedError("");setGuidedEvaluation(null);
+  try{
+   const body:Record<string,unknown>={errorType:row.error_type_label,caseId:row.case_id||undefined,dryRun:true};
+   if(supplierConfirmation)body.supplierConfirmation=supplierConfirmation;
+   const response=await fetch("/api/judgement/evaluate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
+   const json=await response.json();
+   if(!response.ok)throw new Error(json.error||"Guided rule check failed.");
+   setGuidedEvaluation(json.result as EvaluationResult);
+  }catch(cause){setGuidedError(cause instanceof Error?cause.message:"Guided rule check failed.");}
+  finally{setGuidedBusy(false);}
+ }
+ function applyGuidedRecommendation(){
+  if(!guidedEvaluation)return;
+  if(guidedEvaluation.recommendation==="RECOMMEND_OK")setDraft(old=>({...old,judge:"OK",comment:guidedEvaluation.comment||"Confirmed by Supplier."}));
+  else if(guidedEvaluation.recommendation==="RECOMMEND_NG")setDraft(old=>({...old,judge:"NG",comment:guidedEvaluation.comment||"Mass is incorrect."}));
+  else return;
+  appendProcedure("Guided rule check: "+guidedEvaluation.reason);
+ }
  async function runMassCheck(row:Item,form:MassForm){
   setMassBusy(true);setMassError("");setMassEvaluation(null);
   try{
@@ -111,12 +134,14 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
    comment:selected.judge==="OK"?selected.ok_comment||"":selected.judge==="NG"?selected.imds_reject_comment||"":""
   });
   setMessage("");setError("");setMassError("");setMassEvaluation(null);
+  setGuidedEvaluation(null);setGuidedError("");setGuidedSupplierConfirmation("");
   if(massType(selected.error_type_label)){
    const form=initialMassForm(selected);
    setMassForm(form);
    void runMassCheck(selected,form);
   }else{
    setMassForm({imdsMass:"",drawingMass:"",toleranceClass:"",supplierConfirmation:""});
+   if(canEdit)void runGuidedCheck(selected,"");
   }
  },[selectedId]);
 
@@ -153,6 +178,12 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
     })});
     const evaluationJson=await evaluationResponse.json();
     if(!evaluationResponse.ok)throw new Error(evaluationJson.error||"Could not record the Type 7 evaluation trace.");
+   }else{
+    const evaluationResponse=await fetch("/api/judgement/evaluate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+     caseId:selected.case_id||undefined,errorType:selected.error_type_label,supplierConfirmation:guidedSupplierConfirmation||undefined
+    })});
+    const evaluationJson=await evaluationResponse.json();
+    if(!evaluationResponse.ok)throw new Error(evaluationJson.error||"Could not record the judgement guidance trace.");
    }
    const payload={
     assigned_person:draft.assigned_person,
@@ -233,6 +264,22 @@ export function JudgementWorkspace({rows,year,role,sourceFile,sourceSheet,source
      </div>
      <a className="judgement-followup-action" href={"/follow-up?"+new URLSearchParams({itemId:selected.id,supplierCode:selected.supplier_code||"",partNo:selected.delivery_part_no||"",errorType:selected.error_type_label})}><Mail size={13}/> Request supplier follow-up <ArrowUpRight size={13}/></a>
 
+     {!massType(selected.error_type_label)&&<section className="judgement-guidance-panel">
+      <div className="judgement-mass-head"><div><span className="judgement-eyebrow"><ClipboardCheck size={12}/> GUIDED WORKFLOW</span><h3>{selected.error_type_label} · rule guidance</h3></div><button type="button" className="judgement-mass-recheck" onClick={()=>void runGuidedCheck(selected,guidedSupplierConfirmation)} disabled={guidedBusy}>{guidedBusy?<LoaderCircle size={13}/>:<Calculator size={13}/>} Evaluate</button></div>
+      {guidedBusy&&!guidedEvaluation&&<div className="judgement-mass-loading"><LoaderCircle size={14}/> Loading the relevant judgement procedure…</div>}
+      {guidedError&&<div className="judgement-feedback error"><AlertTriangle size={13}/>{guidedError}</div>}
+      {guidedEvaluation&&<div className="judgement-guidance-result">
+       <div className="judgement-mass-result-head"><div><span>Rule recommendation</span><strong>{guidedEvaluation.recommendation.replaceAll("_"," ")}</strong></div><span className="judgement-mass-badge is-hold">{guidedEvaluation.ruleStatus.replaceAll("_"," ")}</span></div>
+       <p>{guidedEvaluation.reason}</p>
+       {guidedEvaluation.manualTasks?.length>0&&<div className="judgement-guidance-tasks"><strong>Required actions / evidence</strong><ol>{guidedEvaluation.manualTasks.map((task,index)=><li key={index}>{task}</li>)}</ol></div>}
+       {/^(6|sms mass)$/i.test(String(selected.error_type_label).replace(/^Error Type\s*/i,"").trim())&&<div className="judgement-supplier-response"><strong>Supplier confirmation</strong><span>A = actual or calculated mass · B = input mistake</span><div>
+        <button type="button" className={guidedSupplierConfirmation==="ACTUAL_OR_CALCULATED_MASS"?"selected":""} onClick={()=>{setGuidedSupplierConfirmation("ACTUAL_OR_CALCULATED_MASS");void runGuidedCheck(selected,"ACTUAL_OR_CALCULATED_MASS");}}>A · Actual / calculated</button>
+        <button type="button" className={guidedSupplierConfirmation==="INPUT_MISTAKE"?"selected":""} onClick={()=>{setGuidedSupplierConfirmation("INPUT_MISTAKE");void runGuidedCheck(selected,"INPUT_MISTAKE");}}>B · Input mistake</button>
+       </div></div>}
+       {guidedEvaluation.recommendation.startsWith("RECOMMEND_")&&<div className="judgement-mass-actions"><button type="button" onClick={applyGuidedRecommendation}><Check size={13}/> Apply recommendation to Judge / comment</button></div>}
+      </div>}
+      <small className="judgement-mass-footnote">The workflow engine checks only mapped rule branches. When source evidence or an approved basis is missing, it returns MANUAL REVIEW / HOLD rather than inventing a result.</small>
+     </section>}
      {massType(selected.error_type_label)&&<section className="judgement-mass-panel">
       <div className="judgement-mass-head"><div><span className="judgement-eyebrow"><Calculator size={12}/> TSZ2900G REV.9 · MASS TOLERANCE</span><h3>Source-driven mass check</h3></div><button type="button" className="judgement-mass-recheck" onClick={()=>void runMassCheck(selected,massForm)} disabled={massBusy}>{massBusy?<LoaderCircle size={13}/>:<Calculator size={13}/>} Calculate</button></div>
       <p className="judgement-mass-intro">Values are prefilled from the G-CATS master row. Verify against the source drawing; only correct the fields after checking the drawing.</p>
