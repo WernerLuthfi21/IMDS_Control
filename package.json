@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:reset": "npx supabase db reset",
-    "db:start": "npx supabase start"
+    "db:start": "npx supabase start",
+    "lint:server": "eslint app/api lib"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
