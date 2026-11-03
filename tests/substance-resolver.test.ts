@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { normalizeCas, resolveSubstance } from "@/lib/judgement/substance-resolver";
 
 describe("automatic CAS → GADSL → TSZ → appendices resolver", () => {
-  it("preserves CAS leading zeroes and rejects checksum errors", () => {
+  it("normalizes formatting, preserves leading zeroes and rejects invalid checksum", () => {
     expect(normalizeCas("0117-81-7")).toBe("0117-81-7");
-    expect(normalizeCas("117-81-8")).toBeNull();
+    expect(resolveSubstance("117-81-8").status).toBe("INVALID_CAS");
   });
 
   it("resolves DEHP to TSZ group 30 and its REACH appendix rows", () => {
