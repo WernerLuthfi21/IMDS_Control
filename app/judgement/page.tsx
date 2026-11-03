@@ -45,8 +45,8 @@ export default async function JudgementPage() {
     rows={rows as never}
     year={year}
     role={role}
-    sourceFile={null}
-    sourceSheet="Latest committed G-CATS source snapshot"
+    sourceFile="Latest committed G-CATS snapshot"
+    sourceSheet="Current-year source records"
     sourceDate={latestSource?.source_last_seen_at || null}
     queryError={queryError}
   />;
