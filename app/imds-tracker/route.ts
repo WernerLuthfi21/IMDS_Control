@@ -1,26 +1,22 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/session";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  if (!supabase) return new NextResponse("IMDS Tracker is unavailable until Supabase authentication is configured.", {
+  const auth = await getAuthContext();
+  if (!auth.configured) return new NextResponse("IMDS Tracker is unavailable until Supabase authentication is configured.", {
     status: 503, headers: { "Cache-Control": "no-store" }
   });
-
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.redirect(new URL("/login?next=%2Fimds-tracker", request.url));
-
-  const { data: profile, error } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
-  if (error) return new NextResponse("Unable to verify workspace permissions. Please retry or contact an administrator.", {
+  if (!auth.userId) return NextResponse.redirect(new URL("/login?next=%2Fimds-tracker", request.url));
+  if (auth.roleError) return new NextResponse("Unable to verify workspace permissions. Please retry or contact an administrator.", {
     status: 503, headers: { "Cache-Control": "no-store" }
   });
-  if (!canAccessImdsTracker(profile?.role)) return new NextResponse("Internal workspace access required.", {
+  if (!canAccessImdsTracker(auth.role)) return new NextResponse("Internal workspace access required.", {
     status: 403, headers: { "Cache-Control": "no-store" }
   });
 

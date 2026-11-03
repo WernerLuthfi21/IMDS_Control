@@ -92,6 +92,8 @@ kbd{font-size:11px;border:1px solid var(--line-strong);border-bottom-width:2px;b
 .brand-text{display:flex;flex-direction:column;line-height:1.05;font-family:var(--f-display)}
 .brand-text b{font-size:22px;font-weight:750;letter-spacing:-.02em}.brand-text span{font-size:16px;font-weight:500;color:var(--brand-text)}
 .nav{display:flex;flex-direction:column;gap:2px}
+.back-menu{display:flex;align-items:center;gap:8px;min-height:38px;margin:0 0 10px;padding:0 10px;border:1px solid var(--line-strong);border-radius:var(--r-2);color:var(--brand-text);text-decoration:none;font-weight:600;font-size:13px;background:var(--surface);transition:background-color .15s ease}
+.back-menu:hover{background:var(--lilac)}.back-menu:focus-visible{outline:2px solid var(--focus);outline-offset:2px}.back-menu svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .nav-link{display:flex;align-items:center;gap:10px;min-height:42px;padding:0 10px;white-space:nowrap;border-radius:var(--r-2);color:var(--ink);text-decoration:none;font-weight:500;position:relative;transition:background-color .15s ease,color .15s ease}
 .nav-link svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.85}
 .nav-link:hover{background:rgba(124,58,237,.10)}
@@ -122,7 +124,7 @@ kbd{font-size:11px;border:1px solid var(--line-strong);border-bottom-width:2px;b
 .spop-foot{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:6px;padding:10px;border:0;border-top:1px solid var(--line);background:transparent;font-weight:600;color:var(--brand-text);border-radius:0 0 var(--r-2) var(--r-2)}
 .spop-foot:hover{background:var(--lilac)}.spop-none{padding:14px 10px;color:var(--muted)}
 .top-conn{margin-left:auto}
-.icon-btn.menu-btn{display:none}
+.icon-btn.menu-btn{display:none}.back-top{display:none;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid var(--line-strong);border-radius:var(--r-2);color:var(--brand-text);background:var(--surface);flex:none}.back-top svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 main,main:focus,main:focus-visible{outline:0}
 .view{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s-5)}
 .view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s-4);flex-wrap:wrap;padding-bottom:var(--s-1)}.view-head h1{font-size:clamp(26px,2.6vw,32px);font-weight:720;letter-spacing:-.03em}
@@ -472,7 +474,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
   .sidebar{position:fixed;left:0;top:0;bottom:0;margin:0;height:auto;width:min(290px,86vw);border-radius:0 var(--r-3) var(--r-3) 0;transform:translateX(-105%);transition:transform .22s ease;background:var(--glass-strong)}
   .nav-open .sidebar{transform:none}
   .nav-open .shell::before{content:"";position:fixed;inset:0;z-index:35;background:var(--scrim)}
-  .icon-btn.menu-btn{display:inline-grid}.top-conn{margin-left:0}
+  .icon-btn.menu-btn{display:inline-grid}.back-top{display:inline-flex}.top-conn{margin-left:0}
   .shell{padding:12px 14px 48px}
   .hero{grid-template-columns:1fr}.cube-stage{position:absolute;right:-24px;top:0;width:52%;opacity:.9;min-height:0;height:100%;transform:scale(.7);transform-origin:right center}
   .rep-grid{grid-template-columns:1fr 1fr}
@@ -551,6 +553,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
 <div class="app">
 <aside class="sidebar glass" id="sidebar" aria-label="Primary">
   <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><div class="brand-text"><b translate="no">IMDS</b><span>Tracker</span></div></div>
+  <a class="back-menu" href="/workspace"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>Back to menu</span></a>
   <nav class="nav" aria-label="Workspaces">
     <a class="nav-link" href="#overview" data-view="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Overview</span></a>
     <a class="nav-link" href="#models" data-view="models"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12 4 7.5M12 12l8-4.5M12 12v9"/></svg><span>Model Tracker</span><span class="nav-count num" hidden></span></a>
@@ -570,6 +573,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
 
 <div class="shell">
   <header class="topbar glass">
+    <a class="back-top" href="/workspace" aria-label="Back to menu" title="Back to menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
     <button type="button" class="icon-btn menu-btn" id="btn-nav" data-action="toggle-nav" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <div class="gsearch-wrap"><label class="gsearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span class="sr-only">Search suppliers, part numbers and part names</span><input id="g-search" type="search" name="q" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="search-pop" aria-autocomplete="list" placeholder="Search supplier, part number or part name…"><kbd aria-hidden="true">/</kbd></label><div id="search-pop" class="spop" role="listbox" aria-label="Search results" hidden></div></div>
     <span class="conn-badge state-neutral top-conn" role="status"><span class="dot" aria-hidden="true"></span><span class="conn-text">Not connected</span></span>
