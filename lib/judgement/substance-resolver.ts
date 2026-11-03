@@ -59,7 +59,7 @@ export function resolveSubstance(casRaw: string, destinationCode?: string, mater
     reason: String(row.reason ?? row.values?.[5] ?? "")
   }));
   const appendixRows = appendices.map(({ appendix, row }) => ({
-    appendix, tszNo: cell(row, 1), item: cell(row, 3) || cell(row, 2), sourceRow: row.sourceRow ?? null
+    appendix, tszNo: cell(row, 1), item: appendix === "4" ? cell(row, 3) : appendix === "5" ? cell(row, 5) : cell(row, 2), sourceRow: row.sourceRow ?? null
   }));
   const trace = [
     `CAS validation: ${valid ? "VALID" : "INVALID / MISSING"}`,
