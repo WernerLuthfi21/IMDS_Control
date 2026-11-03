@@ -19,7 +19,7 @@ export default async function JudgementPage() {
   if (batch?.id) {
     const result = await supabase.from("gcat_error_items")
       .select("id,source_record_key,error_type_label,delivery_part_no,supplier_code,source_status,source_year,source_month,judge,km_judge,source_judge_label,source_km_judge_label,assigned_person,starting_date,judgement_procedure,ok_comment,imds_reject_comment,last_change_date,case_id")
-      .eq("source_batch_id",batch.id).eq("source_year",String(year)).eq("source_status","WORKING")
+      .eq("source_batch_id",batch.id).eq("source_year",String(year))
       .order("source_month",{ascending:false}).order("last_change_date",{ascending:false,nullsFirst:true}).range(0,4999);
     if(result.error) queryError=result.error.message; else rows=(result.data||[]) as Array<Record<string,unknown>>;
   }
