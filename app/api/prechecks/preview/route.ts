@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
+import { Readable } from "node:stream";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -38,8 +39,8 @@ export async function POST(request: NextRequest) {
 
   const workbook = new ExcelJS.Workbook();
   const buffer = Buffer.from(await stored.arrayBuffer());
-  if (ext === "csv") await workbook.csv.load(buffer);
-  else await workbook.xlsx.load(buffer);
+  if (ext === "csv") await workbook.csv.read(Readable.from([buffer.toString("utf8")]));
+  else await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const sheet = workbook.worksheets.find(ws => ws.rowCount > 1);
   if (!sheet) return NextResponse.json({ error: "No tabular worksheet with data was found." }, { status: 422 });
 
