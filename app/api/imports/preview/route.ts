@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
   const buffer = Buffer.from(await storedFile.arrayBuffer());
   const hash = createHash("sha256").update(buffer).digest("hex");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  // ExcelJS expects its own Buffer declaration; the runtime value is a Node Buffer.
+  await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   let sheet = workbook.getWorksheet("G-CATS Error Log Master Data");
   if (!sheet) sheet = workbook.worksheets.find(ws => {
     for (let r = 1; r <= Math.min(ws.rowCount, 12); r++) {
