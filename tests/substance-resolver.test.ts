@@ -12,7 +12,7 @@ describe("automatic CAS → GADSL → TSZ → appendices resolver", () => {
     expect(result.casNormalized).toBe("117-81-7");
     expect(result.tszGroups.map(group => group.tszNo)).toContain("30");
     expect(result.familyFlows).toContain("REACH Annex XVII");
-    expect(result.appendices.some(row => row.appendix === "5")).toBe(true);
+    expect(result.appendices.some(row => row.appendix === "6")).toBe(true);
     expect(result.remainingRequirements).toContain("Select destination code from the approved G-CATS destination list");
   });
 
