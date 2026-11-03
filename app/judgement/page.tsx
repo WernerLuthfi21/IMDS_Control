@@ -1,20 +1,19 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/session";
 import { JudgementWorkspace } from "@/components/judgement-workspace";
+import { extractRowFacts } from "@/lib/judgement/row-facts";
 
 export const dynamic = "force-dynamic";
 
 export default async function JudgementPage() {
-  const supabase = await createClient();
-  if (!supabase) redirect("/setup-required");
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login?next=%2Fjudgement");
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
-  const role = profile?.role || "viewer";
+  const auth = await getAuthContext();
+  if (!auth.configured) redirect("/setup-required");
+  if (!auth.userId) redirect("/login?next=%2Fjudgement");
+  const role = auth.role || "viewer";
   if (role === "supplier") redirect("/supplier-precheck");
   if (!["admin", "preparer", "reviewer", "viewer", "rule_author", "rule_approver"].includes(role)) redirect("/workspace");
-
+  const supabase = (await createClient())!;
   const year = new Date().getFullYear();
 
   // gcat_error_items is readable by all internal roles. import_batches metadata is
@@ -38,15 +37,18 @@ export default async function JudgementPage() {
       .order("last_change_date", { ascending: false, nullsFirst: true })
       .range(0, 4999);
     if (result.error) queryError = result.error.message;
-    else rows = (result.data || []) as Array<Record<string, unknown>>;
+    else rows = ((result.data || []) as Array<Record<string, unknown>>).map(({ raw_source, ...rest }) => {
+      // Only the few fields the list needs go to the browser; the full source row stays on the server.
+      const f = extractRowFacts(raw_source as Record<string, unknown> | null);
+      return { ...rest, cas: f.cas, substance_name: f.substanceName };
+    });
   }
 
   return <JudgementWorkspace
     rows={rows as never}
     year={year}
     role={role}
-    sourceFile="Latest committed G-CATS snapshot"
-    sourceSheet="Current-year source records"
+    actorName={auth.displayName || auth.email || "You"}
     sourceDate={latestSource?.source_last_seen_at || null}
     queryError={queryError}
   />;

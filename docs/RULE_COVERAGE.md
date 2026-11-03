@@ -33,3 +33,18 @@ The procedure suggestion service groups imported history only within the exact h
 ## Final decision
 
 The judgement service creates a recommendation and trace only. `finalDecision` stays `PENDING`. The final approval RPC requires a reviewer/admin/rule approver and an approved/active rule version, and checks recommendation polarity. Current draft/manual branches remain blocked from finalization until rule governance and source-owner validation are completed.
+
+## Automatic row workflow (feat/judgement-auto-workflow)
+
+| Step | Automated | Source |
+|---|---|---|
+| CAS → GADSL 2026 V1 | Yes (uses `referenceNumber` when the GADSL number cell is merged/blank) | GADSL Reference List 2026 V1 |
+| CAS → TSZ0001G group and judge flow | Yes | Appendix 3 |
+| POPs / REACH XVII / XIV matches | Yes (by TSZ group number) | Appendix 4–6 |
+| "Judgement procedure" text (AQ) | Generated from the steps above | — |
+| Assigned person / starting date (AO/AP) | Set server-side from the signed-in account on first judgement | — |
+| Pb policy: Application ID × destination → OK/NG | Yes, plain cells only. Date-flip entries (`2026~NG`) and Application ID 71 are HOLD | V5.1.10 Appendix II No.10 |
+| Mass tolerance (Type 7) | Masses read from the row; the user only picks the class MA–MF | TSZ2900G Rev.9 |
+| Other prohibited-substance flows (HCB, PCB, PFOA, phthalates, …) | Steps 1–4 only; remaining branches are NOT encoded and return HOLD | V5.1.10 Appendix II No.14 |
+
+Automatic results are recommendations. Final OK/NG is always a human save.
