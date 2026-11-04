@@ -33,3 +33,29 @@ The procedure suggestion service groups imported history only within the exact h
 ## Final decision
 
 The judgement service creates a recommendation and trace only. `finalDecision` stays `PENDING`. The final approval RPC requires a reviewer/admin/rule approver and an approved/active rule version, and checks recommendation polarity. Current draft/manual branches remain blocked from finalization until rule governance and source-owner validation are completed.
+
+## Automatic row workflow (feat/judgement-auto-workflow)
+
+| Step | Automated | Source |
+|---|---|---|
+| CAS → GADSL 2026 V1 | Yes (uses `referenceNumber` when the GADSL number cell is merged/blank) | GADSL Reference List 2026 V1 |
+| CAS → TSZ0001G group and judge flow | Yes | Appendix 3 |
+| POPs / REACH XVII / XIV matches | Yes (by TSZ group number) | Appendix 4–6 |
+| "Judgement procedure" text (AQ) | Generated from the steps above | — |
+| Assigned person / starting date (AO/AP) | Set server-side from the signed-in account on first judgement | — |
+| Pb policy: Application ID × destination → OK/NG | Yes, plain cells only. Date-flip entries (`2026~NG`) and Application ID 71 are HOLD | V5.1.10 Appendix II No.10 |
+| Mass tolerance (Type 7) | Masses read from the row; the user only picks the class MA–MF | TSZ2900G Rev.9 |
+| Other prohibited-substance flows (HCB, PCB, PFOA, phthalates, …) | Steps 1–4 only; remaining branches are NOT encoded and return HOLD | V5.1.10 Appendix II No.14 |
+
+Automatic results are recommendations. Final OK/NG is always a human save.
+
+## Substance flows (G-CATS judgment Ver.5.1.10, Appendix II) — `lib/judgement/flows.ts`
+
+CAS → family mapping: `data/reference/gcats-v5110-cas-families.json` (713 CAS, PDF pp.76–86). Results are recommendations only; a human saves OK/NG. Numerical Error Type 19 stays HOLD.
+
+| Flow | Status |
+|---|---|
+| Pyrrolidones (p.53), DOT (p.57), DBT (p.56), HCB (p.36), PCB (p.42), Phthalates (p.40), Methanol (p.49) | Encoded (tests in `tests/auto-workflow.test.ts`) |
+| GADSL 190 PFAS (precedent-based, not in the PDF), Annex XVII non-EU path | Encoded, simplified; EU Annex XVII entry conditions → HOLD |
+| Benzidine/azo, glycols, HFC, nitrosamines, PFOA, PBDE, triorganotin, aziridinyl, BNST, benzene, DMF, MDA, perchlorate, pitch, PAH, TCEP, arsenic, Cl-paraffins | NOT encoded → HOLD with the PDF page |
+| Code meaning of destination/application codes (TSZ6000G / Manual 2) | Not available; Pb table unchanged |

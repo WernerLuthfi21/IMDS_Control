@@ -6,6 +6,7 @@ export type AuthContext = {
   userId: string | null;
   email: string | null;
   role: string | null;
+  displayName: string | null;
   roleError: boolean;
 };
 
@@ -16,16 +17,17 @@ export type AuthContext = {
  */
 export const getAuthContext = cache(async (): Promise<AuthContext> => {
   const supabase = await createClient();
-  if (!supabase) return { configured: false, userId: null, email: null, role: null, roleError: false };
+  if (!supabase) return { configured: false, userId: null, email: null, role: null, displayName: null, roleError: false };
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
-  if (!claims?.sub) return { configured: true, userId: null, email: null, role: null, roleError: false };
-  const { data: profile, error } = await supabase.from("profiles").select("role").eq("id", claims.sub).maybeSingle();
+  if (!claims?.sub) return { configured: true, userId: null, email: null, role: null, displayName: null, roleError: false };
+  const { data: profile, error } = await supabase.from("profiles").select("role,display_name").eq("id", claims.sub).maybeSingle();
   return {
     configured: true,
     userId: claims.sub,
     email: typeof claims.email === "string" ? claims.email : null,
     role: profile?.role ?? null,
+    displayName: profile?.display_name?.trim() || null,
     roleError: Boolean(error)
   };
 });

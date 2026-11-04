@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthContext } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
+import { runAutoWorkflow } from "@/lib/judgement/auto";
+import { extractRowFacts } from "@/lib/judgement/row-facts";
+
+export const runtime = "nodejs";
+const DESTINATIONS = ["EU", "KR", "CN", "TW", "IN", "JP", "OTH"];
+const CONFIRMATIONS = ["ACTUAL_OR_CALCULATED_MASS", "INPUT_MISTAKE"];
+
+/** Non-persistent automatic workflow for one register row. Never writes; saving stays a human action. */
+export async function POST(request: NextRequest) {
+  const auth = await getAuthContext();
+  if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  if (!auth.role || auth.role === "supplier") return NextResponse.json({ error: "Internal role required." }, { status: 403 });
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const itemId = typeof body?.itemId === "string" ? body.itemId : "";
+  if (!/^[0-9a-f-]{36}$/i.test(itemId)) return NextResponse.json({ error: "Invalid item id." }, { status: 400 });
+  const destination = typeof body?.destination === "string" && DESTINATIONS.includes(body.destination) ? body.destination : undefined;
+  const toleranceClass = typeof body?.toleranceClass === "string" && /^M[A-F]$/.test(body.toleranceClass) ? body.toleranceClass : undefined;
+  const supplierConfirmation = typeof body?.supplierConfirmation === "string" && CONFIRMATIONS.includes(body.supplierConfirmation) ? body.supplierConfirmation : undefined;
+  const supabase = await createClient();
+  const { data: item, error } = await supabase!.from("gcat_error_items").select("error_type_label,raw_source").eq("id", itemId).maybeSingle();
+  if (error || !item) return NextResponse.json({ error: error?.message || "Register row not found." }, { status: 404 });
+  const facts = extractRowFacts(item.raw_source as Record<string, unknown> | null);
+  const answers: Record<string, string> = {};
+  if (body?.answers && typeof body.answers === "object" && !Array.isArray(body.answers)) {
+    for (const [k, v] of Object.entries(body.answers as Record<string, unknown>)) if (/^[A-Za-z0-9]{1,24}$/.test(k) && typeof v === "string" && v.length <= 8) answers[k] = v;
+  }
+  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, destination, toleranceClass, supplierConfirmation, answers });
+  return NextResponse.json({ result }, { headers: { "Cache-Control": "no-store" } });
+}

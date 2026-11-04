@@ -33,6 +33,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { data: before, error: readError } = await supabase.from("gcat_error_items").select([...fields, "source_judge_label", "source_km_judge_label", "assigned_person_override", "starting_date_override", "judgement_procedure_override", "judge_override", "ok_comment_override", "imds_reject_comment_override", "km_judge_override", "km_comment_override", "last_change_date_override"].join(",")).eq("id", id).single();
   if (readError || !before) return NextResponse.json({ error: readError?.message || "Register row not found." }, { status: 404 });
   const beforeValues = before as unknown as Record<string, unknown>;
+  // Who judged and when is recorded automatically from the signed-in account (AO / AP).
+  if (typeof update.judge === "string" && !isKmEdit) {
+    const jakartaToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+    if (!update.assigned_person && !beforeValues.assigned_person) update.assigned_person = profile.display_name?.trim() || auth.user.email || null;
+    if (!update.starting_date && !beforeValues.starting_date) update.starting_date = jakartaToday;
+  }
+  // Who judged and when is recorded automatically from the signed-in account (AO / AP).
+  if (typeof update.judge === "string" && !isKmEdit) {
+    const jakartaToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+    if (!update.assigned_person && !beforeValues.assigned_person) update.assigned_person = profile.display_name?.trim() || auth.user.email || null;
+    if (!update.starting_date && !beforeValues.starting_date) update.starting_date = jakartaToday;
+  }
   // Only mark the field explicitly overridden when the user actually changed it.
   // Other AO–AV fields remain eligible for refresh from the next daily G-CATS snapshot.
   for (const key of requested as RegisterField[]) {
