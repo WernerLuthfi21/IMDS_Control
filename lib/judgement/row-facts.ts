@@ -1,7 +1,7 @@
 /** Facts read from one G-CATS Error Log row. Keys in raw_source look like `${header} [col ${n}]`. */
 export type RowFacts = {
   cas: string; substanceName: string; substanceContentPct: string; applicationId: string;
-  materialName: string; componentPartName: string; deliveryPartName: string;
+  materialName: string; matlClass: string; componentPartName: string; deliveryPartName: string;
   imdsMass: string; drawingMass: string; toleranceClass: string;
   drawingRefs: string[]; drawingStatus: string;
 };
@@ -29,6 +29,7 @@ export function extractRowFacts(raw: Record<string, unknown> | null | undefined)
     substanceContentPct: text(raw, "Substance Content(%)", 31),
     applicationId: text(raw, "Application ID", 32),
     materialName: text(raw, "Material Name", 26),
+    matlClass: text(raw, "IMDS Matl. Class.", 27),
     componentPartName: text(raw, "Component Part Name", 22),
     deliveryPartName: text(raw, "Delivery Part Name", 18),
     imdsMass: mass(raw, "IMDS mass (g)", 51) || mass(raw, "Mass(g)", 19),

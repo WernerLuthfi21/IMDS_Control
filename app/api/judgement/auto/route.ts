@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
   const { data: item, error } = await supabase!.from("gcat_error_items").select("error_type_label,raw_source").eq("id", itemId).maybeSingle();
   if (error || !item) return NextResponse.json({ error: error?.message || "Register row not found." }, { status: 404 });
   const facts = extractRowFacts(item.raw_source as Record<string, unknown> | null);
-  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, destination, toleranceClass, supplierConfirmation });
+  const answers: Record<string, string> = {};
+  if (body?.answers && typeof body.answers === "object" && !Array.isArray(body.answers)) {
+    for (const [k, v] of Object.entries(body.answers as Record<string, unknown>)) if (/^[A-Za-z0-9]{1,24}$/.test(k) && typeof v === "string" && v.length <= 8) answers[k] = v;
+  }
+  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, destination, toleranceClass, supplierConfirmation, answers });
   return NextResponse.json({ result }, { headers: { "Cache-Control": "no-store" } });
 }

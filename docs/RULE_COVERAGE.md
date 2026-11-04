@@ -48,3 +48,14 @@ The judgement service creates a recommendation and trace only. `finalDecision` s
 | Other prohibited-substance flows (HCB, PCB, PFOA, phthalates, …) | Steps 1–4 only; remaining branches are NOT encoded and return HOLD | V5.1.10 Appendix II No.14 |
 
 Automatic results are recommendations. Final OK/NG is always a human save.
+
+## Substance flows (G-CATS judgment Ver.5.1.10, Appendix II) — `lib/judgement/flows.ts`
+
+CAS → family mapping: `data/reference/gcats-v5110-cas-families.json` (713 CAS, PDF pp.76–86). Results are recommendations only; a human saves OK/NG. Numerical Error Type 19 stays HOLD.
+
+| Flow | Status |
+|---|---|
+| Pyrrolidones (p.53), DOT (p.57), DBT (p.56), HCB (p.36), PCB (p.42), Phthalates (p.40), Methanol (p.49) | Encoded (tests in `tests/auto-workflow.test.ts`) |
+| GADSL 190 PFAS (precedent-based, not in the PDF), Annex XVII non-EU path | Encoded, simplified; EU Annex XVII entry conditions → HOLD |
+| Benzidine/azo, glycols, HFC, nitrosamines, PFOA, PBDE, triorganotin, aziridinyl, BNST, benzene, DMF, MDA, perchlorate, pitch, PAH, TCEP, arsenic, Cl-paraffins | NOT encoded → HOLD with the PDF page |
+| Code meaning of destination/application codes (TSZ6000G / Manual 2) | Not available; Pb table unchanged |

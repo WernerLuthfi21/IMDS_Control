@@ -1,3 +1,4 @@
+import { selectFlow, runFlow, FLOW_SOURCE, type FlowRun } from "@/lib/judgement/flows";
 import { evaluateJudgement, type JudgementInput } from "@/lib/judgement/engine";
 import { lookupSubstance, normalizeCas } from "@/lib/reference-data";
 import { lookupPbPolicy, PB_SOURCE } from "@/lib/judgement/pb-policy";
@@ -7,12 +8,13 @@ import type { JudgementResult } from "@/lib/types";
 export type StepStatus = "DONE" | "NEEDS_INPUT" | "MANUAL" | "INFO";
 export type AutoStep = { id: string; title: string; status: StepStatus; detail: string };
 export type AutoRecommendation = { state: "OK" | "NG" | "HOLD"; comment: string; reason: string };
-export type AutoInput = { errorType: string; facts: RowFacts; destination?: string; toleranceClass?: string; supplierConfirmation?: string };
+export type AutoInput = { errorType: string; facts: RowFacts; destination?: string; toleranceClass?: string; supplierConfirmation?: string; answers?: Record<string, string> };
 export type AutoOutput = {
   kind: "mass" | "sms" | "pb" | "substance" | "manual";
   steps: AutoStep[];
   procedureText: string;
   recommendation: AutoRecommendation;
+  flow?: FlowRun | null;
   needs: { destination: boolean; toleranceClass: boolean; supplierConfirmation: boolean };
   massBands: Record<string, unknown> | null;
   engineInput: JudgementInput;
@@ -126,6 +128,7 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     let recommendation: AutoRecommendation;
     let engineInput: JudgementInput = { errorType: input.errorType, applicationId: facts.applicationId || undefined, destination: input.destination || undefined };
     let result: JudgementResult;
+    let flow: FlowRun | null = null;
     const extra: string[] = [];
     if (kind === "pb") {
       const pb = lookupPbPolicy(facts.applicationId, input.destination || "");
@@ -141,13 +144,29 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       if (recommendation.state === "OK" && !recommendation.comment) recommendation.comment = "The substance is within exemption.";
     } else {
       result = evaluateJudgement(engineInput);
-      const eu = input.destination ? (input.destination === "EU" ? "EU destination" : "non-EU destination") : "";
-      steps.push({ id: "dest", title: "Confirm destination", status: input.destination ? "DONE" : "NEEDS_INPUT", detail: input.destination ? `${input.destination} (${eu}). The dedicated flow for this substance is not encoded yet; apply its remaining branches manually.` : "Pick the vehicle destination." });
-      recommendation = { state: "HOLD", comment: "", reason: sub.flowName || sub.tszText ? `Steps 1–4 were done automatically (${sub.flowName || sub.tszText}). The remaining branches of this substance-specific flow are not encoded yet, so judge OK/NG manually.` : result.reason };
-      if (input.destination) extra.push(`3) Destination: ${input.destination}.`);
+      const g = sub.lookup?.gadsl ?? [];
+      const has190 = g.some((r) => String(r.gadslNumber || r.referenceNumber || "").trim() === "190");
+      const tszNo = String(sub.lookup?.tszGroups[0]?.values?.[1] ?? "").trim();
+      const sel = selectFlow(input.errorType, normalizeCas(facts.cas || ""), Boolean(sub.lookup?.tszGroups[0]), tszNo, sub.flowName, has190);
+      const answers = { ...(input.answers || {}), ...(input.destination ? { destination: input.destination } : {}) };
+      const fr = runFlow(sel, facts, answers, tszNo);
+      flow = fr;
+      const isType19 = /^\s*19\b/.test(input.errorType);
+      if (!fr.implemented) {
+        steps.push({ id: "flow2", title: `Dedicated flow: ${fr.title}`, status: "MANUAL", detail: fr.page ? `Not encoded yet. Follow ${FLOW_SOURCE}, PDF page ${fr.page}.` : "No dedicated flow found for this CAS/group. Judge manually." });
+        needs.destination = false;
+        recommendation = { state: "HOLD", comment: "", reason: `Steps 1–4 were done automatically. This flow (${fr.title}) is not encoded yet — judge OK/NG manually${fr.page ? ` using PDF page ${fr.page}` : ""}.` };
+      } else {
+        for (const t of fr.trail) steps.push({ id: "q" + steps.length, title: t.question, status: "DONE", detail: t.answer + (t.auto ? " (auto)" : "") });
+        needs.destination = fr.next?.id === "destination";
+        if (fr.next) steps.push({ id: "next", title: fr.next.text, status: "NEEDS_INPUT", detail: "Pick an answer to continue the flow." });
+        recommendation = fr.outcome ? { state: fr.outcome.state, comment: fr.outcome.comment, reason: fr.outcome.reason } : { state: "HOLD", comment: "", reason: "Answer the next flow question to get a recommendation." };
+        extra.push(`3) ${fr.title} (${FLOW_SOURCE}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")}${fr.outcome ? ` → ${fr.outcome.state}` : ""}.`);
+      }
+      if (isType19) recommendation = { state: "HOLD", comment: "", reason: "Numerical Error Type 19 is always HOLD pending process-owner reconciliation (Version 6 Section II / Appendix I conflict)." };
     }
     steps.push(materialStep(facts));
-    return { kind, steps, procedureText: procedure(sub.gadslNo, sub.tszText, sub.flowName, extra), recommendation, needs, massBands: null, engineInput, engine: pick(result) };
+    return { kind, steps, flow, procedureText: procedure(sub.gadslNo, sub.tszText, sub.flowName, extra), recommendation, needs, massBands: null, engineInput, engine: pick(result) };
   }
 
   const engineInput: JudgementInput = { errorType: input.errorType };

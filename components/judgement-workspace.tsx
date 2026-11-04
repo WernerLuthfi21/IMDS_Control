@@ -31,8 +31,9 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
   const [destination, setDestination] = useState("");
   const [toleranceClass, setToleranceClass] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [auto, setAuto] = useState<AutoOutput | null>(null);
-  const reqKey = [row.id, destination, toleranceClass, supplier].join("|");
+  const reqKey = [row.id, destination, toleranceClass, supplier, JSON.stringify(answers)].join("|");
   const [doneKey, setDoneKey] = useState("");
   const loading = doneKey !== reqKey;
   const [judge, setJudge] = useState<"" | "OK" | "NG">(row.judge === "OK" || row.judge === "NG" ? row.judge : "");
@@ -44,7 +45,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
   useEffect(() => {
     let live = true;
     fetch("/api/judgement/auto", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ itemId: row.id, destination: destination || undefined, toleranceClass: toleranceClass || undefined, supplierConfirmation: supplier || undefined }) })
+      body: JSON.stringify({ itemId: row.id, destination: destination || undefined, toleranceClass: toleranceClass || undefined, supplierConfirmation: supplier || undefined, answers }) })
       .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || "Automatic check failed."); return j.result as AutoOutput; })
       .then((result) => {
         if (!live) return;
@@ -56,7 +57,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       .finally(() => { if (live) setDoneKey(reqKey); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [row.id, destination, toleranceClass, supplier]);
+  }, [row.id, destination, toleranceClass, supplier, answers]);
 
   const procedure = useMemo(() => auto?.procedureText || row.judgement_procedure || "", [auto, row.judgement_procedure]);
   const rec = auto?.recommendation;
@@ -88,6 +89,8 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       {auto?.steps.map((s) => <li key={s.id} className={"jx-step " + s.status.toLowerCase()}><StepIcon status={s.status}/><div><strong>{s.title}</strong><span>{s.detail}</span></div></li>)}
     </ol>
     {auto?.needs.destination && <div className="jx-ask"><span>Destination</span><Chips label="Destination" value={destination} onPick={setDestination} options={DESTINATIONS}/></div>}
+    {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips label={auto.flow.next.text} value="" onPick={(v) => setAnswers((a) => ({ ...a, [auto.flow!.next!.id]: v }))} options={auto.flow.next.options}/></div>}
+    {auto?.flow && Object.keys(answers).length > 0 && <div className="jx-ask"><button type="button" className="jx-link" onClick={() => setAnswers({})}>Reset flow answers</button></div>}
     {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
     {auto?.needs.supplierConfirmation && <div className="jx-ask"><span>{auto.kind === "mass" ? "Outside ±10% — supplier says" : "Supplier says"}</span>
       <Chips label="Supplier confirmation" value={supplier} onPick={setSupplier} options={[["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]]}/>

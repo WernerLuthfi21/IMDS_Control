@@ -57,7 +57,7 @@ describe("runAutoWorkflow", () => {
     expect(r.steps.find((s) => s.id === "gadsl")?.status).toBe("DONE");
     expect(r.steps.find((s) => s.id === "tsz")?.status).toBe("DONE");
     expect(r.procedureText).toMatch(/TSZ0001G/);
-    expect(r.needs.destination).toBe(true);
+    expect(r.flow).toBeTruthy();
     expect(r.recommendation.state).toBe("HOLD");
   });
   it("masked CAS is routed to manual search", () => {
@@ -80,5 +80,35 @@ describe("GADSL numbering", () => {
   it("falls back to the reference number when the GADSL number cell is merged/blank", () => {
     const r = runAutoWorkflow({ errorType: "Prohibited substance", facts: { ...blank, cas: "71-55-6" } });
     expect(r.procedureText).toMatch(/GADSL: \d+/);
+  });
+});
+
+import { runAutoWorkflow as run2 } from "@/lib/judgement/auto";
+import { extractRowFacts as facts2 } from "@/lib/judgement/row-facts";
+describe("substance flows (Appendix II)", () => {
+  const row = (cas: string, extra: Record<string, unknown> = {}) => facts2({ "CAS No. [col 29]": cas, "Substance Content(%) [col 31]": "5", ...extra });
+  it("pyrrolidones non-EU → OK non-regulated", () => {
+    const r = run2({ errorType: "Prohibited substance (Pyrrolidones, selected)", facts: row("872-50-4"), destination: "KR" });
+    expect(r.recommendation.state).toBe("OK"); expect(r.recommendation.comment).toMatch(/non-Regulated/);
+  });
+  it("pyrrolidones asks destination first", () => {
+    const r = run2({ errorType: "Prohibited substance", facts: row("872-50-4") });
+    expect(r.flow?.next?.id).toBe("destination"); expect(r.recommendation.state).toBe("HOLD");
+  });
+  it("DBT EU with content over 0.1 and non-6.1 material → NG", () => {
+    const r = run2({ errorType: "Prohibited substance (DBT)", facts: row("818-08-6", { "IMDS Matl. Class. [col 27]": "2.1", "Material Name [col 26]": "PA66" }), destination: "EU", answers: { lacquer: "N" } });
+    expect(r.recommendation.state).toBe("NG");
+  });
+  it("PCB flow never auto-OKs without supplier answer", () => {
+    const r = run2({ errorType: "Prohibited substance", facts: row("1336-36-3") });
+    expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.next?.id).toBe("intent");
+  });
+  it("unencoded family stays HOLD with PDF page", () => {
+    const r = run2({ errorType: "Prohibited substance", facts: row("3090-36-6") });
+    expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.implemented).toBe(false); expect(r.flow?.page).toBe(43);
+  });
+  it("Error Type 19 is always HOLD", () => {
+    const r = run2({ errorType: "19", facts: row("872-50-4"), destination: "KR" });
+    expect(r.recommendation.state).toBe("HOLD");
   });
 });
