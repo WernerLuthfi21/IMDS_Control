@@ -55,3 +55,12 @@ The primary workspace is the Judgement Register. It is designed around the nine 
 - No Vercel deployment exists yet. Vercel team consent and connecting a private Git repository are still required.
 
 This is a development release, not a Toyota-approved or production-certified judgement platform.
+
+## Supplier self-check intake and saved confirmations (Nov 2026)
+
+- `components/supplier-selfcheck.tsx`: drag XLSX/CSV, paste cells copied from Excel, or attach a PDF. PDFs are attachment-only (the MDS Report states parsing is not allowed) and are linked to a part number through the existing pre-check endpoint.
+- `lib/intake/*`: table parsing, header/column detection with per-column confidence (ambiguous or duplicate columns are flagged, never merged), CAS checksum + Excel date-conversion detection, ppm/%/decimal-comma handling, and per-row analysis through `runAutoWorkflow`. Destination (Toyota-owned) is never guessed: results are shown per destination or as "depends on destination".
+- `POST /api/self-check/analyze` and `/parse-file` are read-only. `POST /api/self-check/confirm` stores supplier answers in `supplier_confirmations` (migration `20261106000000_supplier_confirmations.sql`, append-only, RLS: supplier writes own code only).
+- `/api/judgement/auto` reads the latest confirmation for the same supplier code + part key + family + CAS and applies it automatically as a "Supplier confirmation on file" step. It is self-reported; the reviewer still saves OK/NG.
+- Admin: Settings → Team & access edits display name, role and supplier code (`PATCH /api/admin/profiles/[id]`, RLS `profiles_update_admin`).
+- Migration must be applied to the remote project by the owner (not applied from the sandbox). Until then saving shows a clear error and the admin side behaves as "no confirmation".
