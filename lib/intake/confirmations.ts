@@ -1,0 +1,26 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { partKey, supplierKey } from "@/lib/intake/keys";
+
+export type StoredConfirmation = { supplier_code: string; delivery_part_no: string; answers: Record<string, string>; submitted_at: string; source_file_name: string | null };
+export type Family = "substance" | "pb" | "mass";
+
+export function familyOfKind(kind: string): Family | null {
+  return kind === "substance" ? "substance" : kind === "pb" ? "pb" : kind === "mass" ? "mass" : null;
+}
+
+/** Latest supplier confirmation for this part (same supplier code, same family, same CAS). Returns null when none or when the table is not migrated yet. */
+export async function loadConfirmation(supabase: SupabaseClient, item: { supplier_code: string | null; delivery_part_no: string | null }, family: Family, cas: string): Promise<StoredConfirmation | null> {
+  if (!item.delivery_part_no || !item.supplier_code) return null;
+  const { data, error } = await supabase.from("supplier_confirmations")
+    .select("supplier_code,delivery_part_no,answers,submitted_at,source_file_name")
+    .eq("part_key", partKey(item.delivery_part_no)).eq("family", family).eq("cas", family === "substance" ? cas : "")
+    .order("submitted_at", { ascending: false }).limit(5);
+  if (error || !data) return null; // missing table / RLS: behave as "no confirmation"
+  const mine = supplierKey(item.supplier_code);
+  const hit = data.find((d) => supplierKey(d.supplier_code) === mine);
+  return hit ? (hit as StoredConfirmation) : null;
+}
+
+export function describeAnswers(a: Record<string, string>): string {
+  return Object.entries(a).map(([k, v]) => `${k}=${v}`).join(", ");
+}
