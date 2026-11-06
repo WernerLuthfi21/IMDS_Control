@@ -1,6 +1,6 @@
 # Access management setup
 
-This feature is deployed with the application code, but the database migration and server-side credentials must be configured before access requests, provisioning and email notifications are active.
+This feature is included in the application source. The database migration and server-side credentials must be configured before access requests, provisioning and email notifications are active.
 
 ## 1. Apply the database migration
 
