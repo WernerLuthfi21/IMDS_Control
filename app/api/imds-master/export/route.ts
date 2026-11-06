@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 const CORE_HEADERS = [
   "No.", "PROJECT", "VENDOR CODE", "MAIN PIC EMAIL", "COMPANY NAME", "PART NAME", "P/No.",
-  "SUBMISSION PLAN", "IMDS STATUS", "ID / Ver", "Part Status", "Have respond email",
+  "SUBMISSION PLAN", "Supplier Promise Date", "IMDS STATUS", "ID / Ver", "Part Status", "Have respond email",
   "STATUS UPDATE", "MD ID/Ver", "Date", "Comment", "LPOP Confirmation", "CEK"
 ];
 
@@ -32,7 +32,7 @@ export async function GET() {
   const rows: Record<string, unknown>[] = [];
   for (let from = 0; ; from += 500) {
     const { data, error } = await supabase.from("imds_master_parts")
-      .select("project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,imds_status,imds_id_version,part_status,have_respond_email,status_update,md_id_version,md_status_update_date,comment,lpop_confirmation,cek,md_system_records,extra_fields")
+      .select("project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,supplier_promise_date,imds_status,imds_id_version,part_status,have_respond_email,status_update,md_id_version,md_status_update_date,comment,lpop_confirmation,cek,md_system_records,extra_fields")
       .order("project", { ascending: true, nullsFirst: true })
       .order("company_name", { ascending: true, nullsFirst: true })
       .order("part_no", { ascending: true, nullsFirst: true })
@@ -72,7 +72,7 @@ export async function GET() {
     sheet.addRow([
       index + 1,
       row.project, row.vendor_code, row.main_pic_email, row.company_name, row.part_name, row.part_no,
-      row.submission_plan, row.imds_status, row.imds_id_version, row.part_status, row.have_respond_email,
+      row.submission_plan, row.supplier_promise_date, row.imds_status, row.imds_id_version, row.part_status, row.have_respond_email,
       row.status_update, row.md_id_version, row.md_status_update_date, row.comment, row.lpop_confirmation, row.cek,
       m.type, m.name, m.partNo, m.idVersion, m.status, m.reasonForDenial, m.lastStatusChanged,
       m.fromCompany, m.mdSupplierCode, m.legacySparePart, m.legacyStatus, m.legacyLastStatusChanged,
