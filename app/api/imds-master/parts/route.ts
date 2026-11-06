@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("imds_master_parts")
-    .select("id,master_key,project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,imds_status,imds_id_version,part_status,have_respond_email,status_update,md_id_version,md_status_update_date,comment,lpop_confirmation,cek,md_system_records,md_system_updated_at,manual_overrides,extra_fields,source_row,updated_at", { count: "exact" })
+    .select("id,master_key,project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,supplier_promise_date,imds_status,imds_id_version,part_status,have_respond_email,status_update,md_id_version,md_status_update_date,comment,lpop_confirmation,cek,md_system_records,md_system_updated_at,manual_overrides,extra_fields,source_row,updated_at", { count: "exact" })
     .order("project", { ascending: true, nullsFirst: true })
     .order("company_name", { ascending: true, nullsFirst: true })
     .order("part_no", { ascending: true, nullsFirst: true })
