@@ -53,6 +53,7 @@ type ImportSummary = {
   inserted?: number;
   updated?: number;
   skipped?: number;
+  contactsImported?: number;
   matchedMasterRows?: number;
   unmatchedPartNumbers?: number;
   note?: string;
@@ -161,7 +162,7 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
       const payload = await response.json() as ImportSummary;
       if (!response.ok) throw new Error(payload.error || "Import failed.");
       const summary = kind === "master"
-        ? `Master updated: ${payload.inserted || 0} new, ${payload.updated || 0} refreshed, ${payload.skipped || 0} skipped from ${payload.totalRows || 0} rows.`
+        ? `Master updated: ${payload.inserted || 0} new, ${payload.updated || 0} refreshed, ${payload.skipped || 0} skipped from ${payload.totalRows || 0} rows; ${payload.contactsImported || 0} supplier contacts synced.`
         : `MD System updated: ${payload.matchedMasterRows || 0} master rows matched; ${payload.unmatchedPartNumbers || 0} part numbers were not in the master.`;
       setNotice({ kind: "success", text: summary + (payload.note ? " " + payload.note : "") });
       setPage(1);
