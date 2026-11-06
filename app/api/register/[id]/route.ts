@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after as runAfterResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enqueue, dispatch } from "@/lib/automation/outbox";
 
 const fields = ["assigned_person", "starting_date", "judgement_procedure", "judge", "ok_comment", "imds_reject_comment", "km_judge", "km_comment"] as const;
 type RegisterField = typeof fields[number];
@@ -60,5 +62,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   for (const key of changedColumns) after[key] = update[key];
   await supabase.from("register_change_log").insert({ item_id: id, actor_id: auth.user.id, changed_columns: changedColumns, before_values: before, after_values: after });
   await supabase.from("audit_events").insert({ actor_id: auth.user.id, action: isKmEdit ? "KM_JUDGEMENT_UPDATED" : "JUDGEMENT_REGISTER_UPDATED", entity_type: "gcat_error_item", entity_id: id, metadata: { changedColumns } });
+  // Master-workbook sync: queue first (durable), then push after the response so saving stays fast.
+  // The register is already saved; if the flow is down the job stays queued for "Sync now".
+  await enqueue(supabase, auth.user.id, { kind: "EXCEL_UPSERT", itemId: id });
+  runAfterResponse(async () => { try { await dispatch(supabase, { kind: "EXCEL_UPSERT", limit: 10 }); } catch { /* stays queued */ } });
   return NextResponse.json({ item: data });
 }

@@ -70,3 +70,7 @@ This is a development release, not a Toyota-approved or production-certified jud
 - New automated flows (V5.1.10 Appendix II): Application Code 71 (Pb in aluminium), Cl-paraffins/SCCP, and 16 No.14 flows that share the standard chart (`data/reference/gcats-v5110-t1-flows.json`). Still HOLD with a PDF page: Arsenic, Benzidine/azo, glycols, HFC, nitrosamines, PFOA, PBDE, aziridinyl, BNST, Benzene, DMF, perchlorate, PAH, UV-328, dioxane, perborate, and members of "all members" families whose CAS is not listed.
 - SMS Mass and Application44ERROR use the saved supplier confirmation (migration `20261106000100`).
 - SharePoint: read-only fetch of one master workbook into the import preview (see `docs/SHAREPOINT_SETUP.md`). Write-back and push real time are NOT implemented.
+
+
+## Power Automate bridge
+- Implemented (outbox, dispatcher, bulk sequential supplier e-mail, Excel upsert on every register save). **NOT TESTED** against a real flow; migration 20261106000300 not applied remotely. See `docs/POWER_AUTOMATE_SETUP.md`.
