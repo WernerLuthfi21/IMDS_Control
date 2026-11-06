@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type MdRecord = {
@@ -71,7 +71,7 @@ const EDIT_FIELDS = [
   { key: "cek", label: "CEK", type: "text" }
 ] as const;
 
-const cardStyle: React.CSSProperties = {
+const cardStyle: CSSProperties = {
   border: "1px solid var(--line, #e8e1f1)",
   borderRadius: 14,
   background: "var(--surface, #fff)",
