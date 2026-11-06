@@ -11,7 +11,7 @@ create table if not exists public.access_requests (
   requested_role public.app_role not null default 'supplier',
   supplier_code text,
   note text,
-  status text not null default 'PENDING' check (status in ('PENDING','APPROVED','REJECTED')),
+  status text not null default 'PENDING' check (status in ('PENDING','PROCESSING','APPROVED','REJECTED')),
   reviewed_by uuid references auth.users(id),
   reviewed_at timestamptz,
   review_note text,
@@ -84,14 +84,14 @@ declare
   v_email text := lower(trim(coalesce(p_email, '')));
   v_ip_hash text := encode(digest(coalesce(nullif(trim(p_ip), ''), 'unknown'), 'sha256'), 'hex');
   v_id uuid;
-  v_name text := trim(regexp_replace(coalesce(p_full_name, ''), '\\s+', ' ', 'g'));
-  v_company text := trim(regexp_replace(coalesce(p_company, ''), '\\s+', ' ', 'g'));
+  v_name text := trim(regexp_replace(coalesce(p_full_name, ''), '\s+', ' ', 'g'));
+  v_company text := trim(regexp_replace(coalesce(p_company, ''), '\s+', ' ', 'g'));
   v_code text := upper(trim(coalesce(p_supplier_code, '')));
   v_note text := left(trim(coalesce(p_note, '')), 1000);
 begin
   if length(v_name) < 2 or length(v_name) > 100 then raise exception 'INVALID_NAME'; end if;
   if length(v_company) < 2 or length(v_company) > 120 then raise exception 'INVALID_COMPANY'; end if;
-  if length(v_email) > 254 or v_email !~* '^[A-Z0-9._%+\\-]+@[A-Z0-9.\\-]+\\.[A-Z]{2,}$' then raise exception 'INVALID_EMAIL'; end if;
+  if length(v_email) > 254 or v_email !~* '^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$' then raise exception 'INVALID_EMAIL'; end if;
   if v_code <> '' and v_code !~ '^[A-Z0-9_-]{1,20}$' then raise exception 'INVALID_SUPPLIER_CODE'; end if;
   if (select count(*) from public.access_requests where request_ip_hash = v_ip_hash and created_at > now() - interval '1 hour') >= 5 then raise exception 'RATE_LIMITED'; end if;
   if (select count(*) from public.access_requests where target_email = v_email and created_at > now() - interval '24 hours') >= 3 then raise exception 'RATE_LIMITED'; end if;

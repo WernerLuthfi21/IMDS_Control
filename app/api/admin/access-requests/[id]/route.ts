@@ -31,6 +31,8 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Account provisioning is not configured. Set SUPABASE_SERVICE_ROLE_KEY on the server first." }, { status: 503 });
+  const { data: claimed, error: claimError } = await supabase.from("access_requests").update({ status: "PROCESSING" }).eq("id", id).eq("status", "PENDING").select("id").maybeSingle();
+  if (claimError || !claimed) return NextResponse.json({ error: "Another administrator is already processing this request, or it has changed status." }, { status: 409 });
 
   let userId: string | null = null;
   const { data: existing } = await admin.from("profiles").select("id,role").eq("email", accessRequest.target_email).maybeSingle();
@@ -41,7 +43,10 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       data: { display_name: accessRequest.target_name, company_name: accessRequest.company_name },
       redirectTo: new URL("/reset-password", request.url).toString()
     });
-    if (inviteError || !invited.user) return NextResponse.json({ error: inviteError?.message || "The invitation could not be sent. Check Supabase Auth email configuration." }, { status: 502 });
+    if (inviteError || !invited.user) {
+      await supabase.from("access_requests").update({ status: "PENDING" }).eq("id", id).eq("status", "PROCESSING");
+      return NextResponse.json({ error: inviteError?.message || "The invitation could not be sent. Check Supabase Auth email configuration." }, { status: 502 });
+    }
     userId = invited.user.id;
   }
 
@@ -50,14 +55,20 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   const patch: Record<string, unknown> = { role: assignedRole, display_name: accessRequest.target_name };
   if (accessRequest.request_type === "SUPPLIER") patch.supplier_code = accessRequest.supplier_code || null;
   const { error: profileError } = await admin.from("profiles").update(patch).eq("id", userId);
-  if (profileError) return NextResponse.json({ error: "The account invitation was sent, but the profile role update failed. Admin intervention is required." }, { status: 500 });
+  if (profileError) {
+    await supabase.from("access_requests").update({ status: "PENDING" }).eq("id", id).eq("status", "PROCESSING");
+    return NextResponse.json({ error: "The account invitation was issued, but the profile role update failed. The request was returned to the queue for admin retry." }, { status: 500 });
+  }
 
   const { error: reviewError } = await supabase.from("access_requests").update({
     status: "APPROVED", reviewed_by: auth.user.id, reviewed_at: new Date().toISOString(),
     review_note: String(body.reviewNote || "").trim().slice(0, 1000) || null,
     provisioned_user_id: userId
-  }).eq("id", id).eq("status", "PENDING");
-  if (reviewError) return NextResponse.json({ error: "Account was provisioned but the request record could not be finalized. Refresh and reconcile this request." }, { status: 500 });
+  }).eq("id", id).eq("status", "PROCESSING");
+  if (reviewError) {
+    await supabase.from("access_requests").update({ status: "PENDING" }).eq("id", id).eq("status", "PROCESSING");
+    return NextResponse.json({ error: "Account was provisioned but the request record could not be finalized. It has been returned to the queue for reconciliation." }, { status: 500 });
+  }
   await supabase.from("audit_events").insert({ actor_id: auth.user.id, action: "ACCESS_REQUEST_APPROVED", entity_type: "access_request", entity_id: id, metadata: { provisioned_user_id: userId, assigned_role: assignedRole } });
   return NextResponse.json({ status: "APPROVED", userId, inviteSent: !existing?.id });
 }

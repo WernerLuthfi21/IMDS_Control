@@ -67,7 +67,7 @@ export function AccessManagement({ initialRequests, initialRecipients }: { initi
             {item.request_type === "TMMIN_STAFF" && <p className="access-request-by">Requested by {item.requester_name} · {item.requester_email}</p>}
             {item.note && <p className="access-request-note">{item.note}</p>}
             <div className="access-request-actions">
-              <button type="button" className="btn btn-sm btn-primary" disabled={busy === item.id} onClick={() => void review(item.id, "approve")}>{busy === item.id ? <LoaderCircle size={14} className="spin"/> : <UserRoundCheck size={14}/>} Approve &amp; invite</button>
+              <button type="button" className="btn btn-sm btn-primary" disabled={busy === item.id} onClick={() => void review(item.id, "approve")}>{busy === item.id ? <LoaderCircle size={14} className="spin"/> : <UserRoundCheck size={14}/>} Approve &amp; provision</button>
               <button type="button" className="btn btn-sm btn-secondary" disabled={busy === item.id} onClick={() => void review(item.id, "reject")}><X size={14}/> Reject</button>
             </div>
           </article>)}</div>}
