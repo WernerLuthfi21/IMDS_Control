@@ -54,7 +54,7 @@ export async function GET() {
   });
   master.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   master.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF29223A" } };
-  master.autoFilter = { from: "A1", to: `${String.fromCharCode(64 + headers.length)}${rows.length + 1}` };
+  const excelColumn = (n: number) => { let x = n, out = ""; while (x > 0) { const rem = (x - 1) % 26; out = String.fromCharCode(65 + rem) + out; x = Math.floor((x - 1) / 26); } return out; };\n  master.autoFilter = { from: "A1", to: `${excelColumn(headers.length)}${rows.length + 1}` };
   master.columns = headers.map((h) => ({ header: h, width: Math.max(13, Math.min(34, h.length + 3)) }));
   master.getColumn(7).numFmt = "@";
   master.getColumn(3).numFmt = "@";
@@ -72,7 +72,7 @@ export async function GET() {
   mdSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   mdSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF29223A" } };
   mdSheet.autoFilter = { from: "A1", to: `R${latestRecords.size + 1}` };
-  mdSheet.columns = mdHeaders.map((h) => ({ header: h, width: Math.max(14, Math.min(38, h.length + 4)) });
+  mdSheet.columns = mdHeaders.map((h) => ({ header: h, width: Math.max(14, Math.min(38, h.length + 4)) }));
 
   const out = await workbook.xlsx.writeBuffer();
   return new NextResponse(Buffer.from(out), {
