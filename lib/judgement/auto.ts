@@ -1,4 +1,4 @@
-import { selectFlow, runFlow, FLOW_SOURCE, type FlowRun } from "@/lib/judgement/flows";
+import { selectFlow, runFlow, pb71Run, FLOW_SOURCE, type FlowRun } from "@/lib/judgement/flows";
 import { evaluateJudgement, type JudgementInput } from "@/lib/judgement/engine";
 import { lookupSubstance, normalizeCas } from "@/lib/reference-data";
 import { lookupPbPolicy, PB_SOURCE } from "@/lib/judgement/pb-policy";
@@ -10,7 +10,7 @@ export type AutoStep = { id: string; title: string; status: StepStatus; detail: 
 export type AutoRecommendation = { state: "OK" | "NG" | "HOLD"; comment: string; reason: string };
 export type AutoInput = { errorType: string; facts: RowFacts; destination?: string; toleranceClass?: string; supplierConfirmation?: string; answers?: Record<string, string> };
 export type AutoOutput = {
-  kind: "mass" | "sms" | "pb" | "substance" | "manual";
+  kind: "mass" | "sms" | "app44" | "pb" | "substance" | "manual";
   steps: AutoStep[];
   procedureText: string;
   recommendation: AutoRecommendation;
@@ -27,6 +27,7 @@ export function detectKind(errorType: string): AutoOutput["kind"] {
   const t = errorType.toLowerCase();
   if (/mass tolerance|tolerance range|error.?type.?7/.test(t)) return "mass";
   if (/^(sms mass|6)$/.test(t.trim())) return "sms";
+  if (/application\s*44\s*error/.test(t) || /^24$/.test(t.trim())) return "app44";
   if (/elv\s*\(pb\)/.test(t)) return "pb";
   if (/prohibited substance/.test(t)) return "substance";
   return "manual";
@@ -114,11 +115,11 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     return { kind, steps, procedureText: proc, recommendation: toRecommendation(result), needs, massBands: bands, engineInput, engine: pick(result) };
   }
 
-  if (kind === "sms") {
+  if (kind === "sms" || kind === "app44") {
     needs.supplierConfirmation = true;
     const engineInput: JudgementInput = { errorType: input.errorType, supplierConfirmation: input.supplierConfirmation as JudgementInput["supplierConfirmation"] };
     const result = evaluateJudgement(engineInput);
-    return { kind, steps: [{ id: "supplier", title: "Supplier confirmation", status: input.supplierConfirmation ? "DONE" : "NEEDS_INPUT", detail: "A = actual or calculated mass · B = input mistake." }], procedureText: input.supplierConfirmation ? `Supplier confirmation: ${input.supplierConfirmation === "INPUT_MISTAKE" ? "B input mistake" : "A actual/calculated mass"}.` : "", recommendation: toRecommendation(result), needs, massBands: null, engineInput, engine: pick(result) };
+    return { kind, steps: [{ id: "supplier", title: "Supplier confirmation", status: input.supplierConfirmation ? "DONE" : "NEEDS_INPUT", detail: kind === "app44" ? "A = supplier confirms the application / code · B = input mistake." : "A = actual or calculated mass · B = input mistake." }], procedureText: input.supplierConfirmation ? `Supplier confirmation: ${input.supplierConfirmation === "INPUT_MISTAKE" ? "B input mistake" : kind === "app44" ? "A supplier confirms" : "A actual/calculated mass"}.` : "", recommendation: toRecommendation(result), needs, massBands: null, engineInput, engine: pick(result) };
   }
 
   if (kind === "pb" || kind === "substance") {
@@ -130,7 +131,16 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     let result: JudgementResult;
     let flow: FlowRun | null = null;
     const extra: string[] = [];
-    if (kind === "pb") {
+    if (kind === "pb" && facts.applicationId.trim() === "71") {
+      result = evaluateJudgement(engineInput);
+      const fr = pb71Run(facts, { ...(input.answers || {}), ...(input.destination ? { destination: input.destination } : {}) });
+      flow = fr;
+      for (const t of fr.trail) steps.push({ id: "q" + steps.length, title: t.question, status: "DONE", detail: t.answer + (t.auto ? " (auto)" : "") });
+      needs.destination = fr.next?.id === "destination";
+      if (fr.next) steps.push({ id: "next", title: fr.next.text, status: "NEEDS_INPUT", detail: "Pick an answer to continue the flow." });
+      recommendation = fr.outcome ? { state: fr.outcome.state, comment: fr.outcome.comment, reason: fr.outcome.reason } : { state: "HOLD", comment: "", reason: "Answer the next flow question to get a recommendation." };
+      extra.push(`3) ${fr.title} (${FLOW_SOURCE}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")}${fr.outcome ? ` → ${fr.outcome.state}` : ""}.`);
+    } else if (kind === "pb") {
       const pb = lookupPbPolicy(facts.applicationId, input.destination || "");
       if (pb.found) {
         engineInput = { ...engineInput, policyOutcome: pb.outcome === "HOLD" ? "UNKNOWN" : pb.outcome };

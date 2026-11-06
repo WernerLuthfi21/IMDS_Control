@@ -1,4 +1,5 @@
 import families from "@/data/reference/gcats-v5110-cas-families.json";
+import t1 from "@/data/reference/gcats-v5110-t1-flows.json";
 import { annex17Records } from "@/lib/reference-data";
 import type { RowFacts } from "@/lib/judgement/row-facts";
 
@@ -33,15 +34,17 @@ class Ctx {
     return undefined;
   }
   auto(text: string, answer: string, value: string) { this.trail.push({ question: text, answer, auto: true }); return value; }
+  today(): string { return this.a.__today || new Date().toISOString().slice(0, 10); }
   /** Destination → "EU destination?" (Y/N). */
   eu(): "Y" | "N" | undefined {
     const d = this.ask("destination", "Vehicle destination", DESTINATION_OPTIONS);
     return d === undefined ? undefined : d === "EU" ? "Y" : "N";
   }
   /** Is the substance content at or below `limit` wt%? Uses the row's content when present. */
-  below(id: string, text: string, limit: number): "Y" | "N" | undefined {
+  below(id: string, text: string, limit: number, strict = false): "Y" | "N" | undefined {
     const n = Number(String(this.f.substanceContentPct).replace(",", "."));
-    if (this.f.substanceContentPct && Number.isFinite(n)) return this.auto(text, `${this.f.substanceContentPct}% from the row → ${n <= limit ? "Yes" : "No"}`, n <= limit ? "Y" : "N") as "Y" | "N";
+    const yes = strict ? n < limit : n <= limit;
+    if (this.f.substanceContentPct && Number.isFinite(n)) return this.auto(text, `${this.f.substanceContentPct}% from the row → ${yes ? "Yes" : "No"}`, yes ? "Y" : "N") as "Y" | "N";
     return this.ask(id, text) as "Y" | "N" | undefined;
   }
   out(state: FlowOutcome["state"], comment: string, reason: string): FlowOutcome { return { state, comment, reason }; }
@@ -112,6 +115,29 @@ const DEFS: Record<string, Def> = {
     const w = c.ask("wwf", "Is the Delivery Part or Component Part windshield washer fluid?"); if (!w) return;
     return w === "N" ? ok(c, "Use is not prohibit.") : contactTmc(c, "Methanol in windshield washer fluid is regulated in some destinations.");
   } },
+  clparaffins: { id: "clparaffins", title: "No.18 Prohibited substance (Cl Paraffins)", page: 58, run: (c) => {
+    if (c.f.cas === "85422-92-0") {
+      const o = c.ask("sccpOil", "Confirm to supplier: does the Paraffin Oil contain Cl Paraffin(s) SCCP (C10-13)?"); if (!o) return;
+      return o === "Y" ? ng(c, CONTAINED) : ok(c, "Not containing prohibited substances.");
+    }
+    const t = c.below("thr", "Is the Cl paraffins percentage in the integral part of the article below 0.15%? (0.15% is NG)", 0.15, true); if (!t) return;
+    return t === "Y" ? ok(c, "The substance is below threshold.") : ng(c, CONTAINED);
+  } },
+  pb71: { id: "pb71", title: "No.10 ELV (Pb) · Application Code 71 flow", page: 30, run: (c) => {
+    const alu = /^2\.1\.[12]\b/.test(c.f.matlClass) ? c.auto("Material is aluminum? (IMDS Matl. Class 2.1.1 / 2.1.2)", `${c.f.matlClass} from the row → Yes`, "Y")
+      : c.f.matlClass ? c.auto("Material is aluminum? (IMDS Matl. Class 2.1.1 / 2.1.2)", `${c.f.matlClass} from the row → No`, "N")
+      : c.ask("aluminium", "Is the material aluminum (IMDS Matl. Class 2.1.1 / 2.1.2)?");
+    if (!alu) return;
+    if (alu === "N") return ng(c, "Improper Application ID selected.");
+    const t = c.below("thr", "Is Pb 0.4wt% or below?", 0.4); if (!t) return;
+    if (t === "N") return ng(c, CONTAINED);
+    const m = c.ask("machining", "Confirm to supplier: is the aluminum material lead-containing for machining purposes?"); if (!m) return;
+    if (m === "N") return contactTmc(c, "Supplier says the aluminum is not lead-containing for machining purposes.");
+    const d = c.ask("destination", "Vehicle destination (the exemption ends in the EU 2028-01 and in TW 2030-01)", DESTINATION_OPTIONS); if (!d) return;
+    const today = c.today();
+    if ((d === "EU" && today >= "2028-01-01") || (d === "TW" && today >= "2030-01-01")) return contactTmc(c, `The exemption for ${d} ends on ${d === "EU" ? "2028-01" : "2030-01"} and today is ${today}.`);
+    return ok(c, "The substance is within exemption.");
+  } },
   pfas190: { id: "pfas190", title: "GADSL No.190 · PFAS / fluoropolymer (not listed in G-CATS procedure or TSZ0001G group)", page: null, run: (c) => {
     const carpet = /carpet/i.test(c.f.deliveryPartName + " " + c.f.componentPartName) ? c.ask("usCarpet", "The part is a carpet. Is the vehicle bound for the U.S.? (intentional use is prohibited for U.S. carpets)") : c.auto("Part name is a carpet?", "No (from the part names)", "N");
     if (!carpet) return;
@@ -130,6 +156,20 @@ const DEFS: Record<string, Def> = {
   } }
 };
 
+type T1Flow = { id: string; title: string; page: number; limit: number; cas: string[] };
+const T1_CAS = new Map<string, string>();
+for (const f of (t1 as { flows: T1Flow[] }).flows) {
+  DEFS[f.id] = { id: f.id, title: `No.14 ${f.title}`, page: f.page, run: (c) => {
+    const t = c.below("thr", `Is the substance content below ${f.limit}wt%? (${f.limit}wt% is OK)`, f.limit); if (!t) return;
+    if (t === "Y") return ok(c, BELOW);
+    const eu = c.eu(); if (!eu) return;
+    if (eu === "N") return ok(c, NON_REG);
+    const s = c.ask("supplier", "Confirm to supplier", [["A", "A · Input mistake"], ["B", "B · It contains"]]); if (!s) return;
+    return s === "A" ? ng(c, "Supplier input mistake.") : contactTmc(c, "Supplier confirms the substance is contained and the destination is EU.");
+  } };
+  for (const cas of f.cas) if (!T1_CAS.has(cas)) T1_CAS.set(cas, f.id);
+}
+
 function popsFlow(c: Ctx, limit: number, label: string): FlowOutcome | undefined {
   const i = c.ask("intent", "Confirm to supplier", [["A", "A · Non-intentional use"], ["B", "B · Intentional use"]]); if (!i) return;
   if (i === "B") return ng(c, CONTAINED);
@@ -146,8 +186,10 @@ export function selectFlow(errorType: string, cas: string, hasTszGroup: boolean,
   const t = errorType.toLowerCase();
   if (/\(dot\)/.test(t)) return { def: DEFS.dot, id: "dot", title: DEFS.dot.title, page: 57 };
   if (/\(dbt\)/.test(t)) return { def: DEFS.dbt, id: "dbt", title: DEFS.dbt.title, page: 56 };
-  if (/\(sccp\)|cl paraffin/.test(t)) return { def: null, id: "cl-paraffins", title: "No.18 Prohibited substance (Cl Paraffins)", page: 58 };
+  if (/\(sccp\)|cl paraffin/.test(t) || fam.cas[cas] === "cl-paraffins" || cas === "85422-92-0") return { def: DEFS.clparaffins, id: "clparaffins", title: DEFS.clparaffins.title, page: 58 };
   if (/arsenic/.test(t)) return { def: null, id: "arsenic", title: "No.15 Prohibited substance (Arsenic)", page: 55 };
+  const t1id = T1_CAS.get(cas);
+  if (t1id) return { def: DEFS[t1id], id: t1id, title: DEFS[t1id].title, page: DEFS[t1id].page };
   const f = fam.cas[cas];
   if (f && DEFS[f]) return { def: DEFS[f], id: f, title: DEFS[f].title, page: DEFS[f].page };
   if (f) return { def: null, id: f, title: "No.14 " + fam.families[f].label, page: fam.families[f].page };
@@ -163,3 +205,6 @@ export function runFlow(sel: ReturnType<typeof selectFlow>, facts: RowFacts, ans
   return { flowId: sel.id, title: sel.title, page: sel.page, implemented: true, trail: c.trail, next: outcome ? null : c.next, outcome };
 }
 export const FLOW_SOURCE = SRC;
+export function pb71Run(facts: RowFacts, answers: Record<string, string>): FlowRun {
+  return runFlow({ def: DEFS.pb71, id: "pb71", title: DEFS.pb71.title, page: 30 }, facts, answers, "");
+}

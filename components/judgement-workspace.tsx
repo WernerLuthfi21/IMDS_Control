@@ -23,8 +23,8 @@ function StepIcon({ status }: { status: StepStatus }) {
   return <CircleHelp size={15} className="jx-muted"/>;
 }
 
-function Chips({ options, value, onPick, label }: { options: Array<[string, string]>; value: string; onPick: (v: string) => void; label: string }) {
-  return <div className="jx-chips" role="radiogroup" aria-label={label}>{options.map(([v, text]) => <button type="button" role="radio" aria-checked={value === v} key={v} className={value === v ? "on" : ""} onClick={() => onPick(v)} title={text}>{v}</button>)}</div>;
+function Chips({ options, value, onPick, label, full }: { options: Array<[string, string]>; value: string; onPick: (v: string) => void; label: string; full?: boolean }) {
+  return <div className="jx-chips" role="radiogroup" aria-label={label}>{options.map(([v, text]) => <button type="button" role="radio" aria-checked={value === v} key={v} className={value === v ? "on" : ""} onClick={() => onPick(v)} title={text}>{full ? text : v}</button>)}</div>;
 }
 
 function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: boolean; actorName: string; onSaved: (id: string, patch: Partial<Item>) => void }) {
@@ -89,12 +89,12 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       {auto?.steps.map((s) => <li key={s.id} className={"jx-step " + s.status.toLowerCase()}><StepIcon status={s.status}/><div><strong>{s.title}</strong><span>{s.detail}</span></div></li>)}
     </ol>
     {auto?.needs.destination && <div className="jx-ask"><span>Destination</span><Chips label="Destination" value={destination} onPick={setDestination} options={DESTINATIONS}/></div>}
-    {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips label={auto.flow.next.text} value="" onPick={(v) => setAnswers((a) => ({ ...a, [auto.flow!.next!.id]: v }))} options={auto.flow.next.options}/></div>}
+    {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips full label={auto.flow.next.text} value="" onPick={(v) => setAnswers((a) => ({ ...a, [auto.flow!.next!.id]: v }))} options={auto.flow.next.options}/></div>}
     {auto?.flow && Object.keys(answers).length > 0 && <div className="jx-ask"><button type="button" className="jx-link" onClick={() => setAnswers({})}>Reset flow answers</button></div>}
     {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
     {auto?.needs.supplierConfirmation && <div className="jx-ask"><span>{auto.kind === "mass" ? "Outside ±10% — supplier says" : "Supplier says"}</span>
-      <Chips label="Supplier confirmation" value={supplier} onPick={setSupplier} options={[["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]]}/>
-      <small>A = actual or calculated mass · B = input mistake</small></div>}
+      <Chips label="Supplier confirmation" value={supplier} onPick={setSupplier} full options={auto.kind === "app44" ? [["SUPPLIER_CONFIRMED", "A · Supplier confirms the application / code"], ["INPUT_MISTAKE", "B · Input mistake"]] : [["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]]}/>
+      </div>}
     {rec && <div className={"jx-rec " + rec.state.toLowerCase()}><strong>{rec.state === "HOLD" ? "Needs your judgement" : "Recommended " + rec.state}</strong><span>{rec.reason}</span></div>}
     {error && <div className="jx-error" role="alert"><AlertTriangle size={13}/> {error}</div>}
     {canEdit ? <div className="jx-decide">

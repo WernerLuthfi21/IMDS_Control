@@ -9,7 +9,7 @@ import { normalizeCas } from "@/lib/reference-data";
 
 export const runtime = "nodejs";
 const DESTINATIONS = ["EU", "KR", "CN", "TW", "IN", "JP", "OTH"];
-const CONFIRMATIONS = ["ACTUAL_OR_CALCULATED_MASS", "INPUT_MISTAKE"];
+const CONFIRMATIONS = ["ACTUAL_OR_CALCULATED_MASS", "INPUT_MISTAKE", "SUPPLIER_CONFIRMED"];
 
 /** Non-persistent automatic workflow for one register row. Never writes; saving stays a human action. */
 export async function POST(request: NextRequest) {
