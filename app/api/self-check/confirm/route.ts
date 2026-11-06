@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { partKey } from "@/lib/intake/keys";
 
 export const runtime = "nodejs";
-const FAMILIES = ["substance", "pb", "mass"];
+const FAMILIES = ["substance", "pb", "mass", "sms", "app44"];
 
 /** A supplier saves the answers it gave in its self-check. Stored per part number; TMMIN's judgement then reuses them. */
 export async function POST(request: NextRequest) {

@@ -221,9 +221,9 @@
       "source": "1.G-CATS Manual Operation Ver.6, Section II and Appendix I, PDF page 19",
       "branches": [
         {
-          "when": "source section selected",
+          "when": "numeric Error Type 19",
           "recommendation": "HOLD",
-          "note": "Section II: Benzene; Appendix I: Application44ERROR. Owner must reconcile."
+          "note": "Section II lists No.19 as Prohibited substance(Benzene). Application44ERROR was renumbered to 24 at the user's direction; numeric 19 stays on HOLD until the process owner confirms the mapping."
         }
       ]
     },
@@ -249,6 +249,28 @@
         }
       ],
       "note": "Do not apply as active rule until owner approves."
+    },
+    {
+      "id": "RULE-APP24-APPLICATION44",
+      "errorType": 24,
+      "title": "Application44ERROR (listed as No.19 in Appendix I; renumbered to 24)",
+      "status": "DRAFT_FOR_OWNER_APPROVAL",
+      "source": "1.G-CATS Manual Operation Ver.6, Appendix I, PDF page 19",
+      "branches": [
+        {
+          "when": "supplierConfirmation == SUPPLIER_CONFIRMED",
+          "recommendation": "RECOMMEND_OK",
+          "comment": "Confirmed by Supplier."
+        },
+        {
+          "when": "supplierConfirmation == INPUT_MISTAKE",
+          "recommendation": "RECOMMEND_NG"
+        },
+        {
+          "when": "missing",
+          "recommendation": "MANUAL_REVIEW"
+        }
+      ]
     }
   ],
   "globalGuardrails": [

@@ -398,15 +398,17 @@
       "type": "official_source_entry"
     },
     {
-      "id": "APP-19",
-      "number": 19,
+      "id": "APP-24",
+      "number": 24,
+      "originalSourceNumber": 19,
+      "renumberNote": "Appendix I lists this entry as No.19. At the user's direction (2026-11-06) it is numbered 24 in this application so No.19 stays Prohibited substance(Benzene). Not yet confirmed by the G-CATS process owner.",
       "name": "Application44ERROR",
       "description": "Application code is not 44 even Pb <= 0.1 wt%; confirm to supplier.",
       "source": "1.G-CATS Manual Operation Ver.6, Appendix I (Judgment procedure and criteria)",
       "sourcePage": 19,
       "sourceVersion": "G-CATS Manual Ver.6 (05 Mar 2026)",
       "catalog": "appendix_judgement_criteria",
-      "status": "SOURCE_LISTED",
+      "status": "USER_RENUMBERED",
       "type": "official_source_entry"
     },
     {
@@ -463,6 +465,7 @@
     "title": "Error Type 19 differs by section in Version 6 Manual Operation",
     "severity": "HIGH",
     "status": "HOLD_FOR_OWNER_RECONCILIATION",
+    "userDirective": {"date": "2026-11-06", "text": "Application44ERROR is renumbered to No.24 in this application; No.19 remains Prohibited substance(Benzene).", "status": "AWAITING_PROCESS_OWNER_CONFIRMATION"},
     "details": "Section II System Data Confirm & Judge flow lists No.19 as Prohibited substance(Benzene), while Appendix I (Judgment procedure and criteria) lists No.19 as Application44ERROR. These are preserved as separate source entries; the application must not silently merge or choose one. Benzene is also shown as a substance-specific No.14 flow in Manual Flow.",
     "sources": [
       "1.G-CATS Manual Operation Ver.6, Section II, PDF text around Error Type table",

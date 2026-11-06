@@ -64,3 +64,9 @@ This is a development release, not a Toyota-approved or production-certified jud
 - `/api/judgement/auto` reads the latest confirmation for the same supplier code + part key + family + CAS and applies it automatically as a "Supplier confirmation on file" step. It is self-reported; the reviewer still saves OK/NG.
 - Admin: Settings → Team & access edits display name, role and supplier code (`PATCH /api/admin/profiles/[id]`, RLS `profiles_update_admin`).
 - Migration must be applied to the remote project by the owner (not applied from the sandbox). Until then saving shows a clear error and the admin side behaves as "no confirmation".
+
+## Error Type 24, more automated flows, SharePoint read (Nov 2026)
+- Application44ERROR is numbered **24** in this application (user directive 2026-11-06; Appendix I lists it as 19). No.19 stays Prohibited substance(Benzene) and numeric 19 stays HOLD until the process owner confirms. Rule id is now `RULE-APP24-APPLICATION44`; older `judgement_runs` rows keep the old id string.
+- New automated flows (V5.1.10 Appendix II): Application Code 71 (Pb in aluminium), Cl-paraffins/SCCP, and 16 No.14 flows that share the standard chart (`data/reference/gcats-v5110-t1-flows.json`). Still HOLD with a PDF page: Arsenic, Benzidine/azo, glycols, HFC, nitrosamines, PFOA, PBDE, aziridinyl, BNST, Benzene, DMF, perchlorate, PAH, UV-328, dioxane, perborate, and members of "all members" families whose CAS is not listed.
+- SMS Mass and Application44ERROR use the saved supplier confirmation (migration `20261106000100`).
+- SharePoint: read-only fetch of one master workbook into the import preview (see `docs/SHAREPOINT_SETUP.md`). Write-back and push real time are NOT implemented.

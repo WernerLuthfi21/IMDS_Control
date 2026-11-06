@@ -104,11 +104,54 @@ describe("substance flows (Appendix II)", () => {
     expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.next?.id).toBe("intent");
   });
   it("unencoded family stays HOLD with PDF page", () => {
-    const r = run2({ errorType: "Prohibited substance", facts: row("3090-36-6") });
-    expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.implemented).toBe(false); expect(r.flow?.page).toBe(43);
+    const r = run2({ errorType: "Prohibited substance", facts: row("1303-28-2") });
+    expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.implemented).toBe(false); expect(r.flow?.page).toBe(55);
   });
   it("Error Type 19 is always HOLD", () => {
     const r = run2({ errorType: "19", facts: row("872-50-4"), destination: "KR" });
     expect(r.recommendation.state).toBe("HOLD");
+  });
+});
+
+describe("more Appendix II flows", () => {
+  const row = (cas: string, extra: Record<string, unknown> = {}) => facts2({ "CAS No. [col 29]": cas, "Substance Content(%) [col 31]": "1", ...extra });
+  it("Cl paraffins: 1% is above 0.15% → NG", () => {
+    const r = run2({ errorType: "Prohibited substance(SCCP)", facts: row("85681-73-8") });
+    expect(r.recommendation.state).toBe("NG"); expect(r.flow?.flowId).toBe("clparaffins");
+  });
+  it("Cl paraffins: 0.15% itself is NG, 0.1% is OK", () => {
+    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8", { "Substance Content(%) [col 31]": "0.15" }) }).recommendation.state).toBe("NG");
+    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8", { "Substance Content(%) [col 31]": "0.1" }) }).recommendation.state).toBe("OK");
+  });
+  it("paraffin oil 85422-92-0 asks the supplier", () => {
+    const r = run2({ errorType: "Prohibited substance", facts: row("85422-92-0") });
+    expect(r.flow?.next?.id).toBe("sccpOil");
+    expect(run2({ errorType: "Prohibited substance", facts: row("85422-92-0"), answers: { sccpOil: "N" } }).recommendation.comment).toMatch(/Not containing/);
+  });
+  it("standard-chart flow (pitch): EU + supplier B holds, A gives NG, non-EU OK", () => {
+    const f = row("65996-93-2");
+    expect(run2({ errorType: "Prohibited substance", facts: f, destination: "KR" }).recommendation.state).toBe("OK");
+    expect(run2({ errorType: "Prohibited substance", facts: f, destination: "EU", answers: { supplier: "A" } }).recommendation.state).toBe("NG");
+    expect(run2({ errorType: "Prohibited substance", facts: f, destination: "EU", answers: { supplier: "B" } }).recommendation.state).toBe("HOLD");
+  });
+  const pb = (extra: Record<string, unknown> = {}) => facts2({ "CAS No. [col 29]": "7439-92-1", "Application ID [col 32]": "71", "Substance Content(%) [col 31]": "0.2", "IMDS Matl. Class. [col 27]": "2.1.1", ...extra });
+  it("Application 71: aluminium, Pb 0.2%, supplier says machining → OK within exemption", () => {
+    const r = run2({ errorType: "ELV (Pb)", facts: pb(), answers: { machining: "Y", __today: "2026-11-06" }, destination: "KR" });
+    expect(r.recommendation.state).toBe("OK"); expect(r.recommendation.comment).toBe("The substance is within exemption.");
+  });
+  it("Application 71: asks the machining question first; non-aluminium → NG; Pb 0.5% → NG", () => {
+    expect(run2({ errorType: "ELV (Pb)", facts: pb() }).flow?.next?.id).toBe("machining");
+    expect(run2({ errorType: "ELV (Pb)", facts: pb({ "IMDS Matl. Class. [col 27]": "1.1" }) }).recommendation.state).toBe("NG");
+    expect(run2({ errorType: "ELV (Pb)", facts: pb({ "Substance Content(%) [col 31]": "0.5" }) }).recommendation.state).toBe("NG");
+  });
+  it("Application 71 after the EU expiry date → HOLD, not OK", () => {
+    const r = run2({ errorType: "ELV (Pb)", facts: pb(), answers: { machining: "Y", __today: "2028-02-01" }, destination: "EU" });
+    expect(r.recommendation.state).toBe("HOLD");
+  });
+  it("Application44ERROR / No.24: supplier A → OK, B → NG; numeric 19 stays HOLD", () => {
+    const f = row("");
+    expect(run2({ errorType: "Application44ERROR", facts: f, supplierConfirmation: "SUPPLIER_CONFIRMED" }).recommendation.state).toBe("OK");
+    expect(run2({ errorType: "24", facts: f, supplierConfirmation: "INPUT_MISTAKE" }).recommendation.state).toBe("NG");
+    expect(run2({ errorType: "19", facts: f }).recommendation.state).toBe("HOLD");
   });
 });

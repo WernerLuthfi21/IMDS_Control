@@ -2,10 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { partKey, supplierKey } from "@/lib/intake/keys";
 
 export type StoredConfirmation = { supplier_code: string; delivery_part_no: string; answers: Record<string, string>; submitted_at: string; source_file_name: string | null };
-export type Family = "substance" | "pb" | "mass";
+export type Family = "substance" | "pb" | "mass" | "sms" | "app44";
 
 export function familyOfKind(kind: string): Family | null {
-  return kind === "substance" ? "substance" : kind === "pb" ? "pb" : kind === "mass" ? "mass" : null;
+  return kind === "substance" || kind === "pb" || kind === "mass" || kind === "sms" || kind === "app44" ? kind : null;
 }
 
 /** Latest supplier confirmation for this part (same supplier code, same family, same CAS). Returns null when none or when the table is not migrated yet. */

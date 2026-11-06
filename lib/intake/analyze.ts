@@ -7,7 +7,7 @@ import type { RowFacts } from "@/lib/judgement/row-facts";
 export type RowState = "OK" | "NG" | "ASK" | "DEPENDS" | "HOLD" | "INVALID";
 export type Ask = { id: string; text: string; options: Array<[string, string]> };
 export type AnalyzedRow = {
-  r: number; key: string; partNo: string; supplierCode: string; cas: string; family: "substance" | "pb" | "mass" | "other";
+  r: number; key: string; partNo: string; supplierCode: string; cas: string; family: "substance" | "pb" | "mass" | "sms" | "app44" | "other";
   errorType: string; flowId: string; flowTitle: string; state: RowState; comment: string; reason: string;
   byDest?: Record<string, "OK" | "NG" | "HOLD">; ask: Ask[]; answered: Record<string, string>; issues: string[];
 };
@@ -36,6 +36,14 @@ function evaluate(errorType: string, facts: RowFacts, answers: Record<string, st
     return { ...base, family: "mass", flowId: "mass", flowTitle: "Mass tolerance (TSZ2900G)", state: out.recommendation.state === "HOLD" ? "HOLD" : out.recommendation.state, comment: out.recommendation.comment, reason: out.recommendation.reason };
   }
 
+  if (kind === "sms" || kind === "app44") {
+    const title = kind === "sms" ? "SMS Mass" : "Application44ERROR (No.24)";
+    const opts: Array<[string, string]> = kind === "sms" ? [["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]] : [["SUPPLIER_CONFIRMED", "A · I confirm the application / code"], ["INPUT_MISTAKE", "B · Input mistake"]];
+    if (!answers.supplierConfirmation) return { ...base, family: kind, flowId: kind, flowTitle: title, state: "ASK", reason: "A supplier confirmation decides this one.", ask: [{ id: "supplierConfirmation", text: "Confirm to supplier", options: opts }] };
+    const out = runAutoWorkflow({ errorType: et, facts, supplierConfirmation: answers.supplierConfirmation });
+    return { ...base, family: kind, flowId: kind, flowTitle: title, state: out.recommendation.state, comment: out.recommendation.comment, reason: out.recommendation.reason };
+  }
+  if (kind === "pb" && facts.applicationId.trim() === "71") return scenario("pb", et, facts, answers);
   if (kind === "pb") {
     const byDest: Record<string, "OK" | "NG" | "HOLD"> = {};
     let first: AutoOutput | null = null;
@@ -46,19 +54,22 @@ function evaluate(errorType: string, facts: RowFacts, answers: Record<string, st
     return summariseByDestination("pb", "Pb TOYOTA Policy Table", byDest, first!);
   }
 
-  if (kind === "substance") {
+  if (kind === "substance") return scenario("substance", et, facts, answers);
+  return { ...base, family: "other", state: "HOLD", reason: "This Error Type is handled by Toyota; nothing to self-check here." };
+}
+
+function scenario(family: "substance" | "pb", et: string, facts: RowFacts, answers: Record<string, string>): Omit<AnalyzedRow, "r" | "key" | "partNo" | "supplierCode" | "cas" | "errorType" | "issues" | "answered"> {
+  const base = { flowId: "", flowTitle: "", comment: "", reason: "", ask: [] as Ask[] };
     const run = (dest: string) => runAutoWorkflow({ errorType: et, facts, destination: dest, answers });
     const eu = run("EU"), non = run("KR");
     const flowId = eu.flow?.flowId ?? "", flowTitle = eu.flow?.title ?? "Prohibited substance";
-    if (eu.flow && !eu.flow.implemented) return { ...base, family: "substance", flowId, flowTitle, state: "HOLD", reason: `${eu.recommendation.reason} Toyota will complete this one.` };
-    if (!eu.flow) return { ...base, family: "substance", flowId, flowTitle, state: "HOLD", reason: eu.recommendation.reason };
+    if (eu.flow && !eu.flow.implemented) return { ...base, family, flowId, flowTitle, state: "HOLD", reason: `${eu.recommendation.reason} Toyota will complete this one.` };
+    if (!eu.flow) return { ...base, family, flowId, flowTitle, state: "HOLD", reason: eu.recommendation.reason };
     const asks: Ask[] = [];
     for (const o of [eu, non]) { const q = o.flow?.next; if (q && !TOYOTA_OWNED.has(q.id) && !asks.some((a) => a.id === q.id)) asks.push(asAsk(q)); }
-    if (asks.length) return { ...base, family: "substance", flowId, flowTitle, state: "ASK", reason: "A supplier confirmation decides this one.", ask: asks, byDest: { EU: eu.recommendation.state, KR: non.recommendation.state } };
+    if (asks.length) return { ...base, family, flowId, flowTitle, state: "ASK", reason: "A supplier confirmation decides this one.", ask: asks, byDest: { EU: eu.recommendation.state, KR: non.recommendation.state } };
     const byDest = { EU: eu.recommendation.state, KR: non.recommendation.state };
-    return summariseByDestination("substance", flowTitle, byDest, eu, flowId);
-  }
-  return { ...base, family: "other", state: "HOLD", reason: "This Error Type is handled by Toyota; nothing to self-check here." };
+    return summariseByDestination(family, flowTitle, byDest, eu, flowId);
 }
 
 function summariseByDestination(family: "pb" | "substance", title: string, byDest: Record<string, "OK" | "NG" | "HOLD">, sample: AutoOutput, flowId: string = family): Omit<AnalyzedRow, "r" | "key" | "partNo" | "supplierCode" | "cas" | "errorType" | "issues" | "answered"> {
@@ -114,7 +125,7 @@ export function analyzeMatrix(matrix: string[][], opts: { mapping?: Partial<Reco
     const targets = kindHere === "substance" ? casList : [""];
     for (const cas of targets) {
       const f2 = { ...facts, cas };
-      const family = kindHere === "substance" ? "substance" : kindHere === "pb" ? "pb" : kindHere === "mass" ? "mass" : "other";
+      const family = kindHere === "substance" || kindHere === "pb" || kindHere === "mass" || kindHere === "sms" || kindHere === "app44" ? kindHere : "other";
       const key = rowKey(partNo, family, cas);
       const answers = opts.answers?.[key] ?? {};
       const sig = JSON.stringify([errorType, f2, answers, fallback]);
