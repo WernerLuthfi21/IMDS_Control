@@ -21,7 +21,9 @@ export async function GET(request: Request) {
   });
 
   try {
-    const html = await readFile(join(process.cwd(), "private", "imds-tracker.html"), "utf8");
+    const sourceHtml = await readFile(join(process.cwd(), "private", "imds-tracker.html"), "utf8");
+    const shortcut = `<a href="/imds-tracker/master" aria-label="Open shared IMDS Master Data" style="position:fixed;right:18px;bottom:18px;z-index:9999;display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:999px;background:#6d28d9;color:#fff;text-decoration:none;font:600 13px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px rgba(76,29,149,.24)">▦ Master Data</a>`;
+    const html = sourceHtml.replace(/<body(\\s[^>]*)?>/i, (match) => match + shortcut);
     return new NextResponse(html, {
       status: 200,
       headers: {
