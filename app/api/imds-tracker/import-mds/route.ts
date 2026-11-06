@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
 import { trackerAuth } from "@/lib/imds-tracker/auth";
-import { cleanCell, findHeaderRow, normalizePartNo, normalizeWords, parseExcelDate, plainCell, vendorDigits } from "@/lib/imds-tracker/utils";
+import { cleanCell, normalizePartNo, normalizeWords, parseExcelDate, vendorDigits } from "@/lib/imds-tracker/utils";
 import { pushTrackerToPowerAutomate } from "@/lib/imds-tracker/bridge";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const CHUNK = 150;
 
 type MasterCandidate = {
-  id: string; master_key: string; vendor_code: string | null; company_name: string | null;
+  id: string; master_key: string; part_no_norm: string; vendor_code: string | null; company_name: string | null;
   md_system_records: unknown; md_id_version: string | null; md_status_update_date: string | null;
   manual_overrides: string[] | null;
 };
@@ -108,16 +108,11 @@ export async function POST(request: NextRequest) {
   const partNumbers = [...new Set(parsed.map((r) => r.partNoNorm))];
   for (let i = 0; i < partNumbers.length; i += 300) {
     const { data, error } = await ctx.supabase.from("imds_master_parts")
-      .select("id,master_key,vendor_code,company_name,md_system_records,md_id_version,md_status_update_date,manual_overrides")
+      .select("id,master_key,part_no_norm,vendor_code,company_name,md_system_records,md_id_version,md_status_update_date,manual_overrides")
       .in("part_no_norm", partNumbers.slice(i, i + 300));
     if (error) return NextResponse.json({ error: `Could not read the tracker master: ${error.message}` }, { status: 500 });
     for (const candidate of (data || []) as MasterCandidate[]) {
-      const key = (await Promise.resolve(candidate)).master_key; // keep the map key explicit and stable
-      const normalized = parsed.find((r) => r.partNoNorm && r.partNoNorm === normalizePartNo(r.partNo) && r.partNoNorm && r.partNoNorm === key) ? key : "";
-      void normalized;
-      // The normalized part number is fetched from the same master row in a second keyed lookup below.
-      const { data: owner } = await ctx.supabase.from("imds_master_parts").select("part_no_norm").eq("id", candidate.id).maybeSingle();
-      const partKey = owner?.part_no_norm || "";
+      const partKey = candidate.part_no_norm || "";
       if (!byPart.has(partKey)) byPart.set(partKey, []);
       byPart.get(partKey)!.push(candidate);
     }
