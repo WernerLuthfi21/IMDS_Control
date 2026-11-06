@@ -59,9 +59,18 @@ export async function POST(request: NextRequest) {
   const workbook = new ExcelJS.Workbook();
   try { await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Workbook could not be read." }, { status: 422 }); }
-  const sheet = workbook.getWorksheet("Export") || workbook.worksheets.find((ws) => findHeaderRow(ws, [["Type"], ["Name"], ["Part/Item No", "Material No"]], 20) > 0);
+  const hasMdsHeader = (ws: ExcelJS.Worksheet, rowNo: number) => {
+    const cells = (ws.getRow(rowNo).values as unknown[]).slice(1).map((v) => cleanCell(v).toLowerCase());
+    return cells.some((v) => v.includes("type")) && cells.some((v) => v === "name" || v.startsWith("name ")) &&
+      cells.some((v) => v.includes("part/item no") || v.includes("material no"));
+  };
+  const sheet = workbook.getWorksheet("Export") || workbook.worksheets.find((ws) => {
+    for (let rowNo = 1; rowNo <= Math.min(ws.rowCount, 20); rowNo++) if (hasMdsHeader(ws, rowNo)) return true;
+    return false;
+  });
   if (!sheet) return NextResponse.json({ error: "Could not find an Export sheet or MD System result headers." }, { status: 422 });
-  const headerRow = findHeaderRow(sheet, [["Type"], ["Name"], ["Part/Item No", "Material No"]], 20);
+  let headerRow = 0;
+  for (let rowNo = 1; rowNo <= Math.min(sheet.rowCount, 20); rowNo++) if (hasMdsHeader(sheet, rowNo)) { headerRow = rowNo; break; }
   if (!headerRow) return NextResponse.json({ error: "Could not identify the MD System header row." }, { status: 422 });
   const headers = (sheet.getRow(headerRow).values as unknown[]).slice(1).map((v) => cleanCell(v));
   const cols = {
