@@ -17,7 +17,7 @@ export async function GET() {
   const parts: Record<string, unknown>[] = [];
   for (let from = 0; ; from += 500) {
     const { data, error } = await supabase.from("imds_master_parts")
-      .select("project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,imds_status,part_status,source_row")
+      .select("id,project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,supplier_promise_date,imds_status,part_status,source_row")
       .order("project", { ascending: true, nullsFirst: true })
       .order("company_name", { ascending: true, nullsFirst: true })
       .order("part_no", { ascending: true, nullsFirst: true })
