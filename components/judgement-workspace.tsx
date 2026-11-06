@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, LoaderCircle, Mail, Search, ShieldCheck, UserRound } from "lucide-react";
 import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
+import { createClient } from "@/lib/supabase/client";
 
 type Item = {
   id: string; source_record_key: string; error_type_label: string; delivery_part_no: string | null; supplier_code: string | null;
@@ -114,6 +115,16 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
 
 export function JudgementWorkspace({ rows: initialRows, year, role, actorName, sourceDate, queryError }: { rows: Item[]; year: number; role: string; actorName: string; sourceDate: string | null; queryError: string | null }) {
   const [rows, setRows] = useState(initialRows);
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    const sb = createClient(); if (!sb) return;
+    const ch = sb.channel("judgement-live").on("postgres_changes", { event: "UPDATE", schema: "public", table: "gcat_error_items" }, (p) => {
+      const n = p.new as Record<string, unknown>;
+      const keys = ["judge", "km_judge", "assigned_person", "starting_date", "judgement_procedure", "ok_comment", "imds_reject_comment", "last_change_date", "source_km_judge_label"];
+      setRows((prev) => prev.map((r) => r.id !== n.id ? r : { ...r, ...Object.fromEntries(keys.filter((k) => k in n).map((k) => [k, n[k]])) }));
+    }).subscribe((status) => setLive(status === "SUBSCRIBED"));
+    return () => { void sb.removeChannel(ch); };
+  }, []);
   const [tab, setTab] = useState<Tab>("pending");
   const [errorType, setErrorType] = useState("All Error Types");
   const [month, setMonth] = useState("All");
@@ -154,7 +165,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
 
   return <div className="jx">
     <header className="jx-head">
-      <div><h1>Judgement</h1><p>{year} · WORKING records{updated ? " · snapshot " + updated : ""}</p></div>
+      <div><h1>Judgement</h1><p>{year} · WORKING records{updated ? " · snapshot " + updated : ""} · <span title="Other users' judgements appear here as they are saved">{live ? "● live" : "○ not live"}</span></p></div>
       <a className="jx-back" href="/workspace"><ArrowLeft size={14}/> Menu</a>
     </header>
     {queryError && <div className="jx-error"><AlertTriangle size={14}/> {queryError}</div>}
