@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   const { data: me } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
   if (me?.role !== "admin") return NextResponse.json({ error: "Only an admin can edit users." }, { status: 403 });
   const { needsMfaStepUp } = await import("@/lib/security/admin-mfa");
-  if (await needsMfaStepUp(supabase)) return NextResponse.json({ error: "Complete authenticator verification before changing account roles." }, { status: 403, headers: { "x-auth-reason": "mfa_required" } });
+  if (await needsMfaStepUp(supabase)) return NextResponse.json({ error: "Set up and verify an authenticator in Settings, then sign in again before changing account roles." }, { status: 403, headers: { "x-auth-reason": "mfa_required" } });
   const body = await request.json().catch(() => null) as { display_name?: unknown; supplier_code?: unknown; role?: unknown } | null;
   if (!body) return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   const patch: Record<string, string | null> = {};

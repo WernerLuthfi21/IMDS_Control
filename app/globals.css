@@ -419,3 +419,4 @@ button.judgement-kpi{cursor:pointer}.judgement-kpi:hover{border-color:#a9c9b0;ba
 .mfa-secret code{padding:8px 10px;border-radius:7px;background:#f4f7f4;color:#314c39;font-size:12px;letter-spacing:1px;overflow-wrap:anywhere}
 .mfa-actions{display:flex;gap:8px}
 @media(max-width:760px){.security-password-form{grid-template-columns:1fr}.security-password-form .btn{justify-self:start}}
+.access-staff-success small{max-width:580px;padding:9px 11px;border:1px solid #f0dfb9;border-radius:8px;background:#fffbf2;color:#7b5b22;font-size:11px;line-height:1.5}

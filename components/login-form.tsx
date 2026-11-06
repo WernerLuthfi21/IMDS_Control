@@ -12,7 +12,7 @@ export function LoginForm({ next }: { next: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(false);\n  const [notice, setNotice] = useState("");
   const [request, setRequest] = useState({ fullName: "", company: "", email: "", supplierCode: "", note: "" });
   const [mfa, setMfa] = useState<{ factorId: string; challengeId: string } | null>(null);
   const [mfaCode, setMfaCode] = useState("");
@@ -102,7 +102,7 @@ export function LoginForm({ next }: { next: string }) {
       </form> : submitted ? <div className="auth-success" role="status">
         <CheckCircle2 size={25} />
         <strong>Request submitted</strong>
-        <p>Your supplier access request is now in the administrator review queue.</p>
+        <p>Your supplier access request is now in the administrator review queue.</p>{notice && <p className="auth-request-warning">{notice}</p>}
         <button type="button" className="auth-submit auth-secondary" onClick={() => { setMode("signin"); setSubmitted(false); }}>Back to sign in</button>
       </div> : <form onSubmit={submitSupplierRequest}>
         <div className="auth-field-grid">

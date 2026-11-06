@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   const elevatedRoles = ["admin", "preparer", "reviewer", "rule_author", "rule_approver"];
   const assignedRole = existing?.role && elevatedRoles.includes(existing.role) ? existing.role : accessRequest.requested_role;
   const patch: Record<string, unknown> = { role: assignedRole, display_name: accessRequest.target_name };
-  if (accessRequest.request_type === "SUPPLIER") patch.supplier_code = accessRequest.supplier_code || null;
+  if (accessRequest.request_type === "SUPPLIER" && accessRequest.supplier_code) patch.supplier_code = accessRequest.supplier_code;
   const { error: profileError } = await admin.from("profiles").update(patch).eq("id", userId);
   if (profileError) {
     await supabase.from("access_requests").update({ status: "PENDING" }).eq("id", id).eq("status", "PROCESSING");

@@ -41,3 +41,5 @@
 .auth-pass .spin,.spin{animation:auth-spin .9s linear infinite}
 @keyframes auth-spin{to{transform:rotate(360deg)}}
 @media(max-width:520px){.auth-card,.auth-panel{padding:25px 21px;border-radius:18px}.auth-field-grid{grid-template-columns:1fr;gap:0}.auth-page{padding:20px 14px}}
+
+.auth-request-warning{margin-top:12px!important;padding:9px 11px;border:1px solid #f0dfb9;border-radius:8px;background:#fffbf2;color:#7b5b22!important;font-size:11px!important;line-height:1.5}

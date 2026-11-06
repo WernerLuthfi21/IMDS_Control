@@ -9,7 +9,7 @@ async function adminContext() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
   if (profile?.role !== "admin") return { error: NextResponse.json({ error: "Admin access required." }, { status: 403 }) } as const;
   const { needsMfaStepUp } = await import("@/lib/security/admin-mfa");
-  if (await needsMfaStepUp(supabase)) return { error: NextResponse.json({ error: "Complete authenticator verification before changing approval recipients." }, { status: 403, headers: { "x-auth-reason": "mfa_required" } }) } as const;
+  if (await needsMfaStepUp(supabase)) return { error: NextResponse.json({ error: "Set up and verify an authenticator in Settings, then sign in again before changing approval recipients." }, { status: 403, headers: { "x-auth-reason": "mfa_required" } }) } as const;
   return { supabase, user: data.user } as const;
 }
 
