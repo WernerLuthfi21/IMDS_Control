@@ -236,6 +236,49 @@ export async function POST(request: NextRequest) {
       if (error) return NextResponse.json({ error: `Master data upsert failed after processing ${i} rows: ${error.message}` }, { status: 500 });
     }
 
+    let contactsImported = 0;
+    const contactSheet = workbook.getWorksheet("Contact NOT SUBMITTED YET");
+    if (contactSheet) {
+      const contactsByKey = new Map<string, Record<string, unknown>>();
+      const roleColumns = [
+        { column: 4, role: "PIC", priority: 3 },
+        { column: 6, role: "MARKETING_CC", priority: 2 },
+        { column: 7, role: "MARKETING_SPV", priority: 1 }
+      ];
+      for (let r = 4; r <= Math.min(contactSheet.rowCount, 20000); r++) {
+        const contactRow = contactSheet.getRow(r);
+        const supplierCode = text(contactRow.getCell(2).value);
+        const supplierName = text(contactRow.getCell(3).value);
+        if (!supplierCode || !supplierName) continue;
+        for (const role of roleColumns) {
+          const rawEmails = text(contactRow.getCell(role.column).value);
+          if (!rawEmails || rawEmails === "0") continue;
+          const emails = rawEmails.split(/[;,\\n]+/).map((email) => email.trim().replace(/^<|>$/g, "").toLowerCase()).filter((email) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email));
+          for (const email of emails) {
+            const key = supplierCode.toUpperCase() + "|" + email;
+            const prior = contactsByKey.get(key);
+            if (!prior || Number(prior.priority) < role.priority) {
+              contactsByKey.set(key, {
+                supplier_code: supplierCode,
+                supplier_name: supplierName,
+                email,
+                contact_role: role.role,
+                active: true,
+                created_by: auth.userId,
+                priority: role.priority
+              });
+            }
+          }
+        }
+      }
+      const contacts = [...contactsByKey.values()].map(({ priority: _priority, ...contact }) => contact);
+      for (let i = 0; i < contacts.length; i += 250) {
+        const { error: contactError } = await supabase.from("supplier_contacts").upsert(contacts.slice(i, i + 250), { onConflict: "supplier_code,email" });
+        if (contactError) return NextResponse.json({ error: `Master data was imported, but supplier contact sync failed: ${contactError.message}` }, { status: 500 });
+      }
+      contactsImported = contacts.length;
+    }
+
     const inserted = rows.filter((row) => !existing.has(String(row.master_key))).length;
     const updated = rows.length - inserted;
     const { data: batch, error: batchError } = await supabase.from("imds_master_import_batches").insert({
@@ -247,7 +290,7 @@ export async function POST(request: NextRequest) {
       updated_rows: updated,
       skipped_rows: skipped,
       uploaded_by: auth.userId,
-      metadata: { headerRow, headerCount: headers.length, mappedColumns: cols }
+      metadata: { headerRow, headerCount: headers.length, mappedColumns: cols, contactsImported }
     }).select("id").single();
     if (batchError) return NextResponse.json({ error: `Master rows were saved, but import history could not be recorded: ${batchError.message}` }, { status: 500 });
 
@@ -256,7 +299,7 @@ export async function POST(request: NextRequest) {
       action: "IMDS_MASTER_WORKBOOK_IMPORTED",
       entity_type: "imds_master_import_batch",
       entity_id: batch.id,
-      metadata: { fileName: file.name, rows: rows.length, inserted, updated, skipped, sheet: sheet.name }
+      metadata: { fileName: file.name, rows: rows.length, inserted, updated, skipped, contactsImported, sheet: sheet.name }
     });
 
     return NextResponse.json({
@@ -269,6 +312,7 @@ export async function POST(request: NextRequest) {
       inserted,
       updated,
       skipped,
+      contactsImported,
       note: "Rows missing from a later upload are retained. Existing manual edits and MD System matches are preserved."
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
