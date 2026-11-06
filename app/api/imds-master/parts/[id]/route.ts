@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 const EDITABLE_FIELDS = [
   "project", "vendor_code", "main_pic_email", "company_name", "part_name", "part_no",
-  "submission_plan", "imds_status", "imds_id_version", "part_status", "have_respond_email",
+  "submission_plan", "supplier_promise_date", "imds_status", "imds_id_version", "part_status", "have_respond_email",
   "status_update", "md_id_version", "md_status_update_date", "comment", "lpop_confirmation", "cek"
 ] as const;
 type EditableField = typeof EDITABLE_FIELDS[number];
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const update: Record<string, unknown> = { updated_by: auth.userId };
   for (const field of requested as EditableField[]) {
     const value = body[field];
-    if (field === "submission_plan" || field === "md_status_update_date") {
+    if (field === "submission_plan" || field === "supplier_promise_date" || field === "md_status_update_date") {
       if (value !== null && value !== "" && (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))) {
         return NextResponse.json({ error: `${field} must use YYYY-MM-DD.` }, { status: 422 });
       }
@@ -43,6 +43,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
   if (typeof update.part_no === "string") update.part_no_norm = normalizePartNo(update.part_no);
+  if (Object.prototype.hasOwnProperty.call(update, "supplier_promise_date")) update.supplier_promise_updated_at = new Date().toISOString();
 
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
