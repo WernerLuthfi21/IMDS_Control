@@ -75,6 +75,12 @@ function findHeader(headers: string[], aliases: string[]) {
   return index < 0 ? 0 : index + 1;
 }
 
+function findHeaderExcluding(headers: string[], aliases: string[], excludedColumn: number) {
+  const wanted = new Set(aliases.map(normHeader));
+  const index = headers.findIndex((header, i) => i + 1 !== excludedColumn && wanted.has(normHeader(header)));
+  return index < 0 ? 0 : index + 1;
+}
+
 export async function POST(request: NextRequest) {
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -127,6 +133,7 @@ export async function POST(request: NextRequest) {
     if (!headerRow || scoreRow(headerRow) < 3) return NextResponse.json({ error: "Could not identify the master header row." }, { status: 422 });
 
     const headers = Array.from({ length: Math.min(sheet.columnCount, 200) }, (_, i) => text(sheet!.getRow(headerRow).getCell(i + 1).value));
+    const imdsIdVersionColumn = findHeader(headers, ["ID / Ver", "ID/Ver", "ID / Version"]);
     const cols = {
       project: findHeader(headers, ["PROJECT", "Project / Model", "Model"]),
       vendor_code: findHeader(headers, ["VENDOR CODE", "Vendor Code"]),
@@ -136,11 +143,11 @@ export async function POST(request: NextRequest) {
       part_no: findHeader(headers, ["P/No.", "P/No", "Part No", "Part Number"]),
       submission_plan: findHeader(headers, ["SUBMISSION PLAN", "Submission Plan", "Target Date"]),
       imds_status: findHeader(headers, ["IMDS STATUS", "IMDS Status"]),
-      imds_id_version: findHeader(headers, ["ID / Ver", "ID/Ver", "ID / Version"]),
+      imds_id_version: imdsIdVersionColumn,
       part_status: findHeader(headers, ["Part Status"]),
       have_respond_email: findHeader(headers, ["Have respond email", "Have Respond Email"]),
       status_update: findHeader(headers, ["STATUS UPDATE", "Status Update"]),
-      md_id_version: findHeader(headers, ["MD ID/Ver", "MD ID / Ver"]),
+      md_id_version: findHeaderExcluding(headers, ["MD ID/Ver", "MD ID / Ver", "ID/Ver", "ID / Ver"], imdsIdVersionColumn),
       md_status_update_date: findHeader(headers, ["Date", "Status Update Date"]),
       comment: findHeader(headers, ["Comment", "Remark", "Notes"]),
       lpop_confirmation: findHeader(headers, ["LPOP Confirmation"]),
