@@ -41,6 +41,8 @@
         project: model,
         modelRaw: modelRaw,
         company: company,
+        masterId: clean(source.id),
+        supplierPromiseDate: clean(source.supplier_promise_date),
         vendorCode: clean(source.vendor_code),
         email: clean(source.main_pic_email),
         partNo: partNo,
