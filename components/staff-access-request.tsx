@@ -5,7 +5,8 @@ import { LoaderCircle, Send, CheckCircle2 } from "lucide-react";
 export function StaffAccessRequest({ requesterEmail }: { requesterEmail: string }) {
   const [form, setForm] = useState({ fullName: "", email: "", department: "", note: "" });
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);\n  const [notice, setNotice] = useState("");
+  const [done, setDone] = useState(false);
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
@@ -15,7 +16,7 @@ export function StaffAccessRequest({ requesterEmail }: { requesterEmail: string 
     else { setNotice(data.notification === "NOT_CONFIGURED" ? "Admin email notifications are not configured. The request is saved in the Admin queue." : data.notification === "PARTIAL" ? "The request is saved, but some Admin notifications could not be delivered." : ""); setDone(true); }
     setBusy(false);
   }
-  if (done) return <section className="panel"><div className="panel-body access-staff-success"><CheckCircle2 size={24}/><strong>Request submitted to Admin</strong><span>The account remains inactive until the administrator approves the request.</span><button type="button" className="btn btn-secondary" onClick={() => { setDone(false); setForm({ fullName: "", email: "", department: "", note: "" }); }}>Register another colleague</button></div></section>;
+  if (done) return <section className="panel"><div className="panel-body access-staff-success"><CheckCircle2 size={24}/><strong>Request submitted to Admin</strong><span>The account remains inactive until the administrator approves the request.</span>{notice && <small>{notice}</small>}<button type="button" className="btn btn-secondary" onClick={() => { setDone(false); setForm({ fullName: "", email: "", department: "", note: "" }); }}>Register another colleague</button></div></section>;
   return <section className="panel">
     <div className="panel-header"><div><div className="panel-title">Register a TMMIN colleague</div><div className="panel-subtitle">Submit an account request for another TMMIN staff member. The Admin team owns the final approval.</div></div></div>
     <div className="panel-body">

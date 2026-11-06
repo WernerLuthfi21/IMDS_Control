@@ -23,8 +23,9 @@ create table if not exists public.access_requests (
 );
 create index if not exists access_requests_queue_idx on public.access_requests(status, created_at desc);
 create index if not exists access_requests_requester_idx on public.access_requests(requester_id, created_at desc);
-create unique index if not exists access_requests_pending_email_idx
-  on public.access_requests(lower(target_email)) where status = 'PENDING';
+drop index if exists public.access_requests_pending_email_idx;
+create unique index access_requests_pending_email_idx
+  on public.access_requests(lower(target_email)) where status in ('PENDING','PROCESSING');
 
 create trigger access_requests_updated_at before update on public.access_requests
 for each row execute procedure public.set_updated_at();
@@ -95,7 +96,7 @@ begin
   if v_code <> '' and v_code !~ '^[A-Z0-9_-]{1,20}$' then raise exception 'INVALID_SUPPLIER_CODE'; end if;
   if (select count(*) from public.access_requests where request_ip_hash = v_ip_hash and created_at > now() - interval '1 hour') >= 5 then raise exception 'RATE_LIMITED'; end if;
   if (select count(*) from public.access_requests where target_email = v_email and created_at > now() - interval '24 hours') >= 3 then raise exception 'RATE_LIMITED'; end if;
-  if exists (select 1 from public.access_requests where target_email = v_email and status = 'PENDING') then raise exception 'REQUEST_ALREADY_PENDING'; end if;
+  if exists (select 1 from public.access_requests where target_email = v_email and status in ('PENDING','PROCESSING')) then raise exception 'REQUEST_ALREADY_PENDING'; end if;
 
   insert into public.access_requests(
     request_type, requester_name, requester_email, company_name,

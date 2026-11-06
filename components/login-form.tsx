@@ -12,7 +12,8 @@ export function LoginForm({ next }: { next: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);\n  const [notice, setNotice] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [notice, setNotice] = useState("");
   const [request, setRequest] = useState({ fullName: "", company: "", email: "", supplierCode: "", note: "" });
   const [mfa, setMfa] = useState<{ factorId: string; challengeId: string } | null>(null);
   const [mfaCode, setMfaCode] = useState("");
