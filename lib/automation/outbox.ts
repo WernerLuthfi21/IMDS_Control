@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildExcelPayload, flowConfig, postToFlow, type RegisterRow } from "./flow";
+import { buildExcelPayload, deliver, flowConfig, transportFor, type RegisterRow } from "./flow";
 
 const ROW_COLUMNS = "source_record_key,error_type_label,delivery_part_no,supplier_code,assigned_person,starting_date,judgement_procedure,judge,ok_comment,imds_reject_comment,km_judge,km_comment,last_change_date";
 const MAX_ATTEMPTS = 5;
@@ -15,7 +15,7 @@ type Job = { id: string; kind: "EXCEL_UPSERT" | "SUPPLIER_EMAIL"; item_id: strin
 /** Send queued jobs strictly one after another. Safe to call concurrently: each job is claimed first. */
 export async function dispatch(supabase: SupabaseClient, opts: { limit?: number; kind?: Job["kind"]; followupId?: string; fetchImpl?: typeof fetch } = {}) {
   const cfg = flowConfig();
-  const summary = { sent: 0, failed: 0, skipped: 0, configured: { excel: !!cfg.excelUrl, email: !!cfg.emailUrl } };
+  const summary = { sent: 0, failed: 0, skipped: 0, configured: { excel: !!transportFor("EXCEL_UPSERT", cfg), email: !!transportFor("SUPPLIER_EMAIL", cfg) } };
   // A crashed run can leave rows in SENDING; release them after two minutes so they are retried.
   await supabase.from("sync_outbox").update({ status: "FAILED", last_error: "interrupted" }).eq("status", "SENDING").lt("updated_at", new Date(Date.now() - 120000).toISOString());
   let q = supabase.from("sync_outbox").select("id,kind,item_id,followup_id,attempts").in("status", ["PENDING", "FAILED"]).lt("attempts", MAX_ATTEMPTS).order("created_at", { ascending: true }).limit(opts.limit ?? 25);
@@ -24,27 +24,28 @@ export async function dispatch(supabase: SupabaseClient, opts: { limit?: number;
   const { data: jobs } = await q;
   const done = new Set<string>(); // coalesce: several saves of one item need only the newest state
   for (const job of (jobs || []) as Job[]) {
-    const url = job.kind === "EXCEL_UPSERT" ? cfg.excelUrl : cfg.emailUrl;
-    if (!url) { summary.skipped++; continue; }
+    const mode = transportFor(job.kind, cfg);
+    if (!mode) { summary.skipped++; continue; }
     const { data: claimed } = await supabase.from("sync_outbox").update({ status: "SENDING", attempts: job.attempts + 1 }).eq("id", job.id).in("status", ["PENDING", "FAILED"]).select("id");
     if (!claimed?.length) continue;
-    let result: { ok: boolean; error?: string };
+    let result: { ok: boolean; error?: string; handedOff?: boolean };
     if (job.kind === "EXCEL_UPSERT") {
       if (job.item_id && done.has(job.item_id)) { await supabase.from("sync_outbox").update({ status: "SENT", sent_at: new Date().toISOString(), last_error: "coalesced" }).eq("id", job.id); summary.sent++; continue; }
       const { data: row } = await supabase.from("gcat_error_items").select(ROW_COLUMNS).eq("id", job.item_id).maybeSingle();
       if (!row) result = { ok: false, error: "Register row not found" };
-      else { result = await postToFlow(url, cfg.secret, { type: "excel_upsert", ...buildExcelPayload(row as unknown as RegisterRow) }, opts.fetchImpl); if (result.ok && job.item_id) done.add(job.item_id); }
+      else { result = await deliver(job.kind, cfg, { type: "excel_upsert", ...buildExcelPayload(row as unknown as RegisterRow) }, opts.fetchImpl); if (result.ok && job.item_id) done.add(job.item_id); }
     } else {
       const { data: f } = await supabase.from("supplier_followups").select("id,supplier_code,recipient_email,cc_emails,subject,message_body,status").eq("id", job.followup_id).maybeSingle();
       if (!f) result = { ok: false, error: "Follow-up not found" };
       else if (f.status === "SENT" || f.status === "CANCELLED") { await supabase.from("sync_outbox").update({ status: "SENT", last_error: "already " + f.status }).eq("id", job.id); continue; }
       else {
-        result = await postToFlow(url, cfg.secret, { type: "supplier_email", followupId: f.id, to: f.recipient_email, cc: (f.cc_emails || []).join(";"), subject: f.subject, body: f.message_body }, opts.fetchImpl);
-        // "SENT" means the flow accepted the request (HTTP 2xx), not that the supplier read it.
-        if (result.ok) await supabase.from("supplier_followups").update({ status: "SENT", sent_at: new Date().toISOString() }).eq("id", f.id);
+        result = await deliver(job.kind, cfg, { type: "supplier_email", followupId: f.id, to: f.recipient_email, cc: (f.cc_emails || []).join(";"), subject: f.subject, body: f.message_body }, opts.fetchImpl);
+        // HTTP transport: "SENT" = flow answered 2xx. Mail transport: only handed to the mailbox, so the follow-up stays COMPOSED
+        // (the outbox row records the hand-off) because Outlook has not been confirmed to send it.
+        if (result.ok && !result.handedOff) await supabase.from("supplier_followups").update({ status: "SENT", sent_at: new Date().toISOString() }).eq("id", f.id);
       }
     }
-    if (result.ok) { await supabase.from("sync_outbox").update({ status: "SENT", sent_at: new Date().toISOString(), last_error: null }).eq("id", job.id); summary.sent++; }
+    if (result.ok) { await supabase.from("sync_outbox").update({ status: "SENT", sent_at: new Date().toISOString(), last_error: result.handedOff ? "handed_off_via_mail" : null }).eq("id", job.id); summary.sent++; }
     else { await supabase.from("sync_outbox").update({ status: "FAILED", last_error: result.error ?? "failed" }).eq("id", job.id); summary.failed++; }
   }
   return summary;
