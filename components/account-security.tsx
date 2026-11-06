@@ -20,7 +20,7 @@ export function AccountSecurity() {
     const { data } = await supabase.auth.mfa.listFactors();
     setFactors((data?.totp || []) as TotpFactor[]);
   }
-  useEffect(() => { void refreshFactors(); }, []);
+  useEffect(() => { if (supabase) void supabase.auth.mfa.listFactors().then(({ data }) => setFactors((data?.totp || []) as TotpFactor[])); }, [supabase]);
   const verified = factors.filter((factor) => factor.status === "verified");
 
   async function changePassword(e: React.FormEvent) {

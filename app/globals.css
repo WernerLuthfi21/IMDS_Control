@@ -395,3 +395,27 @@ button.judgement-kpi{cursor:pointer}.judgement-kpi:hover{border-color:#a9c9b0;ba
 .access-staff-success strong{color:#25392c;font-size:15px}
 .access-staff-success span{color:#79867c;font-size:12px}
 @media(max-width:680px){.access-recipient-form{grid-template-columns:1fr}.access-request-top{display:block}.access-request-top time{display:block;margin-top:10px}.access-request-actions{flex-wrap:wrap}}
+
+/* MFA and account security */
+.auth-mfa-prompt{display:grid;gap:5px;padding:13px 14px;margin-bottom:18px;border:1px solid #dce9de;border-radius:10px;background:#f5f9f5}
+.auth-mfa-prompt strong{font-size:13px;color:#274632}
+.auth-mfa-prompt span{font-size:11px;color:#738177;line-height:1.5}
+.auth-cancel-mfa{display:block;margin:13px auto 0;border:0;background:transparent;color:#748176;font-size:11px;cursor:pointer}
+.account-security{margin-top:16px}
+.security-block+.security-block{margin-top:22px;padding-top:20px;border-top:1px solid #edf1ed}
+.security-block-head{display:flex;align-items:flex-start;gap:10px;color:#346146}
+.security-block-head>div{display:grid;gap:4px}
+.security-block-head strong{color:#314438;font-size:13px}
+.security-block-head span{max-width:580px;color:#879289;font-size:11px;line-height:1.5}
+.security-password-form{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:10px;margin-top:14px}
+.security-password-form .form-field{margin:0}
+.security-factor{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:13px;padding:11px 12px;border:1px solid #e4ece5;border-radius:9px;color:#316443;font-size:12px}
+.security-factor span{display:flex;align-items:center;gap:7px}
+.mfa-setup{display:grid;justify-items:start;gap:12px;margin-top:14px}
+.mfa-setup p{max-width:580px;margin:0;color:#7b887e;font-size:11px;line-height:1.55}
+.mfa-qr{width:178px;height:178px;object-fit:contain;border:1px solid #e4eae4;border-radius:10px;padding:8px;background:white}
+.mfa-secret{display:grid;gap:5px}
+.mfa-secret span{color:#8a958d;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.mfa-secret code{padding:8px 10px;border-radius:7px;background:#f4f7f4;color:#314c39;font-size:12px;letter-spacing:1px;overflow-wrap:anywhere}
+.mfa-actions{display:flex;gap:8px}
+@media(max-width:760px){.security-password-form{grid-template-columns:1fr}.security-password-form .btn{justify-self:start}}

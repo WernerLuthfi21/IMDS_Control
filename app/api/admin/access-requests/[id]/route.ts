@@ -45,7 +45,9 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     userId = invited.user.id;
   }
 
-  const patch: Record<string, unknown> = { role: accessRequest.requested_role, display_name: accessRequest.target_name };
+  const elevatedRoles = ["admin", "preparer", "reviewer", "rule_author", "rule_approver"];
+  const assignedRole = existing?.role && elevatedRoles.includes(existing.role) ? existing.role : accessRequest.requested_role;
+  const patch: Record<string, unknown> = { role: assignedRole, display_name: accessRequest.target_name };
   if (accessRequest.request_type === "SUPPLIER") patch.supplier_code = accessRequest.supplier_code || null;
   const { error: profileError } = await admin.from("profiles").update(patch).eq("id", userId);
   if (profileError) return NextResponse.json({ error: "The account invitation was sent, but the profile role update failed. Admin intervention is required." }, { status: 500 });
@@ -56,6 +58,6 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     provisioned_user_id: userId
   }).eq("id", id).eq("status", "PENDING");
   if (reviewError) return NextResponse.json({ error: "Account was provisioned but the request record could not be finalized. Refresh and reconcile this request." }, { status: 500 });
-  await supabase.from("audit_events").insert({ actor_id: auth.user.id, action: "ACCESS_REQUEST_APPROVED", entity_type: "access_request", entity_id: id, metadata: { provisioned_user_id: userId, assigned_role: accessRequest.requested_role } });
+  await supabase.from("audit_events").insert({ actor_id: auth.user.id, action: "ACCESS_REQUEST_APPROVED", entity_type: "access_request", entity_id: id, metadata: { provisioned_user_id: userId, assigned_role: assignedRole } });
   return NextResponse.json({ status: "APPROVED", userId, inviteSent: !existing?.id });
 }

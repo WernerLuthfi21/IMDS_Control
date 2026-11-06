@@ -14,6 +14,8 @@ export function LoginForm({ next }: { next: string }) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [request, setRequest] = useState({ fullName: "", company: "", email: "", supplierCode: "", note: "" });
+  const [mfa, setMfa] = useState<{ factorId: string; challengeId: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -27,6 +29,24 @@ export function LoginForm({ next }: { next: string }) {
       setLoading(false);
       return;
     }
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
+      const { data: factors, error: factorError } = await supabase.auth.mfa.listFactors();
+      const factor = factors?.totp?.find((item) => item.status === "verified");
+      if (factorError || !factor) { await supabase.auth.signOut(); setError("Authenticator verification is required but no verified factor is available. Contact the administrator."); setLoading(false); return; }
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+      if (challengeError || !challenge) { await supabase.auth.signOut(); setError("Could not start authenticator verification. Please try again."); setLoading(false); return; }
+      setMfa({ factorId: factor.id, challengeId: challenge.id }); setLoading(false); return;
+    }
+    window.location.assign(next);
+  }
+
+  async function verifyAuthenticator(e: React.FormEvent) {
+    e.preventDefault(); setLoading(true); setError("");
+    const supabase = createClient();
+    if (!supabase || !mfa) { setError("Authenticator verification has expired. Sign in again."); setLoading(false); return; }
+    const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: mfa.factorId, challengeId: mfa.challengeId, code: mfaCode.replace(/\s/g, "") });
+    if (verifyError) { setError("The authenticator code is incorrect or expired."); setLoading(false); return; }
     window.location.assign(next);
   }
 
@@ -64,7 +84,13 @@ export function LoginForm({ next }: { next: string }) {
         <button type="button" role="tab" aria-selected={mode === "supplier"} className={mode === "supplier" ? "on" : ""} onClick={() => changeMode("supplier")}>Request access</button>
       </div>
 
-      {mode === "signin" ? <form onSubmit={signIn}>
+      {mode === "signin" ? mfa ? <form onSubmit={verifyAuthenticator}>
+        <div className="auth-mfa-prompt"><strong>Verify your identity</strong><span>Enter the current 6-digit code from your authenticator app.</span></div>
+        <label className="auth-field"><span>Authenticator code</span><input required autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} /></label>
+        {error && <div className="auth-error" role="alert">{error}</div>}
+        <button className="auth-submit" disabled={loading || mfaCode.trim().length < 6}>{loading ? <LoaderCircle className="spin" size={16} /> : <LogIn size={16} />} {loading ? "Verifying…" : "Verify and continue"}</button>
+        <button type="button" className="auth-cancel-mfa" onClick={async () => { const supabase = createClient(); await supabase?.auth.signOut(); setMfa(null); setMfaCode(""); setPassword(""); setError(""); }}>Cancel sign in</button>
+      </form> : <form onSubmit={signIn}>
         <label className="auth-field"><span>Work email</span>
           <input type="email" required autoComplete="username" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" /></label>
         <label className="auth-field"><span>Password</span>
