@@ -3,7 +3,7 @@ import { buildExcelPayload, flowConfig, postToFlow, renderFollowup } from "@/lib
 
 describe("power automate bridge", () => {
   it("only accepts https flow URLs", () => {
-    expect(flowConfig({ POWER_AUTOMATE_EXCEL_URL: "http://x", POWER_AUTOMATE_EMAIL_URL: "https://prod.logic.azure.com/a?sig=1", POWER_AUTOMATE_SECRET: " s " })).toEqual({ excelUrl: null, emailUrl: "https://prod.logic.azure.com/a?sig=1", secret: "s" });
+    expect(flowConfig({ POWER_AUTOMATE_EXCEL_URL: "http://x", POWER_AUTOMATE_EMAIL_URL: "https://prod.logic.azure.com/a?sig=1", POWER_AUTOMATE_SECRET: " s " })).toEqual({ excelUrl: null, emailUrl: "https://prod.logic.azure.com/a?sig=1", secret: "s", mail: null });
     expect(flowConfig({}).excelUrl).toBeNull();
   });
   it("maps AO–AW to workbook headers keyed by code", () => {
@@ -21,4 +21,16 @@ describe("power automate bridge", () => {
     expect(await postToFlow("https://x", null, {}, f as unknown as typeof fetch)).toMatchObject({ ok: false, status: 500 });
     expect(await postToFlow("https://x", null, {}, f as unknown as typeof fetch)).toMatchObject({ ok: false, status: 0 });
   });
+});
+
+import { mailSubject, transportFor } from "@/lib/automation/flow";
+describe("mail transport (no premium licence)", () => {
+  const env = { FLOW_SMTP_HOST: "smtp.gmail.com", FLOW_SMTP_USER: "a@gmail.com", FLOW_SMTP_PASS: "pw", FLOW_INBOX_ADDRESS: "me@corp.com", POWER_AUTOMATE_SECRET: "s3" };
+  it("falls back to mail only when SMTP, inbox and secret are all set", () => {
+    expect(transportFor("EXCEL_UPSERT", flowConfig(env))).toBe("mail");
+    expect(transportFor("EXCEL_UPSERT", flowConfig({ ...env, POWER_AUTOMATE_SECRET: "" }))).toBeNull();
+    expect(transportFor("SUPPLIER_EMAIL", flowConfig({ ...env, POWER_AUTOMATE_EMAIL_URL: "https://x.logic.azure.com/a" }))).toBe("http");
+    expect(flowConfig(env).mail?.port).toBe(465);
+  });
+  it("puts the secret in the subject the flow filters on", () => { expect(mailSubject("s3", "excel_upsert")).toBe("IMDS-SYNC|s3|excel_upsert"); });
 });

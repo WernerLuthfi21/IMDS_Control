@@ -39,3 +39,31 @@ Migration `20261106000300_sync_outbox.sql` (additive). Check remote migration ve
 
 ## Not covered
 No SharePoint read-back of manual Excel edits through this bridge (the existing read-only fetch remains). Direct G-CATS / MD System integration is not implemented.
+
+
+---
+# Option B — NO Premium licence (mail transport, standard connectors only)
+Use this when "When an HTTP request is received" is unavailable. Status: **NOT TESTED** against a real tenant.
+
+Why not call Excel from an Office Script directly? Microsoft documents that `fetch` fails when a script runs through Power Automate ("fetch is not defined"), so a script cannot pull from this app on a schedule. Scripts can only be fed JSON by the flow.
+
+## How it works
+App → SMTP → a command e-mail in YOUR Outlook inbox → flow trigger **When a new email arrives (V3)** (standard) → Excel Online **Update a row** (standard) or Outlook **Send an email (V2)** (standard). Typical delay: seconds to a minute or two.
+
+## App settings (Vercel, server-only)
+`FLOW_SMTP_HOST`, `FLOW_SMTP_PORT` (465), `FLOW_SMTP_USER`, `FLOW_SMTP_PASS`, `FLOW_SMTP_FROM`, `FLOW_INBOX_ADDRESS` (your Outlook address), `POWER_AUTOMATE_SECRET`. Leave `POWER_AUTOMATE_*_URL` empty. For Gmail use a dedicated sender account with 2-step verification and an **app password** (not the normal password). Do not use a personal mailbox you care about; create a throwaway sender.
+
+## Flow A – Excel master
+Trigger: *When a new email arrives (V3)*, Folder Inbox, **From** = the sender address, **Subject Filter** = `IMDS-SYNC|<your secret>|excel_upsert`.
+1. *Parse JSON* on the e-mail body text, schema as in Flow 1 above (`code`, `Assigned person`, …).
+2. Excel Online → *Update a row* (Key Column `code`, Key Value `code`), map columns.
+3. (Optional) *Mark as read*.
+Body arrives as plain text JSON; if Outlook wraps it in HTML, use `body` → expression `triggerOutputs()?['body/bodyPreview']` or an HTML-to-text step first.
+
+## Flow B – supplier e-mail
+Trigger as above, Subject Filter `IMDS-SYNC|<your secret>|supplier_email`. *Parse JSON* (`to`, `cc`, `subject`, `body`) → Outlook *Send an email (V2)*.
+
+## Honest status rules
+- Outbox "SENT" with `handed_off_via_mail` = SMTP accepted it. The app **cannot know** whether the flow ran or Outlook sent the supplier mail. The follow-up stays `COMPOSED`, and the Follow-up page shows it as already handed off (so it is not re-sent).
+- Check the flow's run history in Power Automate to confirm. A "stuck" Excel update shows there, not here.
+- Risk: anyone who can both spoof the sender and guess the subject secret could trigger the flow. Keep the secret long and the From filter on.
