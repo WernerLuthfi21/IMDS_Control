@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Activity, ArrowUpRight, ClipboardList, FileClock, Inbox, LayoutGrid, Mail, Menu, Search, Settings2, ShieldCheck, X } from "lucide-react";
+import { Activity, ArrowUpRight, ClipboardList, FileClock, Inbox, LayoutGrid, Mail, Menu, Search, Settings2, ShieldCheck, Users, X } from "lucide-react";
 import { SignOutButton } from "@/components/sign-out-button";
 
 const navigation = [
@@ -12,6 +12,8 @@ const navigation = [
   { label: "Supplier Follow-up", href: "/follow-up", icon: Mail, group: "SUPPLIER" },
   { label: "Substance References", href: "/substances", icon: Activity, group: "REFERENCE" },
   { label: "Judgement Rules", href: "/rules", icon: ShieldCheck, group: "REFERENCE" },
+  { label: "Request TMMIN account", href: "/team-access-request", icon: Users, group: "ADMIN" },
+  { label: "Access management", href: "/access-management", icon: ShieldCheck, group: "ADMIN" },
   { label: "Settings", href: "/settings", icon: Settings2, group: "ADMIN" }
 ];
 
@@ -20,10 +22,10 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const visibleNavigation = role === "supplier" ? navigation.filter((item) => item.href === "/supplier-precheck").map((item) => ({ ...item, label: "Self-check" })) : navigation;
+  const visibleNavigation = role === "supplier" ? navigation.filter((item) => item.href === "/supplier-precheck").map((item) => ({ ...item, label: "Self-check" })) : role === "admin" ? navigation : navigation.filter((item) => item.href !== "/access-management");
   const active = visibleNavigation.find((item) => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href + "/"))) || visibleNavigation.find((item) => item.href === "/judgement") || visibleNavigation[0];
   function searchSubmit(e: React.FormEvent) { e.preventDefault(); const q = query.trim(); if (q) router.push(`/judgement?q=${encodeURIComponent(q)}`); }
-  if (pathname === "/login") return <div className="auth-shell">{children}</div>;
+  if (["/login", "/forgot-password", "/reset-password"].includes(pathname)) return <div className="auth-shell">{children}</div>;
   if (pathname === "/workspace") return <div className="workspace-selector-shell">{children}</div>;
   return <div className="app-frame">
     {mobileOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)}/>}

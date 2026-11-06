@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
   const user = claimsData?.claims?.sub ? claimsData.claims : null;
 
   // API handlers return JSON 401 responses; do not redirect fetch clients to the login page.
-  if (!user && !isApi && pathname !== "/login" && !isSetupPage) {
+  if (!user && !isApi && !["/login", "/forgot-password", "/reset-password"].includes(pathname) && !isSetupPage) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
