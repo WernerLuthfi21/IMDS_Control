@@ -30,6 +30,7 @@ type MasterRow = {
   part_name: string | null;
   part_no: string | null;
   submission_plan: string | null;
+  supplier_promise_date: string | null;
   imds_status: string | null;
   imds_id_version: string | null;
   part_status: string | null;
@@ -62,7 +63,8 @@ type ImportSummary = {
 
 const EDIT_FIELDS = [
   { key: "main_pic_email", label: "Main PIC Email", type: "email" },
-  { key: "submission_plan", label: "Submission Plan", type: "date" },
+  { key: "submission_plan", label: "Submission Plan (Master)", type: "date" },
+  { key: "supplier_promise_date", label: "Supplier Promise Date", type: "date" },
   { key: "imds_status", label: "IMDS Status", type: "text" },
   { key: "imds_id_version", label: "ID / Ver", type: "text" },
   { key: "part_status", label: "Part Status", type: "text" },
@@ -305,14 +307,14 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1080, fontSize: 13 }}>
             <thead>
               <tr style={{ textAlign: "left", background: "var(--surface-2, #faf8fd)" }}>
-                {["Project", "Supplier", "Vendor", "P/No.", "Part Name", "Submission Plan", "IMDS Status", "Part Status", "MD System Status", "MD ID / Ver", "Updated", "Action"].map((title) => (
+                {["Project", "Supplier", "Vendor", "P/No.", "Part Name", "Submission Plan", "Supplier Promise", "IMDS Status", "Part Status", "MD System Status", "MD ID / Ver", "Updated", "Action"].map((title) => (
                   <th key={title} scope="col" style={{ padding: "11px 9px", borderBottom: "1px solid var(--line, #eee)", whiteSpace: "nowrap" }}>{title}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={12} style={{ padding: 24, textAlign: "center", color: "var(--muted, #746b80)" }}>Loading shared master…</td></tr>
+                <tr><td colSpan={13} style={{ padding: 24, textAlign: "center", color: "var(--muted, #746b80)" }}>Loading shared master…</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={12} style={{ padding: 24, textAlign: "center", color: "var(--muted, #746b80)" }}>No master rows found. Upload the IMDS Remaining workbook to initialise the shared master.</td></tr>
               ) : rows.map((row) => {
@@ -326,6 +328,7 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
                     <td style={{ padding: "10px 9px", fontFamily: "var(--font-mono, monospace)", whiteSpace: "nowrap" }}>{row.part_no || "—"}</td>
                     <td style={{ padding: "10px 9px", minWidth: 180 }}>{row.part_name || "—"}</td>
                     <td style={{ padding: "10px 9px", whiteSpace: "nowrap" }}>{showDate(row.submission_plan)}</td>
+                    <td style={{ padding: "10px 9px", whiteSpace: "nowrap" }}>{showDate(row.supplier_promise_date)}</td>
                     <td style={{ padding: "10px 9px" }}>{row.imds_status || "—"}</td>
                     <td style={{ padding: "10px 9px" }}>{row.part_status || "—"}</td>
                     <td style={{ padding: "10px 9px", minWidth: 130 }}>
