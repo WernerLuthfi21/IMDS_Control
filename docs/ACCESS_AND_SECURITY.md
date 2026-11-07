@@ -12,7 +12,7 @@ Status: implemented in code; **NOT TESTED against the real Supabase project** (s
 | "No email? Ask an administrator" | Anyone on the forgot screen | `password_help` request; admin clicks **Send reset** |
 | Approval PIC list | Admin (Settings → Approval PIC) | Who receives the "request waiting" e-mail; empty list = all admins |
 
-Supplier password: chosen at request time, stored only as a Supabase Auth hash. On approval the ban is lifted and a confirmation email is sent; the supplier must click it (proves the email is theirs) before signing in. Rejecting deletes the banned login.
+Supplier password: chosen at request time, stored only as a Supabase Auth hash. On approval the ban is lifted and the admin vouches for the email, so the supplier can sign in immediately (check the “contact on file” badge before approving). Strict mode: set `REQUIRE_EMAIL_CONFIRMATION=1` and configure Auth SMTP; then the supplier must click a confirmation email first. Rejecting deletes the banned login.
 
 Rules enforced in the server: suppliers can only be granted `supplier` (+ valid supplier code); a request you submitted must be approved by a different admin (unless you are the only admin); every decision writes `audit_events`.
 
