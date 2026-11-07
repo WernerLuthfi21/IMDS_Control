@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Circle, Download, Mail, RefreshCw, Send } from "lucide-react";
-import { renderFollowup } from "@/lib/automation/flow";
+import { renderFollowup } from "@/lib/automation/render";
 
 type Status = { configured: { excel: boolean; email: boolean; secret: boolean }; transport?: { excel: string | null; email: string | null }; counts: Record<string, number>; lastError: string | null; failed?: { id: string; kind: string; error: string | null; attempts: number; at: string }[] };
 type Cand = { id: string; source_record_key: string; delivery_part_no: string | null; supplier_code: string; error_type_label: string; hasContact: boolean; followup: string | null };

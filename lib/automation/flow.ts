@@ -1,5 +1,5 @@
 // Pure helpers for the Power Automate bridge (no I/O besides the injected fetch).
-import emailTemplates from "@/data/followup-templates.json";
+export { renderFollowup } from "./render";
 
 export type MailConfig = { host: string; port: number; user: string; pass: string; from: string; inbox: string };
 export type FlowConfig = { excelUrl: string | null; emailUrl: string | null; secret: string | null; mail: MailConfig | null };
@@ -36,15 +36,6 @@ export function buildExcelPayload(row: RegisterRow) {
     "KM Comment": row.km_comment ?? "",
     "Last Change Date": row.last_change_date ?? "",
   };
-}
-
-export function renderFollowup(opts: { errorType: string; supplierName?: string | null; supplierCode: string; partNo: string }) {
-  const greeting = opts.supplierName ? `Dear ${opts.supplierName} team,` : "Dear Supplier,";
-  const n = opts.errorType.toLowerCase();
-  const list = emailTemplates.templates;
-  const body = (list.find((t) => t.labels.some((l) => n.includes(l))) || list[list.length - 1]).body
-    .replaceAll("{{greeting}}", greeting).replaceAll("{{supplierCode}}", opts.supplierCode).replaceAll("{{partNo}}", opts.partNo).replaceAll("{{errorType}}", opts.errorType);
-  return { subject: `IMDS confirmation required · ${opts.partNo} · ${opts.errorType}`, body };
 }
 
 export type PostResult = { ok: boolean; status: number; error?: string; handedOff?: boolean };
