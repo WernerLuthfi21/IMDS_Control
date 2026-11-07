@@ -11,13 +11,25 @@ function value(row: MasterRecord, key: string): string {
   return current === null || current === undefined ? "" : String(current);
 }
 
+function printable(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map(printable).filter(Boolean).join("; ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function extraHeader(key: string): string {
+  return key.replace(/\s+\[col\s+\d+\]$/i, "").trim();
+}
+
 export function toPartMasterExcelRow(row: MasterRecord) {
   const md = Array.isArray(row.md_system_records)
     ? (row.md_system_records as MasterRecord[])[0] || {}
     : {};
-  const sourceRow = Number(row.source_row || 0);
-  return {
-    "No.": sourceRow > 6 ? sourceRow - 6 : "",
+  const extra = (row.extra_fields && typeof row.extra_fields === "object" ? row.extra_fields : {}) as MasterRecord;
+  const noValue = extra["No. [col 1]"] ?? extra["No."] ?? "";
+  const output: Record<string, unknown> = {
+    "No.": printable(noValue) || (Number(row.source_row || 0) > 6 ? Number(row.source_row) - 6 : ""),
     PROJECT: value(row, "project"),
     "VENDOR CODE": value(row, "vendor_code"),
     "MAIN PIC EMAIL": value(row, "main_pic_email"),
@@ -25,6 +37,7 @@ export function toPartMasterExcelRow(row: MasterRecord) {
     "PART NAME": value(row, "part_name"),
     "P/No.": value(row, "part_no"),
     "SUBMISSION PLAN": value(row, "submission_plan"),
+    "Supplier Promise Date": value(row, "supplier_promise_date"),
     "IMDS STATUS": value(row, "imds_status"),
     "ID / Ver": value(row, "imds_id_version"),
     "Part Status": value(row, "part_status"),
@@ -36,11 +49,17 @@ export function toPartMasterExcelRow(row: MasterRecord) {
     "LPOP Confirmation": value(row, "lpop_confirmation"),
     CEK: value(row, "cek"),
     MasterKey: value(row, "master_key"),
-    "Supplier Promise Date": value(row, "supplier_promise_date"),
   };
+
+  for (const [sourceKey, sourceValue] of Object.entries(extra)) {
+    const header = extraHeader(sourceKey);
+    if (!header || Object.prototype.hasOwnProperty.call(output, header)) continue;
+    output[header] = printable(sourceValue);
+  }
+  return output;
 }
 
-/** Add durable batches before calling Power Automate. Failed or unconfigured deliveries remain visible and retryable. */
+/** Add durable batches before calling Power Automate. Failed or unconfigured deliveries remain retryable. */
 export async function enqueuePartMasterRows(
   supabase: SupabaseClient,
   actorId: string,
@@ -82,6 +101,12 @@ export async function dispatchPartMasterOutbox(
   if (!url || !/^https:\/\//i.test(url)) {
     return { configured: false, sent: 0, failed: 0, pending: pendingCount || 0, error: "POWER_AUTOMATE_TRACKER_URL is not configured." };
   }
+
+  // Release interrupted claims from requests that did not finish.
+  await supabase.from("imds_tracker_outbox")
+    .update({ status: "FAILED", last_error: "Previous send was interrupted; retrying." })
+    .eq("status", "SENDING")
+    .lt("updated_at", new Date(Date.now() - 120000).toISOString());
 
   const { data: jobs, error: jobsError } = await supabase
     .from("imds_tracker_outbox")
