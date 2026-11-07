@@ -103,8 +103,8 @@ export async function dispatchPartMasterOutbox(
     .in("status", ["PENDING", "FAILED"])
     .lt("attempts", MAX_ATTEMPTS);
   if (countError) throw new Error(`Could not read master sync queue: ${countError.message}`);
-  if (!url || !/^https:\/\//i.test(url)) {
-    return { configured: false, sent: 0, failed: 0, pending: pendingCount || 0, error: "POWER_AUTOMATE_TRACKER_URL is not configured." };
+  if (!url || !/^https:\/\//i.test(url) || !secret) {
+    return { configured: false, sent: 0, failed: 0, pending: pendingCount || 0, error: "POWER_AUTOMATE_TRACKER_URL and POWER_AUTOMATE_SECRET must both be configured." };
   }
 
   // Release interrupted claims from requests that did not finish.
