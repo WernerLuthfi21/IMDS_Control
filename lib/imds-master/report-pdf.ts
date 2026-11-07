@@ -5,6 +5,10 @@ type ReportPart = {
   imds_status?: string | null;
   submission_plan?: string | null;
   imds_id_version?: string | null;
+  status_update?: string | null;
+  md_id_version?: string | null;
+  md_status_update_date?: string | null;
+  comment?: string | null;
 };
 
 const ascii = (value: unknown) => String(value ?? "").normalize("NFKD").replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
@@ -45,6 +49,8 @@ export function buildSupplierReportPdf(supplierName: string, supplierCode: strin
     add(`${index + 1}. ${part.part_no || "-"} | ${part.project || "-"} | ${part.imds_status || "-"}`, 9, 14);
     add(`Part name: ${part.part_name || "-"}`, 8, 12);
     add(`Current IMDS ID / Version: ${part.imds_id_version || "-"} | Submission plan: ${part.submission_plan || "Not provided"}`, 8, 12);
+    add(`MD System: ${part.status_update || "-"} | MD ID / Version: ${part.md_id_version || "-"} | Last changed: ${part.md_status_update_date || "-"}`, 8, 12);
+    if (part.comment) add(`MD System comment: ${part.comment}`, 8, 12);
     add(" ", 8, 8);
   });
   add("Please reply with the confirmed status and target submission date for each outstanding part.", 9, 14);
