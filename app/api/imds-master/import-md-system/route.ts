@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { enqueuePartMasterRows, dispatchPartMasterOutbox } from "@/lib/imds-master/outbox";
+import { fixedPartNo, planCandidatePatch, type MdItem } from "@/lib/imds-master/md-current";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,6 +23,9 @@ type MasterCandidate = {
   md_id_version: string | null;
   md_status_update_date: string | null;
   comment: string | null;
+  imds_status: string | null;
+  imds_id_version: string | null;
+  extra_fields: Record<string, unknown> | null;
 };
 
 function plain(value: unknown): string | number | boolean | null {
@@ -194,6 +198,18 @@ function dateISO(value: unknown): string | null {
   return null;
 }
 
+// Full wall-clock timestamp: a cancelled v1 and a live v2 can share a day, so day precision is not enough to rank them.
+function dateTimeISO(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  const v = plain(value);
+  if (typeof v === "number" && v > 20000 && v < 80000) return new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86400000)).toISOString();
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v.trim())) {
+    const t = Date.parse(v.trim());
+    return Number.isNaN(t) ? null : new Date(t).toISOString();
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -285,6 +301,7 @@ export async function POST(request: NextRequest) {
         status: getText(cols.status),
         reasonForDenial: getText(cols.reason),
         lastStatusChanged: getDate(cols.changed),
+        lastStatusChangedAt: cols.changed ? dateTimeISO(row.getCell(cols.changed).value) : null,
         fromCompany,
         mdSupplierCode: supplierCode,
         legacySparePart: getText(cols.legacySparePart),
@@ -301,11 +318,11 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.length) return NextResponse.json({ error: "No usable MD System result rows were found." }, { status: 422 });
 
-    const partNumbers = [...new Set(parsed.map((item) => item.partNoNorm))];
+    const partNumbers = [...new Set(parsed.flatMap((item) => [item.partNoNorm, fixedPartNo(item.partNoNorm)]))];
     const byPartNo = new Map<string, MasterCandidate[]>();
     for (let index = 0; index < partNumbers.length; index += 300) {
       const { data, error } = await supabase.from("imds_master_parts")
-        .select("id,master_key,part_no_norm,vendor_code,company_name,md_system_records,manual_overrides,status_update,md_id_version,md_status_update_date,comment")
+        .select("id,master_key,part_no_norm,vendor_code,company_name,md_system_records,manual_overrides,status_update,md_id_version,md_status_update_date,comment,imds_status,imds_id_version,extra_fields")
         .in("part_no_norm", partNumbers.slice(index, index + 300));
       if (error) return NextResponse.json({ error: `Could not match against the shared master: ${error.message}` }, { status: 500 });
       for (const candidate of (data || []) as MasterCandidate[]) {
@@ -318,14 +335,15 @@ export async function POST(request: NextRequest) {
 
     const importTime = new Date().toISOString();
     const searchRows: Record<string, unknown>[] = [];
-    const updates = new Map<string, { candidate: MasterCandidate; records: Record<string, unknown>[]; patch: Record<string, unknown> }>();
+    const updates = new Map<string, { candidate: MasterCandidate; records: Record<string, unknown>[]; items: MdItem[]; patch: Record<string, unknown> }>();
     let matchedSourceRows = 0;
     let ambiguousRows = 0;
     let unmatchedRows = 0;
     const unmatchedSamples: Array<Record<string, unknown>> = [];
 
     for (const item of parsed) {
-      const candidates = byPartNo.get(item.partNoNorm) || [];
+      // exact normalised part number first; fall back to the 10-char part number for "82172KK010D"-style design-change suffixes
+      const candidates = byPartNo.get(item.partNoNorm) || (item.partNoNorm.length > 10 ? byPartNo.get(fixedPartNo(item.partNoNorm)) : undefined) || [];
       const chosen = chooseCandidates(candidates, item.supplierCode, item.fromCompany);
       const matchStatus = chosen.status;
       if (matchStatus === "MATCHED") {
@@ -346,17 +364,17 @@ export async function POST(request: NextRequest) {
             ...priorRecords.filter((old) => !(normalizePartNo(String(old.partNo || "")) === item.partNoNorm
               && String(old.mdSupplierCode || "").toUpperCase() === item.supplierCode.toUpperCase()))
           ].slice(0, 20);
-          const overrides = new Set((candidate.manual_overrides || []).map(String));
-          const patch: Record<string, unknown> = {
-            md_system_records: nextRecords,
-            md_system_updated_at: importTime,
-            updated_by: auth.userId
+          // Several file rows can match one master row. Collect them all; the single "current" record is chosen
+          // AFTER the loop (cancelled never supersedes live, newest wins, ambiguity is flagged, old data is ignored).
+          const mdItem: MdItem = {
+            idVersion: (item.record.idVersion as string | null) ?? null,
+            status: (item.record.status as string | null) ?? null,
+            lastStatusChanged: (item.record.lastStatusChanged as string | null) ?? null,
+            lastStatusChangedAt: (item.record.lastStatusChangedAt as string | null) ?? null,
+            reasonForDenial: (item.record.reasonForDenial as string | null) ?? null,
+            rowNo: item.rowNo
           };
-          if (!overrides.has("status_update")) patch.status_update = item.record.status || null;
-          if (!overrides.has("md_id_version")) patch.md_id_version = item.record.idVersion || null;
-          if (!overrides.has("md_status_update_date")) patch.md_status_update_date = item.record.lastStatusChanged || null;
-          if (!overrides.has("comment")) patch.comment = item.record.reasonForDenial || null;
-          updates.set(candidate.id, { candidate, records: nextRecords, patch });
+          updates.set(candidate.id, { candidate, records: nextRecords, items: [...(existing?.items ?? []), mdItem], patch: {} });
         }
       } else if (matchStatus === "AMBIGUOUS") {
         ambiguousRows++;
@@ -387,6 +405,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    let staleSkipped = 0;
+    let autoStatusUpdated = 0;
+    const reviewSamples: Array<Record<string, unknown>> = [];
+    let reviewRows = 0;
+    for (const [id, u] of [...updates]) {
+      const plan = planCandidatePatch({
+        imds_status: u.candidate.imds_status,
+        imds_id_version: u.candidate.imds_id_version,
+        md_status_update_date: u.candidate.md_status_update_date,
+        manual_overrides: u.candidate.manual_overrides,
+        extra_fields: u.candidate.extra_fields
+      }, u.items);
+      if (plan.stale) { staleSkipped++; updates.delete(id); continue; }   // older than what the master already holds: leave the row alone
+      u.patch = { md_system_records: u.records, md_system_updated_at: importTime, updated_by: auth.userId, ...plan.patch };
+      if (typeof plan.patch.imds_status === "string") autoStatusUpdated++;
+      if (plan.review.length) {
+        reviewRows++;
+        if (reviewSamples.length < 30) reviewSamples.push({ masterKey: u.candidate.master_key, reasons: plan.review });
+      }
+    }
+
     const matchedMasterRows = updates.size;
     const { data: batch, error: batchError } = await supabase.from("imds_mds_import_batches").insert({
       file_name: file.name,
@@ -404,7 +443,11 @@ export async function POST(request: NextRequest) {
         matchedSourceRows,
         ambiguousRows,
         unmatchedRows,
-        unmatchedSamples
+        unmatchedSamples,
+        autoStatusUpdated,
+        reviewRows,
+        staleSkipped,
+        reviewSamples
       }
     }).select("id").single();
     if (batchError || !batch) {
@@ -446,7 +489,7 @@ export async function POST(request: NextRequest) {
       entity_id: batch.id,
       metadata: {
         fileName: file.name, totalRows: parsed.length, matchedSourceRows, matchedMasterRows,
-        ambiguousRows, unmatchedRows, skippedRows: skipped, powerAutomate
+        ambiguousRows, unmatchedRows, skippedRows: skipped, autoStatusUpdated, reviewRows, staleSkipped, powerAutomate
       }
     });
 
@@ -463,8 +506,12 @@ export async function POST(request: NextRequest) {
       unmatchedRows,
       skippedRows: skipped,
       unmatchedSamples,
+      autoStatusUpdated,
+      reviewRows,
+      reviewSamples,
+      staleSkipped,
       powerAutomate,
-      note: "Only matched supplier + part-number records were updated. Ambiguous and unmatched results were preserved in import history for review; IMDS Remaining fields were not overwritten."
+      note: "Only matched supplier + part-number records were updated. IMDS STATUS and ID/Version follow MD System except manual overrides, DEAD/NOT TO BE COLLECTED, ACCEPTED downgrades and ambiguous parts, which are flagged in extra_fields.mdReview instead. Files older than the master's current data are skipped."
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("IMDS MD System search import failed.", error);
