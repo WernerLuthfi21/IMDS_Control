@@ -48,7 +48,7 @@ type MasterRow = {
 };
 
 type ImportSummary = {
-  success: boolean;
+  success?: boolean;
   fileName?: string;
   totalRows?: number;
   inserted?: number;
@@ -56,10 +56,30 @@ type ImportSummary = {
   skipped?: number;
   contactsImported?: number;
   matchedMasterRows?: number;
+  matchedSourceRows?: number;
+  ambiguousRows?: number;
+  unmatchedRows?: number;
   unmatchedPartNumbers?: number;
+  skippedRows?: number;
+  powerAutomate?: { configured?: boolean; sent?: number; failed?: number; pending?: number; error?: string };
   note?: string;
   error?: string;
 };
+
+type SupplierFollowup = {
+  supplierCode: string;
+  supplierName: string;
+  to: string[];
+  cc: string[];
+  subject: string;
+  body: string;
+  partCount: number;
+  projects: string[];
+  emailReady: boolean;
+  parts: Array<{ id: string; project: string | null; part_no: string | null; part_name: string | null; imds_status: string | null; submission_plan: string | null; sequence: number }>;
+};
+
+type FollowupDraft = { subject: string; body: string };
 
 const EDIT_FIELDS = [
   { key: "main_pic_email", label: "Main PIC Email", type: "email" },
@@ -106,6 +126,125 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
   const [editing, setEditing] = useState<MasterRow | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [followups, setFollowups] = useState<SupplierFollowup[]>([]);
+  const [followupDrafts, setFollowupDrafts] = useState<Record<string, FollowupDraft>>({});
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [followupLoading, setFollowupLoading] = useState(false);
+  const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
+  const [sendAllBusy, setSendAllBusy] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ configured: boolean; queue: { pending: number; failed: number; sending: number; sent: number } } | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
+
+  const loadFollowups = useCallback(async () => {
+    setFollowupLoading(true);
+    try {
+      const response = await fetch("/api/imds-master/followups", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not prepare supplier follow-ups.");
+      const next = (payload.suppliers || []) as SupplierFollowup[];
+      setFollowups(next);
+      setEmailConfigured(Boolean(payload.configured));
+      setFollowupDrafts((previous) => {
+        const drafts = { ...previous };
+        next.forEach((supplier) => {
+          const key = supplier.supplierCode + "|" + supplier.supplierName;
+          if (!drafts[key]) drafts[key] = { subject: supplier.subject, body: supplier.body };
+        });
+        return drafts;
+      });
+    } catch (error) {
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Could not prepare supplier follow-ups." });
+    } finally {
+      setFollowupLoading(false);
+    }
+  }, []);
+
+  const loadSyncStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/imds-master/sync", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not read Excel sync queue.");
+      setSyncStatus(payload);
+    } catch (error) {
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Could not read Excel sync queue." });
+    }
+  }, []);
+
+  const syncNow = useCallback(async () => {
+    setSyncBusy(true);
+    try {
+      const response = await fetch("/api/imds-master/sync", { method: "POST" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Master sync failed.");
+      setNotice({ kind: payload.failed ? "error" : "success", text: payload.configured
+        ? `Excel sync: ${payload.sent} sent, ${payload.failed} failed, ${payload.pending} pending.`
+        : `Excel sync is not configured yet. ${payload.pending} update batch(es) remain safely queued.` });
+      await loadSyncStatus();
+    } catch (error) {
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Master sync failed." });
+    } finally {
+      setSyncBusy(false);
+    }
+  }, [loadSyncStatus]);
+
+  const draftKey = (supplier: SupplierFollowup) => supplier.supplierCode + "|" + supplier.supplierName;
+
+  async function sendSupplier(supplier: SupplierFollowup) {
+    if (!emailConfigured) {
+      setNotice({ kind: "error", text: "Supplier e-mail Flow is not configured yet. No e-mail was sent." });
+      return false;
+    }
+    const key = draftKey(supplier);
+    const draft = followupDrafts[key] || { subject: supplier.subject, body: supplier.body };
+    setSendingSupplier(key);
+    try {
+      const response = await fetch("/api/imds-master/followups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierCode: supplier.supplierCode, supplierName: supplier.supplierName, subject: draft.subject, messageBody: draft.body })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Supplier e-mail was not sent.");
+      setNotice({ kind: "success", text: `Sent to ${supplier.supplierName}: ${payload.recipient} · ${payload.partCount} parts · PDF attached.` });
+      return true;
+    } catch (error) {
+      setNotice({ kind: "error", text: `${supplier.supplierName}: ${error instanceof Error ? error.message : "Send failed."}` });
+      return false;
+    } finally {
+      setSendingSupplier(null);
+      await loadFollowups();
+    }
+  }
+
+  async function sendAllSequentially() {
+    const ready = followups.filter((supplier) => supplier.emailReady);
+    if (!emailConfigured || !ready.length) return;
+    setSendAllBusy(true);
+    let sent = 0;
+    const failures: string[] = [];
+    try {
+      for (const supplier of ready) {
+        const key = draftKey(supplier);
+        const draft = followupDrafts[key] || { subject: supplier.subject, body: supplier.body };
+        try {
+          const response = await fetch("/api/imds-master/followups", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ supplierCode: supplier.supplierCode, supplierName: supplier.supplierName, subject: draft.subject, messageBody: draft.body })
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || "Send failed.");
+          sent++;
+        } catch (error) {
+          failures.push(`${supplier.supplierName}: ${error instanceof Error ? error.message : "Send failed"}`);
+        }
+      }
+      setNotice({ kind: failures.length ? "error" : "success", text: `Sequential supplier follow-up complete: ${sent}/${ready.length} sent. ${failures.length} failed. Each supplier was sent separately with its own PDF. ${failures.slice(0, 3).join(" | ")}` });
+      await loadFollowups();
+    } finally {
+      setSendAllBusy(false);
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -130,6 +269,16 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
     const timer = setTimeout(() => { void load(); }, 250);
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    void loadFollowups();
+    void loadSyncStatus();
+    const timer = setInterval(() => {
+      void loadFollowups();
+      void loadSyncStatus();
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [loadFollowups, loadSyncStatus]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -165,10 +314,13 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
       if (!response.ok) throw new Error(payload.error || "Import failed.");
       const summary = kind === "master"
         ? `Master updated: ${payload.inserted || 0} new, ${payload.updated || 0} refreshed, ${payload.skipped || 0} skipped from ${payload.totalRows || 0} rows; ${payload.contactsImported || 0} supplier contacts synced.`
-        : `MD System updated: ${payload.matchedMasterRows || 0} master rows matched; ${payload.unmatchedPartNumbers || 0} part numbers were not in the master.`;
-      setNotice({ kind: "success", text: summary + (payload.note ? " " + payload.note : "") });
+        : `MD System import: ${payload.matchedMasterRows || 0} master rows matched; ${payload.ambiguousRows || 0} ambiguous; ${payload.unmatchedRows || 0} unmatched.`;
+      const sync = payload.powerAutomate ? ` Excel sync: ${payload.powerAutomate.sent || 0} sent / ${payload.powerAutomate.pending || 0} pending.` : "";
+      setNotice({ kind: "success", text: summary + sync + (payload.note ? " " + payload.note : "") });
       setPage(1);
       await load();
+      await loadFollowups();
+      await loadSyncStatus();
     } catch (error) {
       setNotice({ kind: "error", text: error instanceof Error ? error.message : "Import failed." });
     } finally {
@@ -204,9 +356,14 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not save changes.");
-      setNotice({ kind: "success", text: "Master row updated. These fields are now protected from ordinary workbook refreshes." });
+      const sync = payload.powerAutomate;
+      setNotice({ kind: "success", text: sync?.configured
+        ? `Master row saved and Excel sync: ${sync.sent || 0} sent / ${sync.pending || 0} pending.`
+        : "Master row saved. Excel writeback will remain queued until the Power Automate Tracker Flow is configured." });
       setEditing(null);
       await load();
+      await loadSyncStatus();
+      await loadFollowups();
     } catch (error) {
       setNotice({ kind: "error", text: error instanceof Error ? error.message : "Could not save changes." });
     } finally {
@@ -264,7 +421,7 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
           <input id="md-system-file" type="file" accept=".xlsx" hidden disabled={!canEdit || uploading !== null} onChange={(e) => { void uploadFile("mds", e.target.files?.[0]); e.currentTarget.value = ""; }} />
           <strong style={{ fontSize: 15 }}>② Upload MD System search results</strong>
           <span style={{ color: "var(--muted, #746b80)", fontSize: 13 }}>Drop the Search Results workbook here, or click to browse.</span>
-          <span style={{ color: "var(--muted, #746b80)", fontSize: 12 }}>Matched by exact Part/Item No. Only MD System fields are updated; Part List manual fields stay untouched.</span>
+          <span style={{ color: "var(--muted, #746b80)", fontSize: 12 }}>Matched by Part/Item No. + supplier code (with company-name check). Ambiguous rows are saved for review; only MD System fields are updated.</span>
           {uploading === "mds" && <span aria-live="polite">Matching MD System records…</span>}
         </label>
       </div>
@@ -279,8 +436,66 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
             {latestMdsImport ? `Latest MD System: ${String(latestMdsImport.file_name)} · ${String(latestMdsImport.matched_master_rows)} matched / ${String(latestMdsImport.unmatched_part_numbers)} unmatched part numbers` : "No MD System search results uploaded yet."}
           </div>
         </div>
-        <a href="/api/imds-master/export" className="btn btn-primary" style={{ textDecoration: "none", whiteSpace: "nowrap" }}>Download Super Master XLSX</a>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "var(--muted, #746b80)" }}>
+            Excel Flow: {syncStatus?.configured ? "connected" : "not configured"} · Queue: {syncStatus?.queue.pending || 0} pending / {syncStatus?.queue.failed || 0} failed
+          </span>
+          <button type="button" className="btn btn-secondary" disabled={syncBusy || !syncStatus || (syncStatus.queue.pending + syncStatus.queue.failed === 0)} onClick={() => void syncNow()}>{syncBusy ? "Syncing…" : "Sync now"}</button>
+          <a href="/api/imds-master/export" className="btn btn-primary" style={{ textDecoration: "none", whiteSpace: "nowrap" }}>Download Super Master XLSX</a>
+        </div>
       </div>
+
+      <section style={{ ...cardStyle, display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <div>
+            <strong style={{ fontSize: 16 }}>Supplier follow-up automation</strong>
+            <div style={{ color: "var(--muted, #746b80)", fontSize: 12, marginTop: 4 }}>
+              {emailConfigured ? "Power Automate e-mail Flow connected." : "Power Automate e-mail Flow not configured. Preview is available; sending is disabled."}
+              {" "}Each supplier receives a separate message and its own PDF report.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button type="button" className="btn btn-secondary" onClick={() => void loadFollowups()} disabled={followupLoading}>{followupLoading ? "Refreshing…" : "Refresh suppliers"}</button>
+            <button type="button" className="btn btn-primary" onClick={() => void sendAllSequentially()} disabled={!emailConfigured || sendAllBusy || sendingSupplier !== null || !followups.some((item) => item.emailReady)}>
+              {sendAllBusy ? "Sending one by one…" : `Send all sequentially (${followups.filter((item) => item.emailReady).length})`}
+            </button>
+          </div>
+        </div>
+        {followupLoading && followups.length === 0 ? (
+          <div style={{ color: "var(--muted, #746b80)", fontSize: 13 }}>Preparing supplier groups…</div>
+        ) : followups.length === 0 ? (
+          <div style={{ color: "var(--muted, #746b80)", fontSize: 13 }}>No outstanding suppliers were found in the current master.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {followups.map((supplier) => {
+              const key = draftKey(supplier);
+              const draft = followupDrafts[key] || { subject: supplier.subject, body: supplier.body };
+              return (
+                <details key={key} style={{ border: "1px solid var(--line, #e8e1f1)", borderRadius: 10, padding: 12 }}>
+                  <summary style={{ cursor: "pointer", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <strong>{supplier.supplierName}</strong>
+                    <span style={{ color: "var(--muted, #746b80)", fontSize: 12 }}>{supplier.supplierCode || "No vendor code"} · {supplier.partCount} parts · To: {supplier.to.join("; ") || "PIC missing"}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 12, color: supplier.emailReady ? "#15803d" : "#b45309" }}>{supplier.emailReady ? "Ready" : "PIC required"}</span>
+                  </summary>
+                  <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                    <div style={{ fontSize: 12, color: "var(--muted, #746b80)" }}>To: {supplier.to.join("; ") || "No valid PIC"}{supplier.cc.length ? ` · CC: ${supplier.cc.join("; ")}` : ""}</div>
+                    <label style={{ display: "grid", gap: 4, fontSize: 12, fontWeight: 600 }}>Subject
+                      <input value={draft.subject} onChange={(e) => setFollowupDrafts((p) => ({ ...p, [key]: { ...draft, subject: e.target.value } }))} style={{ minHeight: 38, border: "1px solid var(--line-strong, #ddd)", borderRadius: 8, padding: "7px 10px", background: "var(--surface-2, #faf8fd)" }} />
+                    </label>
+                    <label style={{ display: "grid", gap: 4, fontSize: 12, fontWeight: 600 }}>Message
+                      <textarea value={draft.body} onChange={(e) => setFollowupDrafts((p) => ({ ...p, [key]: { ...draft, body: e.target.value } }))} rows={8} style={{ width: "100%", border: "1px solid var(--line-strong, #ddd)", borderRadius: 8, padding: 10, background: "var(--surface-2, #faf8fd)", font: "inherit", fontSize: 13 }} />
+                    </label>
+                    <div style={{ fontSize: 12, color: "var(--muted, #746b80)" }}>PDF attachment: IMDS_Outstanding_{supplier.supplierCode || "SUPPLIER"}_[date].pdf · {supplier.parts.length} part(s)</div>
+                    <button type="button" className="btn btn-primary" style={{ justifySelf: "start" }} disabled={!emailConfigured || !supplier.emailReady || sendingSupplier === key || sendAllBusy} onClick={() => void sendSupplier(supplier)}>
+                      {sendingSupplier === key ? "Sending…" : "Send to this supplier"}
+                    </button>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <div style={{ ...cardStyle, display: "grid", gap: 12 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
