@@ -29,7 +29,7 @@ export function LoginForm({ next, initialMode = "signin", linkError = false }: {
     const supabase = createClient();
     if (!supabase) { setError("Sign-in is not configured for this deployment."); setLoading(false); return; }
     const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (authError) { setError(authError.message === "Invalid login credentials" ? "Email or password is incorrect." : authError.message); setLoading(false); return; }
+    if (authError) { setError(authError.message === "Invalid login credentials" ? "Email or password is incorrect." : /not confirmed/i.test(authError.message) ? "This account is not active yet. Ask an administrator." : /banned/i.test(authError.message) ? "This account is waiting for approval." : authError.message); setLoading(false); return; }
     // Hard navigation: the server must see the new session cookies, and the role decides where the user lands.
     window.location.assign(next);
   }
