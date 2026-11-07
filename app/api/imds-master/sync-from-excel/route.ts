@@ -171,6 +171,7 @@ export async function POST(request: NextRequest) {
   const occurrences = new Map<string, number>();
   const explicitKeyCounts = new Map<string, number>();
   const duplicateKeyWarnings: string[] = [];
+  const knownKeys = new Set(body.rows.map((row) => cleanText(readCell(row || {}, ["MasterKey", "master_key"]).value)).filter((key): key is string => Boolean(key)));
   let skipped = 0;
 
   for (let index = 0; index < body.rows.length; index++) {
@@ -182,15 +183,18 @@ export async function POST(request: NextRequest) {
 
     const suppliedKey = cleanText(readCell(row, ["MasterKey", "master_key"]).value);
     const sequenceNo = cleanText(readCell(row, ["No."]).value);
-    let masterKey = suppliedKey || buildMasterKey(row, occurrences);
-    const repeated = explicitKeyCounts.get(masterKey) || 0;
-    explicitKeyCounts.set(masterKey, repeated + 1);
-    let generatedKey = !suppliedKey;
-    if (repeated > 0) {
-      duplicateKeyWarnings.push(masterKey);
-      masterKey = createHash("sha256").update(`${masterKey}|duplicate:${repeated}`).digest("hex");
-      generatedKey = true;
+    // Advance the duplicate occurrence counter for every row, including rows whose key already exists.
+    let generatedCandidate = buildMasterKey(row, occurrences);
+    if (suppliedKey) {
+      const repeated = explicitKeyCounts.get(suppliedKey) || 0;
+      explicitKeyCounts.set(suppliedKey, repeated + 1);
+      if (repeated > 0) duplicateKeyWarnings.push(suppliedKey);
+    } else {
+      while (knownKeys.has(generatedCandidate)) generatedCandidate = buildMasterKey(row, occurrences);
+      knownKeys.add(generatedCandidate);
     }
+    const masterKey = suppliedKey || generatedCandidate;
+    const generatedKey = !suppliedKey || duplicateKeyWarnings.includes(suppliedKey);
 
     prepared.push({ master_key: masterKey, _sourceRow: index + 7, _source: row, _sequenceNo: sequenceNo, _generatedKey: generatedKey });
   }
