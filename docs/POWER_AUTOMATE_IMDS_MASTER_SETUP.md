@@ -214,25 +214,99 @@ Save the Flow and add its HTTP URL to Vercel as:
 
 Use the same `POWER_AUTOMATE_SECRET` value in both Flows and Vercel.
 
-## D. Vercel settings and first test
+## D. Flow 3 — pull manual Excel edits back into the website
 
-In Vercel → Project → Settings → Environment Variables, configure these server-only variables:
+This third flow makes the shared workbook bidirectional: a manual edit or a new part row in `PartMaster` is sent back to Supabase, and the IMDS Tracker refreshes from the database. It does not delete database rows that are absent from the workbook snapshot.
+
+Create an automated cloud flow named, for example, `IMDS Tracker - Excel to Website`.
+
+### 1. Trigger and debounce
+
+Choose **SharePoint → When a file is created or modified (properties only)**, and select the same document library and Super Master workbook used by Flow 1. For OneDrive, use the corresponding file-modified trigger.
+
+Set trigger concurrency control to **On / 1**. Add a **Delay** of 45 seconds after the trigger so a burst of Excel Online writes can settle before the snapshot is read. This flow may also run after Flow 1 writes to Excel; that is safe because reverse sync does not queue another Excel writeback.
+
+### 2. Read the current table snapshot
+
+Add **Excel Online (Business) → List rows present in a table**:
+
+- Location / Document Library: the workbook location.
+- File: the same Super Master workbook.
+- Table: `PartMaster`.
+- Turn on Pagination in the action's Settings and set the threshold to `5000` (the API currently accepts up to 5,000 rows and 3.8 MB per snapshot).
+
+The endpoint ignores Excel connector metadata such as `ItemInternalId` and `@odata.etag`; the table's actual column names should remain unchanged. Keep the `MasterKey` column in the table. For each newly added Excel row, fill a unique value in `No.` so the Flow can write a generated `MasterKey` back after the first import.
+
+### 3. POST the snapshot to the website
+
+Add an **HTTP** action:
+
+- Method: `POST`
+- URI: `https://<your-app-domain>/api/imds-master/sync-from-excel`
+- Headers:
+  - `Content-Type`: `application/json`
+  - `x-imds-secret`: the same shared secret stored as `POWER_AUTOMATE_SECRET` in Vercel.
+
+Body:
+
+```json
+{
+  "type": "imds_master_snapshot",
+  "source": "sharepoint_excel",
+  "rows": "@{body('List_rows_present_in_a_table')?['value']}"
+}
+```
+
+In the Power Automate designer, use the Expression / dynamic-content editor for the `rows` value so it is inserted as an array/object, not as a quoted string. The action should send all rows from `PartMaster` in one request.
+
+The endpoint merges by `MasterKey`, normalizes dates and part numbers, updates standard Part List fields and dynamic columns, and preserves MD System search history. Manual Excel edits become the latest master values. Rows absent from the snapshot are retained, never deleted.
+
+### 4. Write generated keys back for new rows
+
+The HTTP response includes an `assignedKeys` array for new rows that arrived without a `MasterKey`. Add an **Apply to each** over:
+
+```text
+body('HTTP')?['assignedKeys']
+```
+
+Inside it, add **Excel Online (Business) → Update a row**:
+
+- Table: `PartMaster`
+- Key Column: `No.`
+- Key Value: `items('Apply_to_each')?['no']`
+- Set the `MasterKey` column to `items('Apply_to_each')?['masterKey']`.
+
+The `No.` value must be unique for each part row. This writes the generated key into Excel so later website-to-Excel writebacks can find and update the correct row instead of adding a duplicate. If the response contains a warning about a missing `No.`, assign a unique value to that row and let the file-modified trigger run again.
+
+Add a **Response** action after the updates with status code `200` and body:
+
+```json
+{ "ok": true, "message": "Excel snapshot synced to IMDS Super Master" }
+```
+
+Save the flow. The reverse-sync flow uses the same `POWER_AUTOMATE_SECRET`; it does not need its own URL in Vercel because it calls the website API.
+
+## E. Vercel settings and first test
+
+In Vercel → Project → Settings → Environment Variables, ensure these server-only variables are configured:
 
 | Name | Purpose |
 |---|---|
-| `POWER_AUTOMATE_TRACKER_URL` | Flow 1: Excel master upsert |
+| `POWER_AUTOMATE_TRACKER_URL` | Flow 1: website-to-Excel master upsert |
 | `POWER_AUTOMATE_EMAIL_URL` | Flow 2: supplier-specific email + PDF |
-| `POWER_AUTOMATE_SECRET` | Shared header secret used by both Flows |
+| `POWER_AUTOMATE_SECRET` | Shared header secret for all three flows |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only credential used by the protected Excel-to-website endpoint |
 
-Do not rename or remove `POWER_AUTOMATE_EXCEL_URL`; it belongs to the existing judgement integration. After saving variables, redeploy the relevant Vercel environment.
+Do not rename or remove `POWER_AUTOMATE_EXCEL_URL`; it belongs to the existing G-CATS judgement integration. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only and never expose it through a `NEXT_PUBLIC_` variable. After changing variables, redeploy the relevant Vercel environment.
 
 Test in this order:
 
 1. Import the IMDS Remaining workbook to initialise the shared master.
-2. Download the Super Master XLSX and place it in the OneDrive/SharePoint file referenced by Flow 1.
+2. Download the Super Master XLSX and place it in the OneDrive/SharePoint file referenced by Flow 1 and Flow 3.
 3. Upload one MD System SearchResult workbook. Check the match summary; ambiguous/unmatched rows must be reviewed rather than silently written to a supplier.
-4. Open **Sync now** and confirm the queue moves from Pending to Sent.
-5. Edit one safe test row in Master Data and confirm the corresponding `MasterKey` row changes in Excel.
-6. Configure Flow 2, open one supplier follow-up preview, verify the To/CC and PDF, then send to one test supplier first.
+4. Edit one safe test row in Master Data and confirm the corresponding `MasterKey` row changes in Excel.
+5. Edit a different safe test row directly in Excel. After Flow 3 runs, confirm the website's Master Data and Tracker views reflect the change without uploading the workbook again.
+6. Add a test row with a unique `No.` but blank `MasterKey`. Confirm Flow 3 inserts it and writes the generated `MasterKey` back into Excel.
+7. Open one supplier follow-up preview, verify the To/CC and supplier-specific PDF, then send to one test supplier first.
 
-The website remains backed by Supabase and uses Realtime plus a periodic refresh. Excel is the connected workbook mirror; direct edits made outside the website are not automatically pulled back into Supabase by these two flows. To make external Excel edits flow back as well, configure a separate reverse-sync process rather than allowing two systems to overwrite one another silently.
+**Data conflict rule:** the latest accepted write to the shared master wins. Avoid editing the same part in Excel and the website at the same time. Deleting a row from Excel does not delete it from Supabase; removal should be handled explicitly in the website after a review.
