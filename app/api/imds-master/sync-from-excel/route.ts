@@ -96,8 +96,7 @@ function buildMasterKey(row: ExcelRow, occurrence: Map<string, number>): string 
   const vendor = cleanText(readCell(row, ["VENDOR CODE"]).value) || "NO_VENDOR";
   const company = cleanText(readCell(row, ["COMPANY NAME"]).value) || "NO_COMPANY";
   const partNo = cleanText(readCell(row, ["P/No.", "P/No", "Part No."]).value) || "";
-  const sequence = cleanText(readCell(row, ["No."]).value) || "";
-  const base = [project, vendor, company, normalizePartNo(partNo), sequence]
+  const base = [project, vendor, company, normalizePartNo(partNo)]
     .map((value) => value.toUpperCase().replace(/[|\s]+/g, "_")).join("|");
   const count = occurrence.get(base) || 0;
   occurrence.set(base, count + 1);
@@ -139,6 +138,8 @@ function toMasterRow(row: ExcelRow, sourceRow: number, masterKey: string, prior?
     if (!header || RESERVED.has(normalized) || normalized === "masterkey") continue;
     extras[header] = value === undefined ? null : value;
   }
+  const rowNumber = cleanText(readCell(row, ["No."]).value);
+  if (rowNumber) extras["No."] = rowNumber;
   patch.extra_fields = extras;
   patch.manual_overrides = [...overrides];
 
@@ -184,12 +185,14 @@ export async function POST(request: NextRequest) {
     let masterKey = suppliedKey || buildMasterKey(row, occurrences);
     const repeated = explicitKeyCounts.get(masterKey) || 0;
     explicitKeyCounts.set(masterKey, repeated + 1);
+    let generatedKey = !suppliedKey;
     if (repeated > 0) {
       duplicateKeyWarnings.push(masterKey);
       masterKey = createHash("sha256").update(`${masterKey}|duplicate:${repeated}`).digest("hex");
+      generatedKey = true;
     }
 
-    prepared.push({ master_key: masterKey, _sourceRow: index + 7, _source: row, _sequenceNo: sequenceNo, _generatedKey: !suppliedKey });
+    prepared.push({ master_key: masterKey, _sourceRow: index + 7, _source: row, _sequenceNo: sequenceNo, _generatedKey: generatedKey });
   }
 
   if (!prepared.length) return NextResponse.json({ error: "No valid rows with COMPANY NAME and P/No. were found." }, { status: 422 });
