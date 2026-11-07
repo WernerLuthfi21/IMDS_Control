@@ -51,10 +51,15 @@ export function toPartMasterExcelRow(row: MasterRecord) {
     MasterKey: value(row, "master_key"),
   };
 
-  for (const [sourceKey, sourceValue] of Object.entries(extra)) {
+  const extraCounts = new Map<string, number>();
+  for (const [sourceKey, sourceValue] of Object.entries(extra).sort(([a], [b]) => a.localeCompare(b))) {
     const header = extraHeader(sourceKey);
     if (!header || Object.prototype.hasOwnProperty.call(output, header)) continue;
-    output[header] = printable(sourceValue);
+    const countKey = header.toLowerCase();
+    const count = (extraCounts.get(countKey) || 0) + 1;
+    extraCounts.set(countKey, count);
+    const columnName = count === 1 ? header : `${header} (${count})`;
+    output[columnName] = printable(sourceValue);
   }
   return output;
 }
