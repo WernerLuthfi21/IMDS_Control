@@ -50,6 +50,12 @@
         targetDate: target,
         statusRaw: statusRaw,
         status: status,
+        mdSystemStatus: clean(source.status_update),
+        mdSystemIdVersion: clean(source.md_id_version),
+        mdSystemLastChanged: clean(source.md_status_update_date),
+        mdSystemComment: clean(source.comment),
+        mdSystemRecords: Array.isArray(source.md_system_records) ? source.md_system_records : [],
+        lastMasterUpdated: clean(source.updated_at),
         pastDue: !!(target && status !== "complete" && target < today),
         srcRow: Number(source.source_row || (index + 1))
       };
