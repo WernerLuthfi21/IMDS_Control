@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
       part_name: findHeader(headers, ["PART NAME", "Part Name", "Description"]),
       part_no: findHeader(headers, ["P/No.", "P/No", "Part No", "Part Number"]),
       submission_plan: findHeader(headers, ["SUBMISSION PLAN", "Submission Plan", "Target Date"]),
+      supplier_promise_date: findHeader(headers, ["Supplier Promise Date", "Supplier Promise"]),
       imds_status: findHeader(headers, ["IMDS STATUS", "IMDS Status"]),
       imds_id_version: imdsIdVersionColumn,
       part_status: findHeader(headers, ["Part Status"]),
@@ -196,6 +197,7 @@ export async function POST(request: NextRequest) {
         part_no: partNo,
         part_no_norm: normalizePartNo(partNo),
         submission_plan: dateISO(get(cols.submission_plan)),
+        supplier_promise_date: dateISO(get(cols.supplier_promise_date)),
         imds_status: text(get(cols.imds_status)) || null,
         imds_id_version: text(get(cols.imds_id_version)) || null,
         part_status: text(get(cols.part_status)) || null,
@@ -231,7 +233,19 @@ export async function POST(request: NextRequest) {
       const prior = existing.get(String(row.master_key));
       if (!prior) return { ...row, manual_overrides: [], md_system_records: [] as unknown[] };
       const overrides = Array.isArray(prior.manual_overrides) ? prior.manual_overrides as string[] : [];
-      const merged = { ...row, manual_overrides: overrides, md_system_records: prior.md_system_records || [], md_system_updated_at: prior.md_system_updated_at || null };
+      const mdRecords = Array.isArray(prior.md_system_records) ? prior.md_system_records : [];
+      const merged = { ...row, manual_overrides: overrides, md_system_records: mdRecords, md_system_updated_at: prior.md_system_updated_at || null };
+      // Formula-derived MD columns can be blank or #N/A in a workbook that has not recalculated yet.
+      // Keep the last imported MD System value until a newer MD System search result replaces it.
+      if (mdRecords.length) {
+        for (const field of ["status_update", "md_id_version", "md_status_update_date", "comment"]) {
+          const incoming = (merged as Record<string, unknown>)[field];
+          const isBlankOrError = incoming === null || incoming === undefined || String(incoming).trim() === "" || /^#(N\/A|VALUE!|REF!|NAME\?)/i.test(String(incoming));
+          if (isBlankOrError && prior[field] !== null && prior[field] !== undefined) {
+            (merged as Record<string, unknown>)[field] = prior[field];
+          }
+        }
+      }
       for (const field of overrides) {
         if (field in prior) (merged as Record<string, unknown>)[field] = prior[field];
       }
