@@ -23,7 +23,7 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
   const visibleNavigation = role === "supplier" ? navigation.filter((item) => item.href === "/supplier-precheck").map((item) => ({ ...item, label: "Self-check" })) : navigation;
   const active = visibleNavigation.find((item) => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href + "/"))) || visibleNavigation.find((item) => item.href === "/judgement") || visibleNavigation[0];
   function searchSubmit(e: React.FormEvent) { e.preventDefault(); const q = query.trim(); if (q) router.push(`/judgement?q=${encodeURIComponent(q)}`); }
-  if (pathname === "/login") return <div className="auth-shell">{children}</div>;
+  if (["/login", "/forgot-password", "/reset-password"].includes(pathname)) return <div className="auth-shell">{children}</div>;
   if (pathname === "/workspace") return <div className="workspace-selector-shell">{children}</div>;
   return <div className="app-frame">
     {mobileOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)}/>}

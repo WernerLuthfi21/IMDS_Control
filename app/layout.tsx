@@ -17,7 +17,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const role = auth.role || "viewer";
   if (auth.userId && auth.role === "supplier") {
     const pathname = (await headers()).get("x-pathname") || "";
-    const allowed = pathname.startsWith("/supplier-precheck") || pathname.startsWith("/api/") || pathname === "/login" || pathname === "/setup-required";
+    const allowed = pathname.startsWith("/supplier-precheck") || pathname.startsWith("/api/") || ["/login", "/forgot-password", "/reset-password", "/setup-required"].includes(pathname) || pathname.startsWith("/auth/");
     if (pathname && !allowed) redirect("/supplier-precheck");
   }
   return <html lang="en"><body><AppShell role={role} email={auth.email}>{children}</AppShell></body></html>;
