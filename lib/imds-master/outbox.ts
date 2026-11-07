@@ -52,7 +52,7 @@ export function toPartMasterExcelRow(row: MasterRecord) {
   };
 
   const extraCounts = new Map<string, number>();
-  for (const [sourceKey, sourceValue] of Object.entries(extra).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [sourceKey, sourceValue] of Object.entries(extra)) {
     const header = extraHeader(sourceKey);
     if (!header || Object.prototype.hasOwnProperty.call(output, header)) continue;
     const countKey = header.toLowerCase();
