@@ -77,7 +77,8 @@ async function loadSupplierGroups(supabase: NonNullable<Awaited<ReturnType<typeo
       return role === "PIC" || (role.includes("PIC") && !role.includes("SPV"));
     });
     const fallback = group.flatMap((part) => emails(part.main_pic_email));
-    const to = [...new Set((picRows.length ? picRows.flatMap((contact) => emails(contact.email)) : fallback))];
+    // The current Part List MAIN PIC EMAIL is authoritative; directory PIC is a fallback only.
+    const to = [...new Set((fallback.length ? fallback : picRows.flatMap((contact) => emails(contact.email))) )];
     const cc = [...new Set(contactRows.filter((contact) => {
       const role = String(contact.contact_role || "").toUpperCase();
       return role.includes("CC") || role.includes("SPV") || role.includes("MARKETING");
