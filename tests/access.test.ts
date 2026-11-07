@@ -1,20 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { allowedStaffDomain, cleanText, escapeLike, grantableRoles, normalizeEmail, validateSupplierRequest, validEmail } from "@/lib/access/validate";
+import { validatePassword, allowedStaffDomain, cleanText, escapeLike, grantableRoles, normalizeEmail, validateSupplierRequest, validEmail } from "@/lib/access/validate";
 import { sameOrigin } from "@/lib/security/request";
 import { mailerConfig } from "@/lib/notify/mailer";
 
 describe("access request validation", () => {
   it("accepts a clean supplier request and normalises it", () => {
-    const r = validateSupplierRequest({ name: " Ana  Putri ", company: "PT Maju", email: " ANA@Maju.co.id ", supplierCode: "ab-12" });
-    expect(r).toEqual({ ok: true, value: { name: "Ana Putri", company: "PT Maju", email: "ana@maju.co.id", supplierCode: "AB-12" } });
+    const r = validateSupplierRequest({ name: " Ana  Putri ", company: "PT Maju", email: " ANA@Maju.co.id ", supplierCode: "ab-12", password: "abcdefghi1", password2: "abcdefghi1" });
+    expect(r).toEqual({ ok: true, value: { name: "Ana Putri", company: "PT Maju", email: "ana@maju.co.id", supplierCode: "AB-12", password: "abcdefghi1" } });
   });
   it.each([
-    [{ name: "A", company: "PT", email: "a@b.co", supplierCode: "X1" }],
-    [{ name: "Ana", company: "", email: "a@b.co", supplierCode: "X1" }],
-    [{ name: "Ana", company: "PT Maju", email: "not-an-email", supplierCode: "X1" }],
-    [{ name: "Ana", company: "PT Maju", email: "a@b.co", supplierCode: "bad code!" }],
-    [{ name: "Ana", company: "PT Maju", email: "a@b.co", supplierCode: "" }],
+    [{ name: "A", company: "PT", email: "a@b.co", supplierCode: "X1", password: "abcdefghi1", password2: "abcdefghi1" }],
+    [{ name: "Ana", company: "", email: "a@b.co", supplierCode: "X1", password: "abcdefghi1", password2: "abcdefghi1" }],
+    [{ name: "Ana", company: "PT Maju", email: "not-an-email", supplierCode: "X1", password: "abcdefghi1", password2: "abcdefghi1" }],
+    [{ name: "Ana", company: "PT Maju", email: "a@b.co", supplierCode: "bad code!", password: "abcdefghi1", password2: "abcdefghi1" }],
+    [{ name: "Ana", company: "PT Maju", email: "a@b.co", supplierCode: "", password: "abcdefghi1", password2: "abcdefghi1" }],
+    [{ name: "Ana", company: "PT Maju", email: "a@b.co", supplierCode: "X1", password: "short1", password2: "short1" }],
+    [{ name: "Ana", company: "PT Maju", email: "a@b.co", supplierCode: "X1", password: "abcdefghi1", password2: "different11" }],
   ])("rejects invalid input %#", (b) => { expect(validateSupplierRequest(b).ok).toBe(false); });
+  it("password rules", () => {
+    expect(validatePassword("abcdefghi1")).toBeNull(); expect(validatePassword("abcdefghij")).not.toBeNull(); expect(validatePassword("1234567890")).not.toBeNull(); expect(validatePassword("abcdefghi1", "x")).toBe("Passwords do not match.");
+  });
   it("strips markup and control characters", () => { expect(cleanText("<b>Hi</b>\u0000 there", 50)).toBe("b Hi /b there"); });
   it("validates e-mails and escapes LIKE wildcards", () => {
     expect(validEmail("a@b.co")).toBe(true); expect(validEmail("a b@c.co")).toBe(false); expect(normalizeEmail(" X@Y.Com ")).toBe("x@y.com");
