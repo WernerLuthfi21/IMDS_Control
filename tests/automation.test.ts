@@ -34,3 +34,13 @@ describe("mail transport (no premium licence)", () => {
   });
   it("puts the secret in the subject the flow filters on", () => { expect(mailSubject("s3", "excel_upsert")).toBe("IMDS-SYNC|s3|excel_upsert"); });
 });
+
+import { buildTestPayload, toCsv, EXCEL_HEADERS } from "@/lib/automation/flow";
+describe("test payload and CSV seed", () => {
+  it("uses the fixed IMDS-PING row", () => { const p = buildTestPayload(new Date("2026-11-07T10:00:00Z")); expect(p.code).toBe("IMDS-PING"); expect(p["Assigned person"]).toContain("2026-11-07 10:00:00"); });
+  it("exports headers in the Excel table order and neutralises formulas", () => {
+    const csv = toCsv([{ ...buildExcelPayload({ source_record_key: "K1", judge: "OK", ok_comment: "=HYPERLINK(\"x\")", km_comment: "a,b" }) }]);
+    expect(csv.replace("﻿", "").split("\r\n")[0]).toBe(EXCEL_HEADERS.join(","));
+    expect(csv).toContain("'=HYPERLINK"); expect(csv).toContain('"a,b"');
+  });
+});

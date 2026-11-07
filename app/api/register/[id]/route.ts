@@ -3,6 +3,8 @@ import { after as runAfterResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { enqueue, dispatch } from "@/lib/automation/outbox";
 
+export const maxDuration = 60; // lets the post-response Excel sync finish
+
 const fields = ["assigned_person", "starting_date", "judgement_procedure", "judge", "ok_comment", "imds_reject_comment", "km_judge", "km_comment"] as const;
 type RegisterField = typeof fields[number];
 
