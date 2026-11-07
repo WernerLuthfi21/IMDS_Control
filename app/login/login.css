@@ -29,3 +29,7 @@
 .auth-foot{font-size:10px;color:#9aa39c;margin:0}
 .spin{animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:480px){.auth-card{padding:22px 18px}.auth-field-row{grid-template-columns:1fr}}
+.auth-link{display:block;margin:12px auto 0;border:0;background:none;color:#166534;font:600 12px inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.auth-link:disabled{opacity:.5;cursor:default}
+.auth-done{margin:0 0 6px;border:1px solid #cfe5d5;background:#f3faf5;color:#166534;border-radius:9px;padding:11px 12px;font-size:13px}
+.auth-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}

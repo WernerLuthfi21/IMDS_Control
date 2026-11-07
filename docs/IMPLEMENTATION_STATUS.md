@@ -74,3 +74,7 @@ This is a development release, not a Toyota-approved or production-certified jud
 
 ## Power Automate bridge
 - Implemented (outbox, dispatcher, bulk sequential supplier e-mail, Excel upsert on every register save). **NOT TESTED** against a real flow; migration 20261106000300 not applied remotely. See `docs/POWER_AUTOMATE_SETUP.md`.
+
+
+## Access requests & password recovery
+- Implemented: supplier-only public request, staff-registers-staff, admin approval queue, approval PIC e-mail, forgot/reset password, throttling. **NOT TESTED** against real Supabase/SMTP; migration 20261107000000 not applied remotely. TOTP MFA not implemented. See `docs/ACCESS_AND_SECURITY.md`.

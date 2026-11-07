@@ -7,6 +7,8 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isApi = pathname.startsWith("/api/");
   const isSetupPage = pathname === "/setup-required";
+  // Pages a signed-out person must reach: sign-in, forgot password, the e-mailed link landing, and the public access API.
+  const isPublic = ["/login", "/forgot-password", "/auth/confirm", "/reset-password"].includes(pathname);
 
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.set("x-pathname", pathname);
@@ -34,7 +36,7 @@ export async function proxy(request: NextRequest) {
   const user = claimsData?.claims?.sub ? claimsData.claims : null;
 
   // API handlers return JSON 401 responses; do not redirect fetch clients to the login page.
-  if (!user && !isApi && pathname !== "/login" && !isSetupPage) {
+  if (!user && !isApi && !isPublic && !isSetupPage) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
