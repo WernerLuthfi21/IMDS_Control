@@ -34,7 +34,7 @@ const FIELD_MAP: Array<{ db: string; headers: string[]; kind?: "date" }> = [
 ];
 
 const RESERVED = new Set([
-  "No.", "MasterKey", ...FIELD_MAP.flatMap((field) => field.headers)
+  "No.", "MasterKey", "ItemInternalId", "@odata.etag", ...FIELD_MAP.flatMap((field) => field.headers)
 ].map((header) => normHeader(header)));
 
 function normHeader(value: unknown) {
@@ -119,11 +119,9 @@ function toMasterRow(row: ExcelRow, sourceRow: number, masterKey: string, prior?
   };
 
   const overrides = new Set((patch.manual_overrides as string[]).map(String));
-  const mappedHeaderKeys = new Set<string>();
   for (const field of FIELD_MAP) {
     const found = readCell(row, field.headers);
     if (!found.found) continue;
-    field.headers.forEach((header) => mappedHeaderKeys.add(normHeader(header)));
     const value = field.kind === "date" ? cleanDate(found.value) : cleanText(found.value);
     const mdFormulaField = ["status_update", "md_id_version", "md_status_update_date", "comment"].includes(field.db);
     if (mdFormulaField && patch.md_system_records && Array.isArray(patch.md_system_records) && patch.md_system_records.length && !value) {
@@ -135,8 +133,6 @@ function toMasterRow(row: ExcelRow, sourceRow: number, masterKey: string, prior?
     overrides.delete(field.db);
   }
 
-  const incomingMasterKey = readCell(row, ["MasterKey", "master_key"]);
-  if (incomingMasterKey.found && cleanText(incomingMasterKey.value)) mappedHeaderKeys.add("masterkey");
   const extras = { ...((prior?.extra_fields || {}) as Record<string, unknown>) };
   for (const [header, value] of Object.entries(row)) {
     const normalized = normHeader(header);
@@ -184,6 +180,7 @@ export async function POST(request: NextRequest) {
     if (!partNo || !company) { skipped++; continue; }
 
     const suppliedKey = cleanText(readCell(row, ["MasterKey", "master_key"]).value);
+    const sequenceNo = cleanText(readCell(row, ["No."]).value);
     let masterKey = suppliedKey || buildMasterKey(row, occurrences);
     const repeated = explicitKeyCounts.get(masterKey) || 0;
     explicitKeyCounts.set(masterKey, repeated + 1);
@@ -192,7 +189,7 @@ export async function POST(request: NextRequest) {
       masterKey = createHash("sha256").update(`${masterKey}|duplicate:${repeated}`).digest("hex");
     }
 
-    prepared.push({ master_key: masterKey, _sourceRow: index + 7, _source: row });
+    prepared.push({ master_key: masterKey, _sourceRow: index + 7, _source: row, _sequenceNo: sequenceNo, _generatedKey: !suppliedKey });
   }
 
   if (!prepared.length) return NextResponse.json({ error: "No valid rows with COMPANY NAME and P/No. were found." }, { status: 422 });
@@ -231,6 +228,11 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: `Excel snapshot could not be applied at row ${index + 1}: ${error.message}` }, { status: 500 });
   }
 
+  const assignedKeys = prepared
+    .filter((item) => item._generatedKey === true)
+    .map((item) => ({ no: item._sequenceNo, masterKey: item.master_key }))
+    .filter((item) => item.no);
+
   return NextResponse.json({
     ok: true,
     source: body.source || "sharepoint_excel",
@@ -239,6 +241,10 @@ export async function POST(request: NextRequest) {
     updated,
     skipped,
     duplicateMasterKeys: duplicateKeyWarnings.length,
+    assignedKeys,
+    warning: prepared.some((item) => item._generatedKey === true && !item._sequenceNo)
+      ? "Some new rows do not have a unique No. value. Add a unique No. in Excel so Power Automate can write the generated MasterKey back into the table."
+      : undefined,
     note: "Excel rows were merged into the shared master. Rows missing from the snapshot are retained; no row was deleted."
   }, { headers: { "Cache-Control": "no-store" } });
 }
