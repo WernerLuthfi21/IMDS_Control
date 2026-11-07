@@ -1071,9 +1071,31 @@ function loadPromises(){promises.clear();const o=store.json(KEYS.promises,{});Ob
 function persistPromises(){return store.set(KEYS.promises,JSON.stringify(Object.fromEntries(promises)))}
 /* Key format is identical to the original build (blank model was "UNASSIGNED") so stored dates keep matching. */
 function promiseKey(r){return `${clean(r.company)}|${r.model===UNASSIGNED?"UNASSIGNED":clean(r.model)}|${clean(r.partNo)}`.toUpperCase()}
-function getPromiseISO(r){return promises.get(promiseKey(r))||""}
+function getPromiseISO(r){const source=Array.isArray(r.sourceRows)?r.sourceRows.find(x=>x.supplierPromiseDate):null;return (source&&source.supplierPromiseDate)||r.supplierPromiseDate||promises.get(promiseKey(r))||""}
 function getPromiseDate(r){return isoToDate(getPromiseISO(r))}
-function setPromiseDate(r,iso){const k=promiseKey(r);if(iso)promises.set(k,iso);else promises.delete(k);return persistPromises()}
+function setPromiseDate(r,iso){
+  const k=promiseKey(r);if(iso)promises.set(k,iso);else promises.delete(k);
+  const saved=persistPromises();
+  const sourceRows=Array.isArray(r.sourceRows)?r.sourceRows:[r];
+  const ids=[...new Set(sourceRows.map(x=>x.masterId).filter(Boolean))];
+  if(ids.length&&window.__IMDS_SHARED_MASTER_READY__){
+    sourceRows.forEach(x=>{x.supplierPromiseDate=iso||""});
+    Promise.all(ids.map(id=>fetch("/api/imds-master/parts/"+encodeURIComponent(id),{
+      method:"PATCH",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({supplier_promise_date:iso||null})
+    }).then(async response=>{
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(result.error||"Could not save supplier promise date to master.");
+      return result;
+    }))).then(()=>{
+      if(typeof toast==="function")toast("Supplier promise date saved to shared master.","ok");
+    }).catch(error=>{
+      console.error("Supplier promise sync failed.",error);
+      if(typeof toast==="function")toast(error&&error.message?error.message:"Supplier promise date was saved locally but not synced to the shared master.","err");
+    });
+  }
+  return saved;
+}
 function promiseStats(rows){
   const missing=rows.filter(r=>r.status==="missing"),today=todayStart();let given=0,overdue=0;
   missing.forEach(r=>{if(r.targetDate){given++;if(r.targetDate<today)overdue++}});
