@@ -1,6 +1,6 @@
 # Power Automate setup — IMDS Super Master
 
-This setup uses the website's Supabase-backed IMDS Super Master as the source of truth. The website reads the shared master directly, and these two separate Power Automate flows mirror changes to Excel and send supplier-specific follow-ups.
+This setup keeps the website's Supabase-backed IMDS Super Master and the shared Excel workbook synchronized in both directions. Website edits write to Excel; Excel file changes are sent back into Supabase by a separate reverse-sync flow. Supplier-specific follow-ups are sent through their own flow. The latest accepted update wins; rows missing from a snapshot are never deleted automatically.
 
 **Do not reuse `POWER_AUTOMATE_EXCEL_URL`** from the existing G-CATS judgement integration. The Tracker writeback flow has its own URL.
 
