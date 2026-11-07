@@ -26,7 +26,7 @@ export async function GET() {
   if (firstError) return NextResponse.json({ error: firstError.message }, { status: 500 });
 
   return NextResponse.json({
-    configured: Boolean(process.env.POWER_AUTOMATE_TRACKER_URL?.trim()),
+    configured: Boolean(process.env.POWER_AUTOMATE_TRACKER_URL?.trim() && process.env.POWER_AUTOMATE_SECRET?.trim()),
     queue: { pending: pending.count || 0, failed: failed.count || 0, sending: sending.count || 0, sent: sent.count || 0 },
     checkedAt: new Date().toISOString()
   }, { headers: { "Cache-Control": "private, no-store" } });
