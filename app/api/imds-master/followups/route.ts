@@ -3,6 +3,9 @@ import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
 import { postToFlow } from "@/lib/automation/flow";
+import { resolveRecipients, emailsOf, type ContactRow } from "@/lib/followup/recipients";
+import { buildSupplierEmailPayload, parseSenders, pickSender } from "@/lib/followup/payload";
+import { gapHoursFromEnv, recentlySent } from "@/lib/followup/guard";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 
 export const runtime = "nodejs";
@@ -71,20 +74,15 @@ async function loadSupplierGroups(supabase: NonNullable<Awaited<ReturnType<typeo
     const first = group[0];
     const code = String(first.vendor_code || "");
     const company = String(first.company_name || "Unknown supplier");
-    const contactRows = (contacts || []).filter((contact) =>
-      String(contact.supplier_code || "").trim().toUpperCase() === code.trim().toUpperCase()
-    );
-    const picRows = contactRows.filter((contact) => {
-      const role = String(contact.contact_role || "").toUpperCase();
-      return role === "PIC" || (role.includes("PIC") && !role.includes("SPV"));
+    // Shared with the Judgement follow-up: Part List MAIN PIC EMAIL is authoritative, the directory is the fallback,
+    // and a supervisor (SPV) is never the primary recipient.
+    const recipients = resolveRecipients({
+      supplierCode: code,
+      contacts: (contacts || []) as ContactRow[],
+      mainPicEmails: group.flatMap((part) => emails(part.main_pic_email))
     });
-    const fallback = group.flatMap((part) => emails(part.main_pic_email));
-    // The current Part List MAIN PIC EMAIL is authoritative; directory PIC is a fallback only.
-    const to = [...new Set((fallback.length ? fallback : picRows.flatMap((contact) => emails(contact.email))) )];
-    const cc = [...new Set(contactRows.filter((contact) => {
-      const role = String(contact.contact_role || "").toUpperCase();
-      return role.includes("CC") || role.includes("SPV") || role.includes("MARKETING");
-    }).flatMap((contact) => emails(contact.email)))];
+    const to = recipients.to;
+    const cc = recipients.cc;
     const projects = [...new Set(group.map((part) => String(part.project || "").trim()).filter(Boolean))].sort();
     const subject = `IMDS submission follow-up | ${company} | ${group.length} outstanding part(s)`;
     const partRows = group.map((part, index) => ({
@@ -129,7 +127,9 @@ async function loadSupplierGroups(supabase: NonNullable<Awaited<ReturnType<typeo
       partCount: group.length,
       projects,
       parts: partRows,
-      emailReady: to.length > 0
+      emailReady: to.length > 0,
+      recipientSource: recipients.source,
+      warnings: recipients.warnings
     });
   }
   return suppliers.sort((a, b) => b.partCount - a.partCount || a.supplierName.localeCompare(b.supplierName));
@@ -148,6 +148,7 @@ export async function GET() {
     return NextResponse.json({
       suppliers,
       configured: Boolean(process.env.POWER_AUTOMATE_EMAIL_URL?.trim() && process.env.POWER_AUTOMATE_SECRET?.trim()),
+      senders: parseSenders(process.env.FOLLOWUP_SENDERS),
       sendMode: "one supplier per request; sequential sending is controlled by the website"
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
   if (!["admin", "preparer", "reviewer"].includes(auth.role || "")) {
     return NextResponse.json({ error: "Admin, preparer or reviewer role is required to send supplier follow-ups." }, { status: 403 });
   }
-  const body = await request.json().catch(() => null) as { supplierCode?: string; supplierName?: string; subject?: string; messageBody?: string } | null;
+  const body = await request.json().catch(() => null) as { supplierCode?: string; supplierName?: string; subject?: string; messageBody?: string; sender?: string; extraCc?: string[]; force?: boolean } | null;
   if (!body?.supplierName) return NextResponse.json({ error: "Choose one supplier to follow up." }, { status: 400 });
 
   const supabase = await createClient();
@@ -176,6 +177,19 @@ export async function POST(request: NextRequest) {
   );
   if (!supplier) return NextResponse.json({ error: "This supplier no longer has outstanding parts in the shared master." }, { status: 404 });
   if (!supplier.to.length) return NextResponse.json({ error: "No valid supplier PIC email is registered. Update the supplier contact directory first." }, { status: 422 });
+
+  const gapHours = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
+  if (!body.force && gapHours > 0) {
+    const { data: last } = await supabase.from("imds_tracker_followup_logs").select("sent_at")
+      .eq("supplier_name", supplier.supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
+    if (recentlySent(last?.[0]?.sent_at, new Date(), gapHours)) {
+      return NextResponse.json({ error: `A follow-up was already sent to ${supplier.supplierName} within the last ${gapHours} hours. Nothing was sent. Resend with force to override.`, skipped: "RECENTLY_SENT", lastSentAt: last![0].sent_at }, { status: 409 });
+    }
+  }
+  const allowedSenders = parseSenders(process.env.FOLLOWUP_SENDERS);
+  const sender = pickSender(allowedSenders, body.sender);
+  if (body.sender && !sender) return NextResponse.json({ error: "That sender mailbox is not on the allowed list (FOLLOWUP_SENDERS). Nothing was sent." }, { status: 422 });
+  const cc = [...new Set([...supplier.cc, ...emailsOf((body.extraCc || []).join(";"))])].filter((email) => !supplier.to.includes(email));
 
   const emailUrl = process.env.POWER_AUTOMATE_EMAIL_URL?.trim();
   const flowSecret = process.env.POWER_AUTOMATE_SECRET?.trim() || null;
@@ -192,7 +206,7 @@ export async function POST(request: NextRequest) {
     supplier_code: supplier.supplierCode || null,
     supplier_name: supplier.supplierName,
     recipient_email: supplier.to.join(";"),
-    cc_emails: supplier.cc,
+    cc_emails: cc,
     subject,
     message_body: messageBody,
     part_count: supplier.partCount,
@@ -202,17 +216,21 @@ export async function POST(request: NextRequest) {
   }).select("id").single();
   if (logError || !log) return NextResponse.json({ error: logError?.message || "Could not record follow-up attempt." }, { status: 500 });
 
-  const delivery = await postToFlow(emailUrl, flowSecret, {
-    type: "supplier_email",
-    supplierCode: supplier.supplierCode,
-    supplierName: supplier.supplierName,
-    to: supplier.to.join(";"),
-    cc: supplier.cc.join(";"),
-    subject,
-    body: messageBody,
-    attachments: [{ name: attachmentName, contentType: "application/pdf", contentBytes: pdf.toString("base64") }],
-    metadata: { source: "IMDS Super Master", partCount: supplier.partCount, projects: supplier.projects, logId: log.id }
-  });
+  let payload;
+  try {
+    payload = buildSupplierEmailPayload({
+      source: "tracker", followupId: log.id, logId: log.id,
+      supplierCode: supplier.supplierCode, supplierName: supplier.supplierName,
+      to: supplier.to, cc, sender, subject, body: messageBody,
+      attachments: [{ name: attachmentName, contentType: "application/pdf", contentBytes: pdf.toString("base64") }],
+      metadata: { partCount: supplier.partCount, projects: supplier.projects, items: supplier.partCount }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not prepare the e-mail.";
+    await supabase.from("imds_tracker_followup_logs").update({ status: "FAILED", error_message: message }).eq("id", log.id);
+    return NextResponse.json({ error: message, logId: log.id }, { status: 422 });
+  }
+  const delivery = await postToFlow(emailUrl, flowSecret, payload);
 
   const status = delivery.ok ? "SENT" : "FAILED";
   await supabase.from("imds_tracker_followup_logs").update({

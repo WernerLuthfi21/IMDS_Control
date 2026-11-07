@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildExcelPayload, deliver, flowConfig, transportFor, type RegisterRow } from "./flow";
+import { buildSupplierEmailPayload, type Sender } from "@/lib/followup/payload";
 
 const ROW_COLUMNS = "source_record_key,error_type_label,delivery_part_no,supplier_code,assigned_person,starting_date,judgement_procedure,judge,ok_comment,imds_reject_comment,km_judge,km_comment,last_change_date";
 const MAX_ATTEMPTS = 5;
@@ -13,7 +14,7 @@ export async function enqueue(supabase: SupabaseClient, actorId: string, job: { 
 type Job = { id: string; kind: "EXCEL_UPSERT" | "SUPPLIER_EMAIL"; item_id: string | null; followup_id: string | null; attempts: number };
 
 /** Send queued jobs strictly one after another. Safe to call concurrently: each job is claimed first. */
-export async function dispatch(supabase: SupabaseClient, opts: { limit?: number; kind?: Job["kind"]; followupId?: string; fetchImpl?: typeof fetch } = {}) {
+export async function dispatch(supabase: SupabaseClient, opts: { limit?: number; kind?: Job["kind"]; followupId?: string; fetchImpl?: typeof fetch; sender?: Sender | null } = {}) {
   const cfg = flowConfig();
   const summary = { sent: 0, failed: 0, skipped: 0, configured: { excel: !!transportFor("EXCEL_UPSERT", cfg), email: !!transportFor("SUPPLIER_EMAIL", cfg) } };
   // A crashed run can leave rows in SENDING; release them after two minutes so they are retried.
@@ -39,7 +40,7 @@ export async function dispatch(supabase: SupabaseClient, opts: { limit?: number;
       if (!f) result = { ok: false, error: "Follow-up not found" };
       else if (f.status === "SENT" || f.status === "CANCELLED") { await supabase.from("sync_outbox").update({ status: "SENT", last_error: "already " + f.status }).eq("id", job.id); continue; }
       else {
-        result = await deliver(job.kind, cfg, { type: "supplier_email", followupId: f.id, to: f.recipient_email, cc: (f.cc_emails || []).join(";"), subject: f.subject, body: f.message_body }, opts.fetchImpl);
+        result = await deliver(job.kind, cfg, buildSupplierEmailPayload({ source: "judgement", followupId: f.id, logId: f.id, supplierCode: f.supplier_code, supplierName: f.supplier_code, to: [f.recipient_email], cc: f.cc_emails || [], sender: opts.sender, subject: f.subject, body: f.message_body, metadata: { partCount: 1, projects: [], items: 1 } }), opts.fetchImpl);
         // HTTP transport: "SENT" = flow answered 2xx. Mail transport: only handed to the mailbox, so the follow-up stays COMPOSED
         // (the outbox row records the hand-off) because Outlook has not been confirmed to send it.
         if (result.ok && !result.handedOff) await supabase.from("supplier_followups").update({ status: "SENT", sent_at: new Date().toISOString() }).eq("id", f.id);

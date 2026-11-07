@@ -132,6 +132,8 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
   const [followupLoading, setFollowupLoading] = useState(false);
   const [sendingSupplier, setSendingSupplier] = useState<string | null>(null);
   const [sendAllBusy, setSendAllBusy] = useState(false);
+  const [senders, setSenders] = useState<Array<{ name: string; email: string }>>([]);
+  const [sender, setSender] = useState("");
   const [syncStatus, setSyncStatus] = useState<{ configured: boolean; queue: { pending: number; failed: number; sending: number; sent: number } } | null>(null);
   const [syncBusy, setSyncBusy] = useState(false);
 
@@ -144,6 +146,7 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
       const next = (payload.suppliers || []) as SupplierFollowup[];
       setFollowups(next);
       setEmailConfigured(Boolean(payload.configured));
+      setSenders(Array.isArray(payload.senders) ? payload.senders : []);
       setFollowupDrafts((previous) => {
         const drafts = { ...previous };
         next.forEach((supplier) => {
@@ -201,7 +204,7 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
       const response = await fetch("/api/imds-master/followups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierCode: supplier.supplierCode, supplierName: supplier.supplierName, subject: draft.subject, messageBody: draft.body })
+        body: JSON.stringify({ supplierCode: supplier.supplierCode, supplierName: supplier.supplierName, subject: draft.subject, messageBody: draft.body, sender: sender || undefined })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Supplier e-mail was not sent.");
@@ -221,6 +224,7 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
     if (!emailConfigured || !ready.length) return;
     setSendAllBusy(true);
     let sent = 0;
+    let skippedRecent = 0;
     const failures: string[] = [];
     try {
       for (const supplier of ready) {
@@ -230,16 +234,19 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
           const response = await fetch("/api/imds-master/followups", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ supplierCode: supplier.supplierCode, supplierName: supplier.supplierName, subject: draft.subject, messageBody: draft.body })
+            body: JSON.stringify({ supplierCode: supplier.supplierCode, supplierName: supplier.supplierName, subject: draft.subject, messageBody: draft.body, sender: sender || undefined })
           });
           const payload = await response.json();
-          if (!response.ok) throw new Error(payload.error || "Send failed.");
+          if (!response.ok) {
+            if (payload.skipped === "RECENTLY_SENT") { skippedRecent++; continue; }
+            throw new Error(payload.error || "Send failed.");
+          }
           sent++;
         } catch (error) {
           failures.push(`${supplier.supplierName}: ${error instanceof Error ? error.message : "Send failed"}`);
         }
       }
-      setNotice({ kind: failures.length ? "error" : "success", text: `Sequential supplier follow-up complete: ${sent}/${ready.length} sent. ${failures.length} failed. Each supplier was sent separately with its own PDF. ${failures.slice(0, 3).join(" | ")}` });
+      setNotice({ kind: failures.length ? "error" : "success", text: `Sequential supplier follow-up complete: ${sent}/${ready.length} sent. ${skippedRecent} skipped (already e-mailed recently). ${failures.length} failed. Each supplier was sent separately with its own PDF. ${failures.slice(0, 3).join(" | ")}` });
       await loadFollowups();
     } finally {
       setSendAllBusy(false);
@@ -455,6 +462,15 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {senders.length > 0 && (
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                Send as
+                <select value={sender} onChange={(event) => setSender(event.target.value)} disabled={sendAllBusy || sendingSupplier !== null}>
+                  <option value="">Default account</option>
+                  {senders.map((item) => <option key={item.email} value={item.email}>{item.name} &lt;{item.email}&gt;</option>)}
+                </select>
+              </label>
+            )}
             <button type="button" className="btn btn-secondary" onClick={() => void loadFollowups()} disabled={followupLoading}>{followupLoading ? "Refreshing…" : "Refresh suppliers"}</button>
             <button type="button" className="btn btn-primary" onClick={() => void sendAllSequentially()} disabled={!emailConfigured || sendAllBusy || sendingSupplier !== null || !followups.some((item) => item.emailReady)}>
               {sendAllBusy ? "Sending one by one…" : `Send all sequentially (${followups.filter((item) => item.emailReady).length})`}
