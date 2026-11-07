@@ -133,10 +133,10 @@ function toMasterRow(row: ExcelRow, sourceRow: number, masterKey: string, prior?
   }
 
   const extras = { ...((prior?.extra_fields || {}) as Record<string, unknown>) };
-  for (const [header, value] of Object.entries(row)) {
+  for (const [columnIndex, [header, value]] of Object.entries(row).entries()) {
     const normalized = normHeader(header);
     if (!header || RESERVED.has(normalized) || normalized === "masterkey") continue;
-    extras[header] = value === undefined ? null : value;
+    extras[`${header} [col ${columnIndex + 1}]`] = value === undefined ? null : value;
   }
   const rowNumber = cleanText(readCell(row, ["No."]).value);
   if (rowNumber) extras["No."] = rowNumber;
@@ -231,10 +231,17 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: `Excel snapshot could not be applied at row ${index + 1}: ${error.message}` }, { status: 500 });
   }
 
-  const assignedKeys = prepared
-    .filter((item) => item._generatedKey === true)
-    .map((item) => ({ no: item._sequenceNo, masterKey: item.master_key }))
-    .filter((item) => item.no);
+  const generated = prepared.filter((item) => item._generatedKey === true);
+  const noCounts = new Map<string, number>();
+  for (const item of generated) {
+    const no = String(item._sequenceNo || "");
+    if (no) noCounts.set(no, (noCounts.get(no) || 0) + 1);
+  }
+  const assignedKeys = generated
+    .filter((item) => item._sequenceNo && noCounts.get(String(item._sequenceNo)) === 1)
+    .map((item) => ({ no: item._sequenceNo, masterKey: item.master_key }));
+  const missingNo = generated.some((item) => !item._sequenceNo);
+  const duplicateNo = [...noCounts.values()].some((count) => count > 1);
 
   return NextResponse.json({
     ok: true,
@@ -245,8 +252,8 @@ export async function POST(request: NextRequest) {
     skipped,
     duplicateMasterKeys: duplicateKeyWarnings.length,
     assignedKeys,
-    warning: prepared.some((item) => item._generatedKey === true && !item._sequenceNo)
-      ? "Some new rows do not have a unique No. value. Add a unique No. in Excel so Power Automate can write the generated MasterKey back into the table."
+    warning: missingNo || duplicateNo
+      ? "Some new rows have a blank or duplicate No. value. Assign a unique No. in Excel so Power Automate can write generated MasterKeys back safely."
       : undefined,
     note: "Excel rows were merged into the shared master. Rows missing from the snapshot are retained; no row was deleted."
   }, { headers: { "Cache-Control": "no-store" } });
