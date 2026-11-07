@@ -426,7 +426,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let powerAutomate = { configured: false, sent: 0, failed: 0, pending: 0, error: "No matched master rows to sync." as string | undefined };
+    let powerAutomate: Awaited<ReturnType<typeof dispatchPartMasterOutbox>> = { configured: false, sent: 0, failed: 0, pending: 0, error: "No matched master rows to sync." };
     if (updates.size) {
       const ids = [...updates.keys()];
       const changedRows: MasterRecord[] = [];
