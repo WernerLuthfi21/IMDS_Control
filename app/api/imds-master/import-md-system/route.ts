@@ -8,6 +8,8 @@ import { enqueuePartMasterRows, dispatchPartMasterOutbox } from "@/lib/imds-mast
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+type MasterRecord = Record<string, unknown>;
+
 type MasterCandidate = {
   id: string;
   master_key: string;
@@ -90,8 +92,11 @@ function vendorTokens(value: unknown, isMdCode = false): Set<string> {
 }
 
 function sameSupplierGroup(a: MasterCandidate, b: MasterCandidate) {
-  return normalizeCompany(a.company_name) === normalizeCompany(b.company_name)
-    && [...vendorTokens(a.vendor_code)].some((token) => vendorTokens(b.vendor_code).has(token));
+  if (normalizeCompany(a.company_name) !== normalizeCompany(b.company_name)) return false;
+  const aTokens = vendorTokens(a.vendor_code);
+  const bTokens = vendorTokens(b.vendor_code);
+  if (!aTokens.size && !bTokens.size) return text(a.vendor_code).toUpperCase() === text(b.vendor_code).toUpperCase();
+  return [...aTokens].some((token) => bTokens.has(token));
 }
 
 function chooseCandidates(
@@ -149,9 +154,9 @@ function chooseCandidates(
   return { matches: [], reason: "Part number exists for one or more suppliers, but the supplier identity could not be confirmed safely.", status: "AMBIGUOUS" };
 }
 
-function findAll(headers: string[], fragment: string) {
+function findAllExact(headers: string[], fragment: string) {
   const target = normHeader(fragment);
-  return headers.flatMap((header, index) => normHeader(header).includes(target) ? [index + 1] : []);
+  return headers.flatMap((header, index) => normHeader(header) === target ? [index + 1] : []);
 }
 
 function findOne(headers: string[], aliases: string[]) {
@@ -232,9 +237,9 @@ export async function POST(request: NextRequest) {
     if (!headerRow) return NextResponse.json({ error: "Could not identify the MD System header row." }, { status: 422 });
 
     const headers = Array.from({ length: Math.min(sheet.columnCount, 200) }, (_, i) => text(sheet!.getRow(headerRow).getCell(i + 1).value));
-    const statusCols = findAll(headers, "Status");
-    const changedCols = findAll(headers, "last status changed");
-    const reasonCols = findAll(headers, "Reason for denial");
+    const statusCols = findAllExact(headers, "Status");
+    const changedCols = findAllExact(headers, "last status changed");
+    const reasonCols = findAllExact(headers, "Reason for denial");
     const cols = {
       type: findOne(headers, ["Type"]),
       name: findOne(headers, ["Name"]),
