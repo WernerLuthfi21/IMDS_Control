@@ -20,7 +20,7 @@ export function LoginForm({ next, initialMode = "signin", linkError = false }: {
   const [done, setDone] = useState("");
   const [helpSent, setHelpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [req, setReq] = useState({ name: "", company: "", supplierCode: "", email: "", website: "" });
+  const [req, setReq] = useState({ name: "", company: "", supplierCode: "", email: "", password: "", password2: "", website: "" });
   const go = (m: Mode) => { setMode(m); setError(""); setDone(""); setHelpSent(false); };
 
   async function signIn(e: React.FormEvent) {
@@ -38,7 +38,7 @@ export function LoginForm({ next, initialMode = "signin", linkError = false }: {
     const r = await post("/api/access/request", req);
     setLoading(false);
     if (!r.ok) { setError(r.error || "Could not submit the request."); return; }
-    setDone("Request submitted.");
+    setDone("Request submitted."); setReq((x) => ({ ...x, password: "", password2: "" }));
   }
   async function submitForgot(e: React.FormEvent) {
     e.preventDefault(); setLoading(true); setError("");
@@ -81,6 +81,11 @@ export function LoginForm({ next, initialMode = "signin", linkError = false }: {
         <div className="auth-field-row">
           <label className="auth-field"><span>Supplier code</span><input required value={req.supplierCode} maxLength={20} onChange={(e) => setReq({ ...req, supplierCode: e.target.value.toUpperCase() })} autoCapitalize="characters"/></label>
           <label className="auth-field"><span>Work email</span><input type="email" required value={req.email} onChange={(e) => setReq({ ...req, email: e.target.value })} autoComplete="email"/></label>
+        </div>
+        <div className="auth-field-row">
+          <label className="auth-field"><span>Password</span><span className="auth-pass"><input type={showPassword ? "text" : "password"} required minLength={10} autoComplete="new-password" value={req.password} onChange={(e) => setReq({ ...req, password: e.target.value })}/>
+            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}</button></span></label>
+          <label className="auth-field"><span>Repeat password</span><input type={showPassword ? "text" : "password"} required minLength={10} autoComplete="new-password" value={req.password2} onChange={(e) => setReq({ ...req, password2: e.target.value })}/></label>
         </div>
         <input className="auth-hp" tabIndex={-1} aria-hidden="true" autoComplete="off" name="website" value={req.website} onChange={(e) => setReq({ ...req, website: e.target.value })}/>
         <div className="auth-error" role="alert" aria-live="polite">{error}</div>

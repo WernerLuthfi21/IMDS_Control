@@ -28,6 +28,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   const decided = { decided_by: auth.user.id, decided_at: new Date().toISOString(), decision_note: note };
 
   if (body.action === "reject") {
+    if (req.user_id) await admin.auth.admin.deleteUser(req.user_id); // frees the e-mail and removes the banned login
     await admin.from("access_requests").update({ ...decided, status: "REJECTED" }).eq("id", id);
     await admin.from("audit_events").insert({ actor_id: auth.user.id, action: "ACCESS_REQUEST_REJECTED", entity_type: "access_request", entity_id: id, metadata: { kind: req.kind } });
     return NextResponse.json({ ok: true, status: "REJECTED" });
@@ -54,6 +55,17 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   if (role === "supplier") {
     supplierCode = normalizeSupplierCode(body.supplierCode || req.supplier_code);
     if (!SUPPLIER_CODE.test(supplierCode)) return NextResponse.json({ error: "A valid supplier code is required for supplier accounts." }, { status: 422 });
+  }
+  if (req.user_id) {
+    // Supplier chose a password at request time: lift the ban, set role/code, then make the e-mail owner confirm the address.
+    const { error: unbanError } = await admin.auth.admin.updateUserById(req.user_id, { ban_duration: "none" });
+    if (unbanError) return NextResponse.json({ error: "Could not activate the account: " + unbanError.message }, { status: 502 });
+    const { error: pErr } = await admin.from("profiles").update({ role, supplier_code: supplierCode, display_name: req.full_name }).eq("id", req.user_id);
+    if (pErr) { await admin.auth.admin.updateUserById(req.user_id, { ban_duration: "876000h" }); return NextResponse.json({ error: "Could not set the role: " + pErr.message }, { status: 500 }); }
+    const { error: mailError } = await supabase.auth.resend({ type: "signup", email: req.email, options: { emailRedirectTo: `${origin}/auth/confirm?next=/workspace` } });
+    await admin.from("access_requests").update({ ...decided, status: "APPROVED", granted_role: role }).eq("id", id);
+    await admin.from("audit_events").insert({ actor_id: auth.user.id, action: "ACCESS_REQUEST_APPROVED", entity_type: "access_request", entity_id: id, metadata: { kind: req.kind, role, supplierCode } });
+    return NextResponse.json({ ok: true, status: "APPROVED", note: mailError ? "Approved, but the confirmation email could not be sent: " + mailError.message : "Approved. The user confirms the email link, then signs in with the password they chose." });
   }
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(req.email, { data: { display_name: req.full_name }, redirectTo });
   if (inviteError || !invited.user) {

@@ -13,14 +13,25 @@ export function allowedStaffDomain(email: string, domains: string | undefined) {
   return list.includes(email.split("@")[1] || "");
 }
 
-export type SupplierInput = { name: string; company: string; email: string; supplierCode: string };
+export function validatePassword(pw: unknown, confirm?: unknown): string | null {
+  const v = typeof pw === "string" ? pw : "";
+  if (v.length < 10) return "Use at least 10 characters.";
+  if (v.length > 72) return "Use at most 72 characters.";
+  if (!/[A-Za-z]/.test(v) || !/\d/.test(v)) return "Include letters and at least one digit.";
+  if (confirm !== undefined && v !== confirm) return "Passwords do not match.";
+  return null;
+}
+
+export type SupplierInput = { name: string; company: string; email: string; supplierCode: string; password: string };
 export function validateSupplierRequest(body: Record<string, unknown>): { ok: true; value: SupplierInput } | { ok: false; error: string } {
   const name = cleanText(body.name, 80), company = cleanText(body.company, 120), email = normalizeEmail(body.email), supplierCode = normalizeSupplierCode(body.supplierCode);
   if (name.length < 2) return { ok: false, error: "Enter your full name." };
   if (company.length < 2) return { ok: false, error: "Enter your company." };
   if (!validEmail(email)) return { ok: false, error: "Enter a valid work email." };
   if (!SUPPLIER_CODE.test(supplierCode)) return { ok: false, error: "Enter your supplier code (letters, digits, - and _)." };
-  return { ok: true, value: { name, company, email, supplierCode } };
+  const pwError = validatePassword(body.password, body.password2);
+  if (pwError) return { ok: false, error: pwError };
+  return { ok: true, value: { name, company, email, supplierCode, password: String(body.password) } };
 }
 
 /** Which roles an admin may grant for a request kind. Suppliers can only ever become `supplier`. */
