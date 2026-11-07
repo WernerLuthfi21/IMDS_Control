@@ -144,7 +144,7 @@ export async function GET() {
     const suppliers = await loadSupplierGroups(supabase);
     return NextResponse.json({
       suppliers,
-      configured: Boolean(process.env.POWER_AUTOMATE_EMAIL_URL?.trim()),
+      configured: Boolean(process.env.POWER_AUTOMATE_EMAIL_URL?.trim() && process.env.POWER_AUTOMATE_SECRET?.trim()),
       sendMode: "one supplier per request; sequential sending is controlled by the website"
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
@@ -175,8 +175,9 @@ export async function POST(request: NextRequest) {
   if (!supplier.to.length) return NextResponse.json({ error: "No valid supplier PIC email is registered. Update the supplier contact directory first." }, { status: 422 });
 
   const emailUrl = process.env.POWER_AUTOMATE_EMAIL_URL?.trim();
-  if (!emailUrl || !/^https:\/\//i.test(emailUrl)) {
-    return NextResponse.json({ error: "POWER_AUTOMATE_EMAIL_URL is not configured. The message was not sent.", prepared: true }, { status: 503 });
+  const flowSecret = process.env.POWER_AUTOMATE_SECRET?.trim() || null;
+  if (!emailUrl || !/^https:\/\//i.test(emailUrl) || !flowSecret) {
+    return NextResponse.json({ error: "POWER_AUTOMATE_EMAIL_URL and POWER_AUTOMATE_SECRET must both be configured. The message was not sent.", prepared: true }, { status: 503 });
   }
 
   const subject = String(body.subject || supplier.subject).trim().slice(0, 240);
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
   }).select("id").single();
   if (logError || !log) return NextResponse.json({ error: logError?.message || "Could not record follow-up attempt." }, { status: 500 });
 
-  const delivery = await postToFlow(emailUrl, process.env.POWER_AUTOMATE_SECRET?.trim() || null, {
+  const delivery = await postToFlow(emailUrl, flowSecret, {
     type: "supplier_email",
     supplierCode: supplier.supplierCode,
     supplierName: supplier.supplierName,
