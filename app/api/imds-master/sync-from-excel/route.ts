@@ -185,16 +185,21 @@ export async function POST(request: NextRequest) {
     const sequenceNo = cleanText(readCell(row, ["No."]).value);
     // Advance the duplicate occurrence counter for every row, including rows whose key already exists.
     let generatedCandidate = buildMasterKey(row, occurrences);
+    let masterKey = suppliedKey || generatedCandidate;
+    let generatedKey = !suppliedKey;
     if (suppliedKey) {
       const repeated = explicitKeyCounts.get(suppliedKey) || 0;
       explicitKeyCounts.set(suppliedKey, repeated + 1);
-      if (repeated > 0) duplicateKeyWarnings.push(suppliedKey);
+      if (repeated > 0) {
+        duplicateKeyWarnings.push(suppliedKey);
+        masterKey = createHash("sha256").update(`${suppliedKey}|duplicate:${repeated}`).digest("hex");
+        generatedKey = true;
+      }
     } else {
       while (knownKeys.has(generatedCandidate)) generatedCandidate = buildMasterKey(row, occurrences);
-      knownKeys.add(generatedCandidate);
+      masterKey = generatedCandidate;
     }
-    const masterKey = suppliedKey || generatedCandidate;
-    const generatedKey = !suppliedKey || duplicateKeyWarnings.includes(suppliedKey);
+    if (generatedKey) knownKeys.add(masterKey);
 
     prepared.push({ master_key: masterKey, _sourceRow: index + 7, _source: row, _sequenceNo: sequenceNo, _generatedKey: generatedKey });
   }
