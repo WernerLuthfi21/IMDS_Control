@@ -22,6 +22,8 @@ type MasterPart = Record<string, unknown> & {
   imds_id_version: string | null;
   md_id_version: string | null;
   status_update: string | null;
+  md_status_update_date: string | null;
+  comment: string | null;
 };
 
 function emails(value: unknown): string[] {
