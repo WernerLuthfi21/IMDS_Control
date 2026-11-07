@@ -78,3 +78,5 @@ This is a development release, not a Toyota-approved or production-certified jud
 
 ## Access requests & password recovery
 - Implemented: supplier-only public request, staff-registers-staff, admin approval queue, approval PIC e-mail, forgot/reset password, throttling. **NOT TESTED** against real Supabase/SMTP; migration 20261107000000 not applied remotely. TOTP MFA not implemented. See `docs/ACCESS_AND_SECURITY.md`.
+
+- Automation polish: connection tests, sync pill with auto-retry, seed CSV export, bulk-send UX. NOT TESTED against a real flow.

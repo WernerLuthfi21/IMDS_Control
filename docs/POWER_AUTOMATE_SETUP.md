@@ -67,3 +67,16 @@ Trigger as above, Subject Filter `IMDS-SYNC|<your secret>|supplier_email`. *Pars
 - Outbox "SENT" with `handed_off_via_mail` = SMTP accepted it. The app **cannot know** whether the flow ran or Outlook sent the supplier mail. The follow-up stays `COMPOSED`, and the Follow-up page shows it as already handed off (so it is not re-sent).
 - Check the flow's run history in Power Automate to confirm. A "stuck" Excel update shows there, not here.
 - Risk: anyone who can both spoof the sender and guess the subject secret could trigger the flow. Keep the secret long and the From filter on.
+
+---
+# Option C — direct, no Premium: "When a Teams webhook request is received"
+The built-in **Microsoft Teams Webhook** trigger is a standard (non-premium) trigger that gives a URL accepting POST JSON. Use it exactly like Flow 1/2 but: (a) add **Parse JSON** with Content `triggerBody()`; (b) read the secret from `triggerOutputs()?['headers']?['x-imds-secret']`; (c) use no **Response** action (it is premium; the trigger answers 202 by itself). Put the URL in `POWER_AUTOMATE_EXCEL_URL` / `POWER_AUTOMATE_EMAIL_URL`. Status: NOT TESTED by the author; verify with the **Test** button below.
+
+# Checking and operating it (Follow-up page → Power Automate panel)
+- **Checklist:** shows whether the Excel flow, e-mail flow and secret are configured and which transport is used (direct or via mailbox).
+- **Test (Excel):** upserts the fixed row `IMDS-PING` (first run adds it, later runs update it, so both paths are exercised). Delete the row whenever you like.
+- **Send test to me:** sends one e-mail to your own address only.
+- **Top bar pill:** “Excel in sync / n waiting / n failed”. While any internal user has the app open, queued or failed jobs are retried automatically about once a minute; **Retry failed now** gives exhausted jobs a fresh start.
+- **Download register CSV:** one-time seed of the current WORKING register in the exact column order of the Excel table. Cells beginning with `= + - @` are prefixed with `'` so Excel never runs them as formulas.
+- **Bulk send:** search/filter, Select all shown, Preview of the exact message, progress bar; strictly one e-mail after another; recipients without a supplier PIC are blocked; an item already sent is skipped.
+- Limits: if nobody has the app open and the flow is down, retries wait until someone opens it (Vercel Hobby cron is daily only).

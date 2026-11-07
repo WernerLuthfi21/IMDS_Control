@@ -91,3 +91,16 @@ export async function deliver(kind: Kind, cfg: FlowConfig, payload: { type: stri
   if (mode === "mail" && cfg.mail && cfg.secret) return sendViaMail(cfg.mail, cfg.secret, payload);
   return { ok: false, status: 0, error: "No transport configured" };
 }
+
+export const EXCEL_HEADERS = Object.keys(buildExcelPayload({ source_record_key: "" })) as (keyof ReturnType<typeof buildExcelPayload>)[];
+
+/** Fixed test row. Re-running the test updates this same row, so it exercises both "Add a row" (first time) and "Update a row". */
+export function buildTestPayload(now: Date = new Date()) {
+  return { type: "excel_upsert" as const, ...buildExcelPayload({ source_record_key: "IMDS-PING", error_type_label: "CONNECTION TEST", assigned_person: "Connection test " + now.toISOString().slice(0, 19).replace("T", " ") + " UTC" }) };
+}
+
+/** CSV for pasting into the Excel table. Cells starting with = + - @ are prefixed with ' to block formula injection. */
+export function toCsv(rows: ReturnType<typeof buildExcelPayload>[]) {
+  const cell = (v: unknown) => { let t = String(v ?? ""); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  return "\ufeff" + [EXCEL_HEADERS.join(","), ...rows.map((r) => EXCEL_HEADERS.map((h) => cell(r[h])).join(","))].join("\r\n");
+}
