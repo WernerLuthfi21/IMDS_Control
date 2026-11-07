@@ -62,7 +62,7 @@ function dateISO(value: unknown): string | null {
 }
 
 function normalizePartNo(value: string) {
-  return value.toUpperCase().replace(/\s+/g, "");
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 function sha(value: string) {
