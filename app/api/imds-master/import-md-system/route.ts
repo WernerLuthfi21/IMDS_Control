@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readUpload } from "@/lib/imds-master/upload";
 import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
 import { getAuthContext } from "@/lib/auth/session";
@@ -218,17 +219,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Admin, preparer or reviewer role is required to import MD System results." }, { status: 403 });
   }
 
-  const form = await request.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "Choose an MD System search-result .xlsx file first." }, { status: 400 });
-  if (!file.name.toLowerCase().endsWith(".xlsx")) return NextResponse.json({ error: "Only .xlsx workbooks are supported." }, { status: 415 });
-  if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "File exceeds the 20 MB upload limit." }, { status: 413 });
-
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  const upload = await readUpload(request, supabase, auth.userId);
+  if ("error" in upload) return NextResponse.json({ error: upload.error }, { status: upload.status });
+  const file = { name: upload.fileName, size: upload.buffer.length };
 
   try {
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = upload.buffer;
     const fileHash = createHash("sha256").update(buffer).digest("hex");
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
