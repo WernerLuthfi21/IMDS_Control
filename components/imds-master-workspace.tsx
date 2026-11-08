@@ -310,13 +310,24 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
     setUploading(kind);
     setNotice({ kind: "info", text: kind === "master" ? "Reading Part List LATEST and merging it into the shared master…" : "Reading MD System search results and matching part numbers…" });
     try {
-      const form = new FormData();
-      form.append("file", file);
+      // 1) straight to private storage (no serverless body-size cap)  2) the server reads it from there
+      const init = await fetch("/api/imds-master/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, fileSize: file.size }) });
+      const slot = await init.json().catch(() => ({})) as { path?: string; token?: string; error?: string };
+      if (!init.ok || !slot.path || !slot.token) throw new Error(slot.error || "The upload could not start. Sign in again and retry.");
+      const sb = createClient();
+      if (!sb) throw new Error("Supabase is not configured in the browser.");
+      const up = await sb.storage.from("import-staging").uploadToSignedUrl(slot.path, slot.token, file);
+      if (up.error) throw new Error("Upload to storage failed: " + up.error.message);
+      setNotice({ kind: "info", text: "File uploaded. Importing rows — large workbooks can take up to a minute…" });
       const response = await fetch(kind === "master" ? "/api/imds-master/import-master" : "/api/imds-master/import-md-system", {
         method: "POST",
-        body: form
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storagePath: slot.path, fileName: file.name })
       });
-      const payload = await response.json() as ImportSummary;
+      const raw = await response.text();
+      let payload: ImportSummary;
+      try { payload = JSON.parse(raw) as ImportSummary; }
+      catch { throw new Error(response.status === 504 || /timeout|timed out/i.test(raw) ? "The import ran past the server time limit. Nothing is lost: try again, or split the workbook into smaller parts." : `The server returned an unexpected response (HTTP ${response.status}). Please retry.`); }
       if (!response.ok) throw new Error(payload.error || "Import failed.");
       const summary = kind === "master"
         ? `Master updated: ${payload.inserted || 0} new, ${payload.updated || 0} refreshed, ${payload.skipped || 0} skipped from ${payload.totalRows || 0} rows; ${payload.contactsImported || 0} supplier contacts synced.`
