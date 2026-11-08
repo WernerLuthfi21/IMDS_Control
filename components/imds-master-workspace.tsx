@@ -47,25 +47,6 @@ type MasterRow = {
   updated_at: string;
 };
 
-type ImportSummary = {
-  success?: boolean;
-  fileName?: string;
-  totalRows?: number;
-  inserted?: number;
-  updated?: number;
-  skipped?: number;
-  contactsImported?: number;
-  matchedMasterRows?: number;
-  matchedSourceRows?: number;
-  ambiguousRows?: number;
-  unmatchedRows?: number;
-  unmatchedPartNumbers?: number;
-  skippedRows?: number;
-  powerAutomate?: { configured?: boolean; sent?: number; failed?: number; pending?: number; error?: string };
-  note?: string;
-  error?: string;
-};
-
 type SupplierFollowup = {
   supplierCode: string;
   supplierName: string;
@@ -119,7 +100,6 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
   const [query, setQuery] = useState("");
   const [project, setProject] = useState("");
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState<"master" | "mds" | null>(null);
   const [notice, setNotice] = useState<{ kind: "success" | "error" | "info"; text: string } | null>(null);
   const [latestMasterImport, setLatestMasterImport] = useState<Record<string, unknown> | null>(null);
   const [latestMdsImport, setLatestMdsImport] = useState<Record<string, unknown> | null>(null);
@@ -301,50 +281,6 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
   const projects = useMemo(() => [...new Set(rows.map((row) => row.project).filter(Boolean) as string[])].sort(), [rows]);
   const totalPages = Math.max(1, Math.ceil(total / 50));
 
-  async function uploadFile(kind: "master" | "mds", file?: File) {
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      setNotice({ kind: "error", text: "Please upload an .xlsx workbook." });
-      return;
-    }
-    setUploading(kind);
-    setNotice({ kind: "info", text: kind === "master" ? "Reading Part List LATEST and merging it into the shared master…" : "Reading MD System search results and matching part numbers…" });
-    try {
-      // 1) straight to private storage (no serverless body-size cap)  2) the server reads it from there
-      const init = await fetch("/api/imds-master/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, fileSize: file.size }) });
-      const slot = await init.json().catch(() => ({})) as { path?: string; token?: string; error?: string };
-      if (!init.ok || !slot.path || !slot.token) throw new Error(slot.error || "The upload could not start. Sign in again and retry.");
-      const sb = createClient();
-      if (!sb) throw new Error("Supabase is not configured in the browser.");
-      const up = await sb.storage.from("import-staging").uploadToSignedUrl(slot.path, slot.token, file);
-      if (up.error) throw new Error("Upload to storage failed: " + up.error.message);
-      setNotice({ kind: "info", text: "File uploaded. Importing rows — large workbooks can take up to a minute…" });
-      const response = await fetch(kind === "master" ? "/api/imds-master/import-master" : "/api/imds-master/import-md-system", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storagePath: slot.path, fileName: file.name })
-      });
-      const raw = await response.text();
-      let payload: ImportSummary;
-      try { payload = JSON.parse(raw) as ImportSummary; }
-      catch { throw new Error(response.status === 504 || /timeout|timed out/i.test(raw) ? "The import ran past the server time limit. Nothing is lost: try again, or split the workbook into smaller parts." : `The server returned an unexpected response (HTTP ${response.status}). Please retry.`); }
-      if (!response.ok) throw new Error(payload.error || "Import failed.");
-      const summary = kind === "master"
-        ? `Master updated: ${payload.inserted || 0} new, ${payload.updated || 0} refreshed, ${payload.skipped || 0} skipped from ${payload.totalRows || 0} rows; ${payload.contactsImported || 0} supplier contacts synced.`
-        : `MD System import: ${payload.matchedMasterRows || 0} master rows matched; ${payload.ambiguousRows || 0} ambiguous; ${payload.unmatchedRows || 0} unmatched.`;
-      const sync = payload.powerAutomate ? ` Excel sync: ${payload.powerAutomate.sent || 0} sent / ${payload.powerAutomate.pending || 0} pending.` : "";
-      setNotice({ kind: "success", text: summary + sync + (payload.note ? " " + payload.note : "") });
-      setPage(1);
-      await load();
-      await loadFollowups();
-      await loadSyncStatus();
-    } catch (error) {
-      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Import failed." });
-    } finally {
-      setUploading(null);
-    }
-  }
-
   function openEdit(row: MasterRow) {
     setEditing(row);
     const initial: Record<string, string> = {};
@@ -413,34 +349,12 @@ export function ImdsMasterWorkspace({ canEdit }: { canEdit: boolean }) {
         {stat("MD System records", rows.filter((row) => (row.md_system_records || []).length > 0).length.toLocaleString(), "Rows with a matched result on this page")}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
-        <label
-          htmlFor="master-workbook-file"
-          onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "#167a45"; }}
-          onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--line-strong, #b7d9c4)"; }}
-          onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--line-strong, #b7d9c4)"; void uploadFile("master", e.dataTransfer.files?.[0]); }}
-          style={{ ...cardStyle, borderStyle: "dashed", borderWidth: 2, borderColor: "var(--line-strong, #b7d9c4)", cursor: "pointer", minHeight: 140, display: "grid", alignContent: "center", gap: 6 }}
-        >
-          <input id="master-workbook-file" type="file" accept=".xlsx" hidden disabled={!canEdit || uploading !== null} onChange={(e) => { void uploadFile("master", e.target.files?.[0]); e.currentTarget.value = ""; }} />
-          <strong style={{ fontSize: 15 }}>① Upload IMDS Remaining master</strong>
-          <span style={{ color: "var(--muted, #77818c)", fontSize: 13 }}>Drop the workbook containing <b>Part List LATEST</b> here, or click to browse.</span>
-          <span style={{ color: "var(--muted, #77818c)", fontSize: 12 }}>New rows are added. Missing rows are not deleted. Manual website edits are preserved.</span>
-          {uploading === "master" && <span aria-live="polite">Importing master workbook…</span>}
-        </label>
-
-        <label
-          htmlFor="md-system-file"
-          onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "#167a45"; }}
-          onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--line-strong, #b7d9c4)"; }}
-          onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--line-strong, #b7d9c4)"; void uploadFile("mds", e.dataTransfer.files?.[0]); }}
-          style={{ ...cardStyle, borderStyle: "dashed", borderWidth: 2, borderColor: "var(--line-strong, #b7d9c4)", cursor: "pointer", minHeight: 140, display: "grid", alignContent: "center", gap: 6 }}
-        >
-          <input id="md-system-file" type="file" accept=".xlsx" hidden disabled={!canEdit || uploading !== null} onChange={(e) => { void uploadFile("mds", e.target.files?.[0]); e.currentTarget.value = ""; }} />
-          <strong style={{ fontSize: 15 }}>② Upload MD System search results</strong>
-          <span style={{ color: "var(--muted, #77818c)", fontSize: 13 }}>Drop the Search Results workbook here, or click to browse.</span>
-          <span style={{ color: "var(--muted, #77818c)", fontSize: 12 }}>Matched by Part/Item No. + supplier code (with company-name check). Ambiguous rows are saved for review; only MD System fields are updated.</span>
-          {uploading === "mds" && <span aria-live="polite">Matching MD System records…</span>}
-        </label>
+      <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+        <div>
+          <strong style={{ fontSize: 15 }}>Uploads live in the IMDS Tracker</strong>
+          <div style={{ color: "var(--muted, #77818c)", fontSize: 13, marginTop: 4 }}>Open the Tracker and press <b>⬆ Import data</b> to upload the IMDS Remaining master and the MD System search results.</div>
+        </div>
+        <a href="/imds-tracker" className="btn btn-primary" style={{ textDecoration: "none" }}>Open IMDS Tracker</a>
       </div>
 
       <div style={{ ...cardStyle, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>

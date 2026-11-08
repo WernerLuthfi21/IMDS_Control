@@ -20,5 +20,5 @@ export async function POST(request: NextRequest) {
   const path = `${auth.userId}/${Date.now()}_${safe}`;
   const { data, error } = await supabase.storage.from("import-staging").createSignedUploadUrl(path);
   if (error || !data) return NextResponse.json({ error: error?.message || "Could not prepare the upload." }, { status: 500 });
-  return NextResponse.json({ path, token: data.token });
+  return NextResponse.json({ path, token: data.token, signedUrl: data.signedUrl });
 }
