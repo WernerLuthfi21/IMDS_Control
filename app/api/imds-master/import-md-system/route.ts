@@ -31,7 +31,7 @@ type MasterCandidate = {
 
 function plain(value: unknown): string | number | boolean | null {
   if (value === null || value === undefined) return null;
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "object") {
     const v = value as Record<string, unknown>;
@@ -182,7 +182,7 @@ function dateISO(value: unknown): string | null {
   }
   const v = plain(value);
   if (typeof v === "number" && v > 20000 && v < 80000) {
-    return new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000).toISOString().slice(0, 10);
+    { const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000); return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10); }
   }
   if (typeof v === "string") {
     const s = v.trim();
@@ -203,7 +203,7 @@ function dateISO(value: unknown): string | null {
 function dateTimeISO(value: unknown): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
   const v = plain(value);
-  if (typeof v === "number" && v > 20000 && v < 80000) return new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86400000)).toISOString();
+  if (typeof v === "number" && v > 20000 && v < 80000) { const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86400000)); return Number.isNaN(d.getTime()) ? null : d.toISOString(); }
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v.trim())) {
     const t = Date.parse(v.trim());
     return Number.isNaN(t) ? null : new Date(t).toISOString();
