@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   const [{ data: rows, error, count }, { data: masterBatches }, { data: mdsBatches }] = await Promise.all([
     query,
     supabase.from("imds_master_import_batches").select("id,file_name,total_rows,inserted_rows,updated_rows,skipped_rows,created_at").order("created_at", { ascending: false }).limit(1),
-    supabase.from("imds_mds_import_batches").select("id,file_name,total_rows,matched_master_rows,unmatched_part_numbers,created_at").order("created_at", { ascending: false }).limit(1)
+    supabase.from("imds_mds_import_batches").select("id,file_name,total_rows,matched_master_rows,unmatched_part_numbers,metadata,created_at").order("created_at", { ascending: false }).limit(12)
   ]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     page,
     pageSize,
     latestMasterImport: masterBatches?.[0] || null,
-    latestMdsImport: mdsBatches?.[0] || null
+    latestMdsImport: mdsBatches?.[0] || null,
+    mdsImports: (mdsBatches || []).map((b) => { const m = (b.metadata || {}) as Record<string, unknown>; return { id: b.id, file_name: b.file_name, created_at: b.created_at, total_rows: b.total_rows, matched: b.matched_master_rows, unmatched: b.unmatched_part_numbers, periodFrom: m.periodFrom ?? null, periodTo: m.periodTo ?? null }; })
   }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }

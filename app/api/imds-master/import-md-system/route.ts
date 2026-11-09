@@ -425,6 +425,10 @@ export async function POST(request: NextRequest) {
     }
 
     const matchedMasterRows = updates.size;
+    // The period this export covers (earliest..latest "last status changed"), so gaps between uploads are visible.
+    const changedDates = parsed.map((item) => item.record.lastStatusChanged as string | null).filter((d): d is string => /^\d{4}-\d{2}-\d{2}/.test(String(d))).sort();
+    const periodFrom = changedDates[0] ?? null;
+    const periodTo = changedDates[changedDates.length - 1] ?? null;
     const { data: batch, error: batchError } = await supabase.from("imds_mds_import_batches").insert({
       file_name: file.name,
       source_file_hash: fileHash,
@@ -434,6 +438,8 @@ export async function POST(request: NextRequest) {
       unmatched_part_numbers: unmatchedRows + ambiguousRows,
       uploaded_by: auth.userId,
       metadata: {
+        periodFrom,
+        periodTo,
         headerRow,
         headerCount: headers.length,
         columns: cols,

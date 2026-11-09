@@ -17,7 +17,7 @@ Tracker > Follow-up > "Send all sequentially" --Flow C--> Outlook: 1 email + 1 P
 
 - **Database adalah pusat.** Tracker memuat dari database setiap dibuka; tidak perlu connect workbook lagi.
 - Setiap perubahan di Tracker/import masuk antrean lalu ditulis ke Excel oleh Flow A. Setiap edit manual di Excel dibaca kembali oleh Flow B.
-- Kunci baris selalu **MasterKey**. Jangan hapus atau ubah kolomnya.
+- Kunci baris selalu **KEY** (kolom tersembunyi di Excel). KEY adalah identitas satu baris yang dipakai Power Automate untuk mencocokkan baris Excel dengan baris database, supaya update tidak membuat baris dobel. Orang tidak perlu melihat atau mengubahnya; jangan hapus kolomnya.
 
 ## 2. Aturan status (otomatis saat upload MD System)
 
@@ -32,12 +32,27 @@ Urutan tinggi ke rendah: **ACCEPTED > TMMIN WORKING > REJECTED / NOT SUBMITTED**
 
 ## 3. Master Sheet Excel (basis di SharePoint)
 
-1. Ambil **`IMDS_Super_Master_TEMPLATE.xlsx`** (dikirim terpisah; dibuat oleh `node scripts/make-master-template.mjs`). Isinya kosong, hanya struktur:
-   - Sheet **Part List LATEST**, tabel **`PartMaster`**, header di baris 6. Kolom: No., PROJECT (model), VENDOR CODE, MAIN PIC EMAIL, COMPANY NAME (supplier), PART NAME, P/No., SUBMISSION PLAN, IMDS STATUS, ID / Ver, Part Status, Have respond email, STATUS UPDATE, ID/Ver, Date, Comment, LPOP Confirmation, CEK, Supplier Promise Date, **MasterKey**.
-   - Sheet **MD System History**, tabel `MdSystemHistory` (seluruh riwayat MD System).
-2. **Cara terbaik mengisinya:** buka Tracker > Settings, upload **IMDS Remaining master** (workbook berisi *Part List LATEST*), lalu klik **Download Super Master XLSX**. File itu sudah berisi semua data dengan MasterKey. Pakai file hasil unduhan itu sebagai master di SharePoint (bukan template kosong).
+1. Ambil **`IMDS_Super_Master_TEMPLATE.xlsx`** (dikirim terpisah; dibuat oleh `node scripts/make-master-template.mjs`). Isinya kosong, hanya struktur: **satu sheet** `Part List LATEST` dengan tabel **`PartMaster`** (header di baris 6), semua header HURUF BESAR, tanpa kolom ganda:
+
+   | Kolom | Isi |
+   |---|---|
+   | NO. | nomor urut |
+   | PROJECT | model |
+   | VENDOR CODE | kode supplier |
+   | MAIN PIC EMAIL | email PIC supplier |
+   | COMPANY NAME | nama supplier |
+   | PART NAME / PART NO. | nama dan nomor part |
+   | SUBMISSION PLAN | tanggal rencana submit (juga dipakai sebagai tanggal janji supplier) |
+   | PART STATUS | **satu-satunya status**: ACCEPTED / TMMIN WORKING / REJECTED / NOT SUBMITTED. Diperbarui otomatis dari MD System |
+   | ID / VER | ID dan versi IMDS terbaru, otomatis dari MD System |
+   | STATUS DATE | tanggal status terakhir berubah (accepted / diperbarui) dari MD System |
+   | COMMENT | alasan penolakan dari MD System |
+   | KEY | tersembunyi; identitas baris untuk Power Automate |
+
+   Dihapus dari sheet: Have respond email, LPOP Confirmation, CEK, Supplier Promise Date, STATUS UPDATE, ID/Ver kedua, dan sheet *MD System History* (data lama tetap aman di database, tidak ada yang dihapus). Pelacakan tanggal upload MD System ada di website: **Tracker > Settings > "MD System uploads"** menampilkan tiap file, periode data (dari tanggal berapa sampai berapa), jumlah baris, matched, dan unmatched, sehingga terlihat periode mana yang terlewat.
+2. **Cara terbaik mengisinya:** buka Tracker > Settings, upload **IMDS Remaining master** (workbook berisi *Part List LATEST*), lalu klik **Download Super Master XLSX**. File itu sudah berisi semua data dengan KEY. Pakai file hasil unduhan itu sebagai master di SharePoint (bukan template kosong).
 3. Unggah ke SharePoint/OneDrive for Business di lokasi tetap. **Jangan dipindah atau diganti nama** setelah flow dibuat.
-4. Pastikan tabel masih bernama `PartMaster` dan kolom `MasterKey` ada.
+4. Pastikan tabel masih bernama `PartMaster` dan kolom `KEY` ada. Header baris 6 harus persis seperti tabel di atas.
 
 ## 4. Isi variabel di Vercel
 
@@ -69,9 +84,9 @@ Pemicu: tanpa lisensi Premium, **"When a Teams webhook request is received"** (s
 4. Di True: **Apply to each**, pilih `rows` dari Parse JSON. Settings > Concurrency control **On, Degree of Parallelism = 1**.
 5. Di dalam Apply to each: **Excel Online (Business) > List rows present in a table**.
    - Location, Document Library, File = master Anda; Table = `PartMaster`.
-   - Filter Query (tab Expression): `concat('MasterKey eq ''', string(items('Apply_to_each')?['MasterKey']), '''')`
+   - Filter Query (tab Expression): `concat('KEY eq ''', string(items('Apply_to_each')?['KEY']), '''')`
 6. **Condition** `Check if Row Exist`: `greater(length(body('List_rows_present_in_a_table')?['value']), 0)` is equal to `true`. (Flow Anda memakai Switch dengan 2 case; Condition lebih sederhana dan setara.)
-   - **True**: **Update a row**. Table `PartMaster`, Key Column `MasterKey`, Key Value `items('Apply_to_each')?['MasterKey']`. Petakan semua kolom dari item (dynamic content) ke kolom bernama sama.
+   - **True**: **Update a row**. Table `PartMaster`, Key Column `KEY`, Key Value `items('Apply_to_each')?['KEY']`. Petakan semua kolom dari item (dynamic content) ke kolom bernama sama.
    - **False**: **Add a row into a table**, petakan kolom yang sama.
 7. Setelah Apply to each (masih di True) tambahkan **Response** bila pemicunya HTTP (200, body `{"ok":true}`). Pemicu Teams webhook membalas sendiri.
 8. **Save**, salin **URL pemicu** > Vercel `POWER_AUTOMATE_TRACKER_URL`, lalu Redeploy.
@@ -99,7 +114,7 @@ Detail lengkap: `POWER_AUTOMATE_IMDS_MASTER_SETUP.md` bagian D. Ringkas:
 1. Pemicu SharePoint **When a file is created or modified (properties only)** pada master. Concurrency On/1.
 2. **Delay** 45 detik, lalu **List rows present in a table** (`PartMaster`, Pagination 5000).
 3. **HTTP** (aksi ini Premium; tanpa Premium lewati Flow B, edit dilakukan di Tracker saja): `POST https://<APP_BASE_URL>/api/imds-master/sync-from-excel`, header `Content-Type: application/json` dan `x-imds-secret: <POWER_AUTOMATE_SECRET>`, body `{"type":"imds_master_snapshot","source":"sharepoint_excel","rows": <body('List_rows_present_in_a_table')?['value']>}`.
-4. Tulis balik `assignedKeys` ke kolom MasterKey (lihat dokumen detail).
+4. Tulis balik `assignedKeys` ke kolom KEY (lihat dokumen detail).
 
 Tanpa Premium: edit **di Tracker** (otomatis ke Excel via Flow A). Edit manual di Excel tidak bisa dikirim balik ke website tanpa aksi HTTP.
 
@@ -125,5 +140,5 @@ Tanpa Premium: edit **di Tracker** (otomatis ke Excel via Flow A). Edit manual d
 | Flow selalu masuk cabang False | rahasia berbeda satu karakter / spasi |
 | `Invalid time value` saat impor | sel tanggal rusak di Excel; sudah diabaikan di versi terbaru |
 | Upload gagal "storage" | bucket `import-staging` belum ada / migrasi belum diterapkan |
-| Baris dobel di Excel | kolom `MasterKey` kosong/diubah, atau Concurrency bukan 1 |
+| Baris dobel di Excel | kolom `KEY` kosong/diubah, atau Concurrency bukan 1 |
 | Excel tidak berubah, antrean "pending" | flow mati/lisensi; lihat Run history, lalu **Sync to Excel now** |
