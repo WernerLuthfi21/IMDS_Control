@@ -12,7 +12,7 @@
       "items": {
         "type": "object",
         "properties": {
-          "No.": {},
+          "NO.": {},
           "PROJECT": {
             "type": "string"
           },
@@ -28,45 +28,26 @@
           "PART NAME": {
             "type": "string"
           },
-          "P/No.": {
+          "PART NO.": {
             "type": "string"
           },
           "SUBMISSION PLAN": {},
-          "IMDS STATUS": {
+          "PART STATUS": {
             "type": "string"
           },
-          "ID / Ver": {
+          "ID / VER": {
             "type": "string"
           },
-          "Part Status": {
+          "STATUS DATE": {},
+          "COMMENT": {
             "type": "string"
           },
-          "Have respond email": {
-            "type": "string"
-          },
-          "STATUS UPDATE": {
-            "type": "string"
-          },
-          "ID/Ver": {
-            "type": "string"
-          },
-          "Date": {},
-          "Comment": {
-            "type": "string"
-          },
-          "LPOP Confirmation": {
-            "type": "string"
-          },
-          "CEK": {
-            "type": "string"
-          },
-          "Supplier Promise Date": {},
-          "MasterKey": {
+          "KEY": {
             "type": "string"
           }
         },
         "required": [
-          "MasterKey"
+          "KEY"
         ],
         "additionalProperties": true
       }

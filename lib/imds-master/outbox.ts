@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { postToFlow } from "@/lib/automation/flow";
+import { mapMdStatusToImds } from "./md-current";
 
 type MasterRecord = Record<string, unknown>;
 
@@ -18,49 +19,28 @@ function printable(value: unknown): string {
   return String(value);
 }
 
-function extraHeader(key: string): string {
-  return key.replace(/\s+\[col\s+\d+\]$/i, "").trim();
-}
-
 export function toPartMasterExcelRow(row: MasterRecord) {
   const md = Array.isArray(row.md_system_records)
     ? (row.md_system_records as MasterRecord[])[0] || {}
     : {};
   const extra = (row.extra_fields && typeof row.extra_fields === "object" ? row.extra_fields : {}) as MasterRecord;
   const noValue = extra["No. [col 1]"] ?? extra["No."] ?? "";
+  // One clean, ALL-CAPS sheet: a single status, a single ID/version, two dates. KEY is the hidden row identity.
   const output: Record<string, unknown> = {
-    "No.": printable(noValue) || (Number(row.source_row || 0) > 6 ? Number(row.source_row) - 6 : ""),
+    "NO.": printable(noValue) || (Number(row.source_row || 0) > 6 ? Number(row.source_row) - 6 : ""),
     PROJECT: value(row, "project"),
     "VENDOR CODE": value(row, "vendor_code"),
     "MAIN PIC EMAIL": value(row, "main_pic_email"),
     "COMPANY NAME": value(row, "company_name"),
     "PART NAME": value(row, "part_name"),
-    "P/No.": value(row, "part_no"),
+    "PART NO.": value(row, "part_no"),
     "SUBMISSION PLAN": value(row, "submission_plan"),
-    "Supplier Promise Date": value(row, "supplier_promise_date"),
-    "IMDS STATUS": value(row, "imds_status"),
-    "ID / Ver": value(row, "imds_id_version"),
-    "Part Status": value(row, "part_status"),
-    "Have respond email": value(row, "have_respond_email"),
-    "STATUS UPDATE": value(row, "status_update") || value(md, "status"),
-    "ID/Ver": value(row, "md_id_version") || value(md, "idVersion"),
-    Date: value(row, "md_status_update_date") || value(md, "lastStatusChanged"),
-    Comment: value(row, "comment") || value(md, "reasonForDenial"),
-    "LPOP Confirmation": value(row, "lpop_confirmation"),
-    CEK: value(row, "cek"),
-    MasterKey: value(row, "master_key"),
+    "PART STATUS": value(row, "imds_status") || (mapMdStatusToImds(value(md, "status")) ?? ""),
+    "ID / VER": value(row, "imds_id_version") || value(row, "md_id_version") || value(md, "idVersion"),
+    "STATUS DATE": value(row, "md_status_update_date") || value(md, "lastStatusChanged"),
+    COMMENT: value(row, "comment") || value(md, "reasonForDenial"),
+    KEY: value(row, "master_key"),
   };
-
-  const extraCounts = new Map<string, number>();
-  for (const [sourceKey, sourceValue] of Object.entries(extra)) {
-    const header = extraHeader(sourceKey);
-    if (!header || Object.prototype.hasOwnProperty.call(output, header)) continue;
-    const countKey = header.toLowerCase();
-    const count = (extraCounts.get(countKey) || 0) + 1;
-    extraCounts.set(countKey, count);
-    const columnName = count === 1 ? header : `${header} (${count})`;
-    output[columnName] = printable(sourceValue);
-  }
   return output;
 }
 

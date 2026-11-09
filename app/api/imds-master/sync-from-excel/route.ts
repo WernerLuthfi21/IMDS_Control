@@ -18,23 +18,16 @@ const FIELD_MAP: Array<{ db: string; headers: string[]; kind?: "date" }> = [
   { db: "main_pic_email", headers: ["MAIN PIC EMAIL", "Main PIC Email"] },
   { db: "company_name", headers: ["COMPANY NAME", "Company Name"] },
   { db: "part_name", headers: ["PART NAME", "Part Name"] },
-  { db: "part_no", headers: ["P/No.", "P/No", "Part No."] },
+  { db: "part_no", headers: ["PART NO.", "P/No.", "P/No", "Part No."] },
   { db: "submission_plan", headers: ["SUBMISSION PLAN"], kind: "date" },
-  { db: "supplier_promise_date", headers: ["Supplier Promise Date"], kind: "date" },
-  { db: "imds_status", headers: ["IMDS STATUS"] },
-  { db: "imds_id_version", headers: ["ID / Ver"] },
-  { db: "part_status", headers: ["Part Status"] },
-  { db: "have_respond_email", headers: ["Have respond email"] },
-  { db: "status_update", headers: ["STATUS UPDATE"] },
-  { db: "md_id_version", headers: ["ID/Ver", "MD ID/Ver"] },
-  { db: "md_status_update_date", headers: ["Date"], kind: "date" },
-  { db: "comment", headers: ["Comment"] },
-  { db: "lpop_confirmation", headers: ["LPOP Confirmation"] },
-  { db: "cek", headers: ["CEK"] }
+  { db: "imds_status", headers: ["PART STATUS", "IMDS STATUS"] },
+  { db: "imds_id_version", headers: ["ID / VER", "ID / Ver"] },
+  { db: "md_status_update_date", headers: ["STATUS DATE", "Date"], kind: "date" },
+  { db: "comment", headers: ["COMMENT", "Comment"] }
 ];
 
 const RESERVED = new Set([
-  "No.", "MasterKey", "ItemInternalId", "@odata.etag", ...FIELD_MAP.flatMap((field) => field.headers)
+  "NO.", "No.", "KEY", "MasterKey", "ItemInternalId", "@odata.etag", ...FIELD_MAP.flatMap((field) => field.headers)
 ].map((header) => normHeader(header)));
 
 function normHeader(value: unknown) {
@@ -138,7 +131,7 @@ function toMasterRow(row: ExcelRow, sourceRow: number, masterKey: string, prior?
     if (!header || RESERVED.has(normalized) || normalized === "masterkey") continue;
     extras[`${header} [col ${columnIndex + 1}]`] = value === undefined ? null : value;
   }
-  const rowNumber = cleanText(readCell(row, ["No."]).value);
+  const rowNumber = cleanText(readCell(row, ["NO.", "No."]).value);
   if (rowNumber) extras["No."] = rowNumber;
   patch.extra_fields = extras;
   patch.manual_overrides = [...overrides];
@@ -171,7 +164,7 @@ export async function POST(request: NextRequest) {
   const occurrences = new Map<string, number>();
   const explicitKeyCounts = new Map<string, number>();
   const duplicateKeyWarnings: string[] = [];
-  const knownKeys = new Set(body.rows.map((row) => cleanText(readCell(row || {}, ["MasterKey", "master_key"]).value)).filter((key): key is string => Boolean(key)));
+  const knownKeys = new Set(body.rows.map((row) => cleanText(readCell(row || {}, ["KEY", "MasterKey", "master_key"]).value)).filter((key): key is string => Boolean(key)));
   let skipped = 0;
 
   for (let index = 0; index < body.rows.length; index++) {
@@ -181,8 +174,8 @@ export async function POST(request: NextRequest) {
     const company = cleanText(readCell(row, ["COMPANY NAME", "Company Name"]).value);
     if (!partNo || !company) { skipped++; continue; }
 
-    const suppliedKey = cleanText(readCell(row, ["MasterKey", "master_key"]).value);
-    const sequenceNo = cleanText(readCell(row, ["No."]).value);
+    const suppliedKey = cleanText(readCell(row, ["KEY", "MasterKey", "master_key"]).value);
+    const sequenceNo = cleanText(readCell(row, ["NO.", "No."]).value);
     // Advance the duplicate occurrence counter for every row, including rows whose key already exists.
     let generatedCandidate = buildMasterKey(row, occurrences);
     let masterKey = suppliedKey || generatedCandidate;

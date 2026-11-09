@@ -1,3 +1,5 @@
+> **Dokumen ini sebagian usang.** Susunan kolom master sudah disederhanakan (satu sheet, header HURUF BESAR, kunci `KEY`). Untuk setup yang berlaku, ikuti `PANDUAN_SETUP_LENGKAP_ID.md` dan skema di `docs/power-automate/`. Bagian lain (Flow 3 dan detailnya) masih berguna sebagai referensi.
+
 # Power Automate setup — IMDS Super Master
 
 This setup keeps the website's Supabase-backed IMDS Super Master and the shared Excel workbook synchronized in both directions. Website edits write to Excel; Excel file changes are sent back into Supabase by a separate reverse-sync flow. Supplier-specific follow-ups are sent through their own flow. The latest accepted update wins; rows missing from a snapshot are never deleted automatically.

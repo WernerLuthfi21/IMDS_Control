@@ -131,23 +131,22 @@ export async function POST(request: NextRequest) {
     if (!headerRow || scoreRow(headerRow) < 3) return NextResponse.json({ error: "Could not identify the master header row." }, { status: 422 });
 
     const headers = Array.from({ length: Math.min(sheet.columnCount, 200) }, (_, i) => text(sheet!.getRow(headerRow).getCell(i + 1).value));
-    const imdsIdVersionColumn = findHeader(headers, ["ID / Ver", "ID/Ver", "ID / Version"]);
+    const imdsIdVersionColumn = findHeader(headers, ["ID / VER", "ID / Ver", "ID/Ver", "ID / Version"]);
     const cols = {
       project: findHeader(headers, ["PROJECT", "Project / Model", "Model"]),
       vendor_code: findHeader(headers, ["VENDOR CODE", "Vendor Code"]),
       main_pic_email: findHeader(headers, ["MAIN PIC EMAIL", "PIC Email", "Email PIC"]),
       company_name: findHeader(headers, ["COMPANY NAME", "Company Name", "Supplier Name"]),
       part_name: findHeader(headers, ["PART NAME", "Part Name", "Description"]),
-      part_no: findHeader(headers, ["P/No.", "P/No", "Part No", "Part Number"]),
+      part_no: findHeader(headers, ["PART NO.", "P/No.", "P/No", "Part No", "Part Number"]),
       submission_plan: findHeader(headers, ["SUBMISSION PLAN", "Submission Plan", "Target Date"]),
       supplier_promise_date: findHeader(headers, ["Supplier Promise Date", "Supplier Promise"]),
-      imds_status: findHeader(headers, ["IMDS STATUS", "IMDS Status"]),
+      imds_status: findHeader(headers, ["IMDS STATUS", "PART STATUS"]),
       imds_id_version: imdsIdVersionColumn,
-      part_status: findHeader(headers, ["Part Status"]),
       have_respond_email: findHeader(headers, ["Have respond email", "Have Respond Email"]),
       status_update: findHeader(headers, ["STATUS UPDATE", "Status Update"]),
       md_id_version: findHeaderExcluding(headers, ["MD ID/Ver", "MD ID / Ver", "ID/Ver", "ID / Ver"], imdsIdVersionColumn),
-      md_status_update_date: findHeader(headers, ["Date", "Status Update Date"]),
+      md_status_update_date: findHeader(headers, ["STATUS DATE", "Date", "Status Update Date"]),
       comment: findHeader(headers, ["Comment", "Remark", "Notes"]),
       lpop_confirmation: findHeader(headers, ["LPOP Confirmation"]),
       cek: findHeader(headers, ["CEK"])
@@ -198,7 +197,6 @@ export async function POST(request: NextRequest) {
         supplier_promise_date: dateISO(get(cols.supplier_promise_date)),
         imds_status: text(get(cols.imds_status)) || null,
         imds_id_version: text(get(cols.imds_id_version)) || null,
-        part_status: text(get(cols.part_status)) || null,
         have_respond_email: text(get(cols.have_respond_email)) || null,
         status_update: text(get(cols.status_update)) || null,
         md_id_version: text(get(cols.md_id_version)) || null,
