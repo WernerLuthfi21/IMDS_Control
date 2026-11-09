@@ -1,0 +1,129 @@
+# Panduan setup lengkap: IMDS Tracker + Master Sheet Excel + Power Automate
+
+Dokumen ini adalah urutan kerja tunggal. Ikuti dari atas ke bawah. Detail tambahan ada di `POWER_AUTOMATE_ALL_FLOWS.md` dan `POWER_AUTOMATE_IMDS_MASTER_SETUP.md`.
+
+> **Status jujur.** Kode website sudah lulus unit test dan build. **Flow di tenant Microsoft Anda dan alur upload ke Supabase belum pernah saya jalankan.** Uji berurutan di Bagian 7 sebelum dipakai massal. Paket flow siap-impor (.zip) **tidak disediakan**: formatnya tidak bisa saya uji di tenant Anda, jadi dibuat klik-per-klik dengan skema siap-tempel di folder `docs/power-automate/`.
+
+## 1. Cara kerja (gambaran)
+
+```
+MD System (hasil pencarian .xlsx) --drag & drop--> Tracker > Settings --> Database (Supabase)
+                                                                             |  (antrean, otomatis)
+                                                          Power Automate Flow A  v
+Excel Master di SharePoint  <-----------------------------------------------------
+Excel Master (diedit manual) --Flow B--> website (database)
+Tracker > Follow-up > "Send all sequentially" --Flow C--> Outlook: 1 email + 1 PDF per supplier
+```
+
+- **Database adalah pusat.** Tracker memuat dari database setiap dibuka; tidak perlu connect workbook lagi.
+- Setiap perubahan di Tracker/import masuk antrean lalu ditulis ke Excel oleh Flow A. Setiap edit manual di Excel dibaca kembali oleh Flow B.
+- Kunci baris selalu **MasterKey**. Jangan hapus atau ubah kolomnya.
+
+## 2. Aturan status (otomatis saat upload MD System)
+
+Urutan tinggi ke rendah: **ACCEPTED > TMMIN WORKING > REJECTED / NOT SUBMITTED**.
+
+- Status hanya naik: NOT SUBMITTED/REJECTED → TMMIN WORKING → ACCEPTED.
+- **ACCEPTED tidak turun**, kecuali **ID/Ver naik pada nomor ID yang sama** (contoh `1525320002 / 1` → `/ 2`). Itu dianggap **revisi**: status boleh kembali ke TMMIN WORKING dan revisinya dicatat.
+- Jika nomor ID-nya berbeda, atau datanya ambigu (beberapa ID aktif), baris ditandai **review** dan tidak diubah.
+- Upload file yang lebih lama tidak menimpa data yang lebih baru.
+- `DEAD (NEW SMS)` dan `NOT TO BE COLLECTED` tidak pernah ditimpa otomatis.
+- Pemetaan MD System → status: accepted → ACCEPTED; in process at recipient / not yet browsed → TMMIN WORKING; rejected → REJECTED; *cancelled by sender* tidak pernah menggantikan record aktif; status lain → review manual.
+
+## 3. Master Sheet Excel (basis di SharePoint)
+
+1. Ambil **`IMDS_Super_Master_TEMPLATE.xlsx`** (dikirim terpisah; dibuat oleh `node scripts/make-master-template.mjs`). Isinya kosong, hanya struktur:
+   - Sheet **Part List LATEST**, tabel **`PartMaster`**, header di baris 6. Kolom: No., PROJECT (model), VENDOR CODE, MAIN PIC EMAIL, COMPANY NAME (supplier), PART NAME, P/No., SUBMISSION PLAN, IMDS STATUS, ID / Ver, Part Status, Have respond email, STATUS UPDATE, ID/Ver, Date, Comment, LPOP Confirmation, CEK, Supplier Promise Date, **MasterKey**.
+   - Sheet **MD System History**, tabel `MdSystemHistory` (seluruh riwayat MD System).
+2. **Cara terbaik mengisinya:** buka Tracker > Settings, upload **IMDS Remaining master** (workbook berisi *Part List LATEST*), lalu klik **Download Super Master XLSX**. File itu sudah berisi semua data dengan MasterKey. Pakai file hasil unduhan itu sebagai master di SharePoint (bukan template kosong).
+3. Unggah ke SharePoint/OneDrive for Business di lokasi tetap. **Jangan dipindah atau diganti nama** setelah flow dibuat.
+4. Pastikan tabel masih bernama `PartMaster` dan kolom `MasterKey` ada.
+
+## 4. Isi variabel di Vercel
+
+Vercel > Project > Settings > Environment Variables > tambahkan (Production), lalu **Redeploy**.
+
+| Nama | Isi / dari mana | Wajib |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase > Project Settings > API > Project URL | ya |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase > API > publishable/anon key | ya |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase > API > service_role (rahasia, jangan dibagikan) | ya |
+| `APP_BASE_URL` | alamat tetap website, mis. `https://imds-gcats-control.vercel.app` | ya |
+| `POWER_AUTOMATE_SECRET` | kata sandi acak panjang buatan Anda (mis. 40 karakter). **Sama persis** dengan yang dipakai di semua flow | ya |
+| `POWER_AUTOMATE_TRACKER_URL` | URL pemicu Flow A (Bagian 5) | ya |
+| `POWER_AUTOMATE_EMAIL_URL` | URL pemicu Flow C (Bagian 6) | ya |
+| `FOLLOWUP_SENDERS` | pengirim yang boleh dipilih, mis. `IMDS Team <imds@perusahaan.co.id>; Budi <budi@perusahaan.co.id>` | opsional |
+| `FOLLOWUP_MIN_GAP_HOURS` | jeda minimum kirim ulang ke supplier yang sama (default 24; `0` mematikan) | opsional |
+
+Catatan: URL flow berisi tanda tangan rahasia. Jangan tempel di chat atau repo. `POWER_AUTOMATE_EXCEL_URL` hanya untuk Judgement; **jangan dipakai untuk Tracker**.
+
+Pastikan juga migrasi database sudah diterapkan (lihat `DEPLOYMENT_AND_CLAUDE_GUIDE_ID.md`; periksa versi remote dulu, jangan reset). Bucket storage `import-staging` harus ada (dibuat oleh migrasi awal).
+
+## 5. Flow A: Tracker → Excel Master
+
+Pemicu: tanpa lisensi Premium, **"When a Teams webhook request is received"** (standar) bisa dipakai, seperti flow Anda sekarang. Jika Anda punya Premium, "When an HTTP request is received" juga sama persis. Website cukup `POST` JSON ke URL-nya.
+
+1. make.powerautomate.com > **Create > Instant cloud flow** > nama `IMDS Tracker - Update Super Master` > pemicu di atas.
+2. **Parse JSON**: Content = `triggerBody()`; Schema = isi `docs/power-automate/tracker-writeback.schema.json` (tempel apa adanya).
+3. **Condition** `Cek Rahasia`: kiri (Expression) `triggerOutputs()?['headers']?['x-imds-secret']`, `is equal to`, kanan = nilai `POWER_AUTOMATE_SECRET`. Semua langkah berikut hanya di cabang **True**. Aktifkan *Secure inputs* pada langkah yang menyentuh rahasia.
+4. Di True: **Apply to each**, pilih `rows` dari Parse JSON. Settings > Concurrency control **On, Degree of Parallelism = 1**.
+5. Di dalam Apply to each: **Excel Online (Business) > List rows present in a table**.
+   - Location, Document Library, File = master Anda; Table = `PartMaster`.
+   - Filter Query (tab Expression): `concat('MasterKey eq ''', string(items('Apply_to_each')?['MasterKey']), '''')`
+6. **Condition** `Check if Row Exist`: `greater(length(body('List_rows_present_in_a_table')?['value']), 0)` is equal to `true`. (Flow Anda memakai Switch dengan 2 case; Condition lebih sederhana dan setara.)
+   - **True**: **Update a row**. Table `PartMaster`, Key Column `MasterKey`, Key Value `items('Apply_to_each')?['MasterKey']`. Petakan semua kolom dari item (dynamic content) ke kolom bernama sama.
+   - **False**: **Add a row into a table**, petakan kolom yang sama.
+7. Setelah Apply to each (masih di True) tambahkan **Response** bila pemicunya HTTP (200, body `{"ok":true}`). Pemicu Teams webhook membalas sendiri.
+8. **Save**, salin **URL pemicu** > Vercel `POWER_AUTOMATE_TRACKER_URL`, lalu Redeploy.
+9. Tambahkan rekan sebagai **co-owner** flow (flow berjalan atas nama pemilik).
+
+Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Dengan pemicu Teams webhook, balasan 202 hanya berarti diterima, bukan sudah tertulis; status sebenarnya terlihat di **Run history**.
+
+## 6. Flow C: kirim email beruntun per supplier
+
+1. Instant cloud flow `IMDS Tracker - Supplier Follow-up`, pemicu sama seperti Flow A.
+2. **Parse JSON**: Content `triggerBody()`; Schema = `docs/power-automate/supplier-email.schema.json`.
+3. **Condition** rahasia (sama seperti Flow A langkah 3), lalu di True:
+4. **Office 365 Outlook > Send an email (V2)** (atau *Send an email from a shared mailbox (V2)* bila `from` terisi):
+   - To = `to`, CC = `cc`, Subject = `subject`, Body = `body`.
+   - Attachments Name = `first(body('Parse_JSON')?['attachments'])?['name']`
+   - Attachments Content = `base64ToBinary(first(body('Parse_JSON')?['attachments'])?['contentBytes'])`
+   - Jika ingin pengirim dari daftar `FOLLOWUP_SENDERS`: tambahkan Condition `empty(body('Parse_JSON')?['from'])`; **True** = Send an email (V2); **False** = Send an email from a shared mailbox (V2) dengan Mailbox Address = `from`. (Akun Anda harus punya hak *Send As* pada mailbox itu.)
+5. Simpan, salin URL > Vercel `POWER_AUTOMATE_EMAIL_URL`, Redeploy.
+
+Pengiriman beruntun: tombol **Send all sequentially** di Tracker > Follow-up mengirim satu supplier, menunggu balasan, lalu lanjut ke berikutnya. Supplier yang sudah diemail dalam `FOLLOWUP_MIN_GAP_HOURS` terakhir dilewati dan dilaporkan.
+
+## 7. Flow B: Excel Master → website (edit manual di Excel)
+
+Detail lengkap: `POWER_AUTOMATE_IMDS_MASTER_SETUP.md` bagian D. Ringkas:
+1. Pemicu SharePoint **When a file is created or modified (properties only)** pada master. Concurrency On/1.
+2. **Delay** 45 detik, lalu **List rows present in a table** (`PartMaster`, Pagination 5000).
+3. **HTTP** (aksi ini Premium; tanpa Premium lewati Flow B, edit dilakukan di Tracker saja): `POST https://<APP_BASE_URL>/api/imds-master/sync-from-excel`, header `Content-Type: application/json` dan `x-imds-secret: <POWER_AUTOMATE_SECRET>`, body `{"type":"imds_master_snapshot","source":"sharepoint_excel","rows": <body('List_rows_present_in_a_table')?['value']>}`.
+4. Tulis balik `assignedKeys` ke kolom MasterKey (lihat dokumen detail).
+
+Tanpa Premium: edit **di Tracker** (otomatis ke Excel via Flow A). Edit manual di Excel tidak bisa dikirim balik ke website tanpa aksi HTTP.
+
+## 8. Kerja harian
+
+1. Buka Tracker (otomatis memuat dari database).
+2. Settings > **MD System search results**: drag & drop file `SearchResult_*.xlsx` terbaru. Status/ID/Ver/tanggal diperbarui sesuai aturan Bagian 2; Excel master ikut diperbarui lewat Flow A.
+3. Follow-up > **Send all sequentially**.
+
+## 9. Urutan uji (jangan dilewati)
+
+1. Tracker membuka dan menampilkan jumlah part. Jika kosong, upload master dulu.
+2. Tombol **Sync to Excel now** di Settings; periksa antrean di panel dan *Run history* Flow A.
+3. Ubah satu baris di Tracker; pastikan baris yang sama berubah di Excel.
+4. Upload MD System; periksa bahwa status ACCEPTED tidak turun dan ada ringkasan matched/ambiguous/unmatched.
+5. Kirim satu email ke alamat Anda sendiri sebelum **Send all**.
+
+## 10. Pemecahan masalah
+
+| Gejala | Penyebab umum |
+|---|---|
+| Panel menulis "not configured" | URL/rahasia belum diisi di Vercel, atau belum Redeploy |
+| Flow selalu masuk cabang False | rahasia berbeda satu karakter / spasi |
+| `Invalid time value` saat impor | sel tanggal rusak di Excel; sudah diabaikan di versi terbaru |
+| Upload gagal "storage" | bucket `import-staging` belum ada / migrasi belum diterapkan |
+| Baris dobel di Excel | kolom `MasterKey` kosong/diubah, atau Concurrency bukan 1 |
+| Excel tidak berubah, antrean "pending" | flow mati/lisensi; lihat Run history, lalu **Sync to Excel now** |

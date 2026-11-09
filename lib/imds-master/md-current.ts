@@ -109,7 +109,15 @@ export function planCandidatePatch(state: CandidateState, items: MdItem[]): Cand
   const current = state.imds_status;
   if (derived === null) review.push(`UNMAPPED_MD_STATUS: "${chosen.status}"`);
   else if (current && PROTECTED_IMDS_STATUSES.has(current)) review.push(`PROTECTED_STATUS_KEPT: ${current} vs MD "${chosen.status}"`);
-  else if (current === "ACCEPTED" && derived !== "ACCEPTED") review.push(`ACCEPTED_DOWNGRADE: ACCEPTED -> ${derived} (MD "${chosen.status}")`);
+  else if (current === "ACCEPTED" && derived !== "ACCEPTED") {
+    // Highest status wins (ACCEPTED > TMMIN WORKING > REJECTED/NOT SUBMITTED) unless the ID version moved up: that is a revision.
+    const prior = state.imds_id_version || state.md_id_version;
+    const revised = idNo(prior) !== null && idNo(prior) === idNo(chosen.idVersion) && version(chosen.idVersion) > version(prior);
+    if (revised && !overrides.has("imds_status")) {
+      patch.imds_status = derived;
+      extra.revision = { from: prior, to: chosen.idVersion, previousStatus: current, at: new Date().toISOString() };
+    } else review.push(`ACCEPTED_DOWNGRADE: ACCEPTED -> ${derived} (MD "${chosen.status}")`);
+  }
   else if (!overrides.has("imds_status") && derived !== current) patch.imds_status = derived;
 
   const curNo = idNo(state.imds_id_version);

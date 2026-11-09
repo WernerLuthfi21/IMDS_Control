@@ -89,11 +89,23 @@ describe("planCandidatePatch", () => {
     }
   });
 
-  it("ACCEPTED is not silently downgraded by a resubmission in process", () => {
-    const p = planCandidatePatch(state({ imds_status: "ACCEPTED", imds_id_version: "1525320002 / 1" }), [item({ idVersion: "1525320002 / 2", status: "in process at recipient", lastStatusChanged: "2026-10-21", lastStatusChangedAt: "2026-10-21T03:00:00Z" })]);
+  it("ACCEPTED is not downgraded when the ID version did not change", () => {
+    const p = planCandidatePatch(state({ imds_status: "ACCEPTED", imds_id_version: "1525320002 / 1" }), [item({ idVersion: "1525320002 / 1", status: "in process at recipient", lastStatusChanged: "2026-10-21", lastStatusChangedAt: "2026-10-21T03:00:00Z" })]);
     expect(p.patch).not.toHaveProperty("imds_status");
     expect(p.review[0]).toMatch(/ACCEPTED_DOWNGRADE/);
-    expect(p.patch.md_id_version).toBe("1525320002 / 2");   // the mirror still shows the truth
+  });
+
+  it("a higher version of the same ID is a revision: the status may move off ACCEPTED and the revision is recorded", () => {
+    const p = planCandidatePatch(state({ imds_status: "ACCEPTED", imds_id_version: "1525320002 / 1" }), [item({ idVersion: "1525320002 / 2", status: "in process at recipient", lastStatusChanged: "2026-10-21", lastStatusChangedAt: "2026-10-21T03:00:00Z" })]);
+    expect(p.patch.imds_status).toBe("TMMIN WORKING");
+    expect(p.patch.md_id_version).toBe("1525320002 / 2");
+    expect((p.patch.extra_fields as Record<string, unknown>).revision).toMatchObject({ from: "1525320002 / 1", to: "1525320002 / 2", previousStatus: "ACCEPTED" });
+    expect(p.review).toEqual([]);
+  });
+
+  it("status only moves up for the same version: working -> accepted, rejected -> working", () => {
+    expect(planCandidatePatch(state({ imds_status: "TMMIN WORKING" }), [item({ status: "accepted" })]).patch.imds_status).toBe("ACCEPTED");
+    expect(planCandidatePatch(state({ imds_status: "REJECTED" }), [item({ status: "in process at recipient" })]).patch.imds_status).toBe("TMMIN WORKING");
   });
 
   it("an OLD export cannot roll the master back", () => {
