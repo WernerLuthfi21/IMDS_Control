@@ -104,8 +104,8 @@ describe("planCandidatePatch", () => {
   });
 
   it("status only moves up for the same version: working -> accepted, rejected -> working", () => {
-    expect(planCandidatePatch(state({ imds_status: "TMMIN WORKING" }), [item({ status: "accepted" })]).patch.imds_status).toBe("ACCEPTED");
-    expect(planCandidatePatch(state({ imds_status: "REJECTED" }), [item({ status: "in process at recipient" })]).patch.imds_status).toBe("TMMIN WORKING");
+    expect(planCandidatePatch(state({ imds_status: "TMMIN WORKING" }), [item({ idVersion: "1525320002 / 1", status: "accepted" })]).patch.imds_status).toBe("ACCEPTED");
+    expect(planCandidatePatch(state({ imds_status: "REJECTED" }), [item({ idVersion: "1525320002 / 1", status: "in process at recipient" })]).patch.imds_status).toBe("TMMIN WORKING");
   });
 
   it("an OLD export cannot roll the master back", () => {
