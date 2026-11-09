@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "source": {
+      "type": "string"
+    },
+    "followupId": {
+      "type": "string"
+    },
+    "logId": {
+      "type": "string"
+    },
+    "supplierCode": {
+      "type": "string"
+    },
+    "supplierName": {
+      "type": "string"
+    },
+    "from": {
+      "type": "string"
+    },
+    "senderName": {
+      "type": "string"
+    },
+    "to": {
+      "type": "string"
+    },
+    "cc": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "contentBytes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "partCount": {
+          "type": "integer"
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "items": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

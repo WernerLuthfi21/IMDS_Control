@@ -1,0 +1,79 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "No.": {},
+          "PROJECT": {
+            "type": "string"
+          },
+          "VENDOR CODE": {
+            "type": "string"
+          },
+          "MAIN PIC EMAIL": {
+            "type": "string"
+          },
+          "COMPANY NAME": {
+            "type": "string"
+          },
+          "PART NAME": {
+            "type": "string"
+          },
+          "P/No.": {
+            "type": "string"
+          },
+          "SUBMISSION PLAN": {},
+          "IMDS STATUS": {
+            "type": "string"
+          },
+          "ID / Ver": {
+            "type": "string"
+          },
+          "Part Status": {
+            "type": "string"
+          },
+          "Have respond email": {
+            "type": "string"
+          },
+          "STATUS UPDATE": {
+            "type": "string"
+          },
+          "ID/Ver": {
+            "type": "string"
+          },
+          "Date": {},
+          "Comment": {
+            "type": "string"
+          },
+          "LPOP Confirmation": {
+            "type": "string"
+          },
+          "CEK": {
+            "type": "string"
+          },
+          "Supplier Promise Date": {},
+          "MasterKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "MasterKey"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "type",
+    "rows"
+  ]
+}
