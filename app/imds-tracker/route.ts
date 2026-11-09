@@ -23,8 +23,11 @@ export async function GET(request: Request) {
   try {
     const sourceHtml = await readFile(join(process.cwd(), "private", "imds-tracker.html"), "utf8");
     const syncScript = await readFile(join(process.cwd(), "private", "shared-master-sync.js"), "utf8");
-    const html = sourceHtml
-      .replace(/<\/body>/i, "<script>" + syncScript + "</script></body>");
+    // The Tracker's own code lives inside one IIFE; the shared-master script needs its helpers (todayStart, classify,
+    // commitDataset, SRC, …), so it must be injected INSIDE that scope, right after its last statement.
+    const anchor = "  tryAutoReconnect();\n})();";
+    if (!sourceHtml.includes(anchor)) throw new Error("Tracker injection anchor not found.");
+    const html = sourceHtml.replace(anchor, () => "  tryAutoReconnect();\n" + syncScript + "\n})();");
     return new NextResponse(html, {
       status: 200,
       headers: {
