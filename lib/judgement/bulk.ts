@@ -23,7 +23,7 @@ function stable(value: unknown): string {
     const record = value as Record<string, unknown>;
     return "{" + Object.keys(record).sort().map((key) => JSON.stringify(key) + ":" + stable(record[key])).join(",") + "}";
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? "null";
 }
 export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem): Promise<BulkCandidate> {
   const facts = extractRowFacts(item.raw_source);
@@ -31,7 +31,10 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
   const family = familyOfKind(kind);
   const stored = family ? await loadConfirmation(supabase, item, family, normalizeCas(facts.cas || "")) : null;
   const answers = stored?.answers ?? {};
-  const auto = runAutoWorkflow({ errorType: item.error_type_label, facts, answers });
+  const supplierConfirmation = typeof answers.supplierConfirmation === "string" ? answers.supplierConfirmation : undefined;
+  const toleranceClass = facts.toleranceClass || (typeof answers.toleranceClass === "string" ? answers.toleranceClass : undefined);
+  const destination = typeof answers.destination === "string" ? answers.destination : undefined;
+  const auto = runAutoWorkflow({ errorType: item.error_type_label, facts, answers, supplierConfirmation, toleranceClass, destination });
   const flow = auto.flow ? {
     flowId: auto.flow.flowId, implemented: auto.flow.implemented,
     trail: auto.flow.trail, next: auto.flow.next, outcome: auto.flow.outcome
