@@ -258,6 +258,7 @@
       try { var r = await api("/api/imds-master/sync", { method: "POST" }); say(r.failed ? "err" : "ok", r.configured ? "Excel sync: " + r.sent + " sent, " + r.failed + " failed, " + r.pending + " pending." : "Excel sync is not configured yet. " + r.pending + " update batch(es) remain safely queued."); loadState(); }
       catch (e) { say("err", e.message); }
     };
+    window.__imdsSmReload = loadState;
     loadState();
 
     // ---------- Follow-up: one e-mail per supplier, sent in sequence ----------
@@ -314,9 +315,27 @@
     loadList();
   }
 
+  // ---- Automatic Excel sync: no button needed. Pushes any queued updates to Power Automate while the Tracker is open. ----
+  var autoSyncBusy = false, autoSyncStopped = false;
+  async function autoSync() {
+    if (autoSyncBusy || autoSyncStopped || document.hidden) return;
+    autoSyncBusy = true;
+    try {
+      var st = await api("/api/imds-master/sync");
+      if (!st.configured) return;                              // nothing to push to yet
+      if ((st.queue.pending || 0) + (st.queue.failed || 0) === 0) return;
+      await api("/api/imds-master/sync", { method: "POST" });
+      if (typeof window.__imdsSmReload === "function") window.__imdsSmReload();
+    } catch (e) {
+      if (/role is required|Authentication required/i.test(String(e && e.message))) autoSyncStopped = true; // viewer role: stop quietly
+    } finally { autoSyncBusy = false; }
+  }
+
   function start() {
     initSharedPanels();
     refreshSharedMaster(false);
+    window.setTimeout(autoSync, 4000);
+    window.setInterval(autoSync, 60000);
     timer = window.setInterval(function () {
       if (!document.hidden) refreshSharedMaster(true);
     }, 15000);
