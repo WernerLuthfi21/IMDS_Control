@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupBulkCandidates, type BulkCandidate } from "@/lib/judgement/bulk";
+import { groupBulkCandidates, prohibitedConnectionStatus, type BulkCandidate } from "@/lib/judgement/bulk";
 
 function candidate(id: string, signature: string, eligible = true): BulkCandidate {
   return {
@@ -23,5 +23,19 @@ describe("strict bulk judgement grouping", () => {
       { ...candidate("c", "same"), inPendingQueue: false }, candidate("d", "different", true)
     ]);
     expect(groups).toHaveLength(0);
+  });
+});
+
+
+describe("prohibited-substance route connectivity", () => {
+  it("requires both a verified reference match and an implemented flow", () => {
+    expect(prohibitedConnectionStatus({ prohibited: true, gadslStatus: "DONE", tszStatus: "INFO", flowImplemented: true })).toBe("CONNECTED");
+    expect(prohibitedConnectionStatus({ prohibited: true, gadslStatus: "INFO", tszStatus: "DONE", flowImplemented: true })).toBe("CONNECTED");
+    expect(prohibitedConnectionStatus({ prohibited: true, gadslStatus: "DONE", tszStatus: "INFO", flowImplemented: false })).toBe("NEEDS_REVIEW");
+    expect(prohibitedConnectionStatus({ prohibited: true, gadslStatus: "INFO", tszStatus: "INFO", flowImplemented: true })).toBe("NEEDS_REVIEW");
+  });
+
+  it("does not classify non-prohibited records as substance-routing cases", () => {
+    expect(prohibitedConnectionStatus({ prohibited: false, flowImplemented: false })).toBe("NOT_PROHIBITED");
   });
 });
