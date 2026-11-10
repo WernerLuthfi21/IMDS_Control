@@ -11,11 +11,51 @@ type Item = {
   ok_comment: string | null; imds_reject_comment: string | null; case_id: string | null; cas: string; substance_name: string;
 };
 type Tab = "pending" | "judged" | "km";
-type BulkItem = { id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null; cas: string; substanceName: string; recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string } };
+type BulkItem = {
+  id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null;
+  cas: string; substanceName: string; kind: AutoOutput["kind"];
+  recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string };
+  procedureText: string; signature: string; eligible: boolean; inPendingQueue: boolean; prohibited: boolean;
+  prohibitedStatus: "CONNECTED" | "NEEDS_REVIEW" | "NOT_PROHIBITED"; reviewReason: string;
+};
 type BulkGroup = { signature: string; decision: "OK" | "NG"; comment: string; reason: string; procedureText: string; count: number; items: BulkItem[] };
 type BulkUndoItem = { id: string; decision: "OK" | "NG"; lastChangeDate: string; before: { assigned_person: string | null; starting_date: string | null; judgement_procedure: string | null; judge: null; ok_comment: string | null; imds_reject_comment: string | null } };
 type BulkCoverage = { total: number; connected: number; needsReview: number; missingCas: number };
 const PAGE = 80;
+const BULK_API_LIMIT = 250;
+function chunkItems<T>(items: T[], size = BULK_API_LIMIT): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+function mergeExactMatchGroups(candidates: BulkItem[]): BulkGroup[] {
+  const grouped = new Map<string, BulkItem[]>();
+  for (const item of candidates) {
+    if (!item.eligible || !item.inPendingQueue || !item.signature
+      || (item.recommendation.state !== "OK" && item.recommendation.state !== "NG")) continue;
+    const current = grouped.get(item.signature) ?? [];
+    current.push(item);
+    grouped.set(item.signature, current);
+  }
+  return [...grouped.entries()]
+    .filter(([, items]) => items.length > 1)
+    .map(([signature, items]) => {
+      const first = items[0];
+      const consistent = items.every((item) =>
+        item.recommendation.state === first.recommendation.state
+        && item.recommendation.comment === first.recommendation.comment
+        && item.recommendation.reason === first.recommendation.reason
+        && item.procedureText === first.procedureText
+      );
+      return consistent ? {
+        signature, decision: first.recommendation.state as "OK" | "NG",
+        comment: first.recommendation.comment, reason: first.recommendation.reason,
+        procedureText: first.procedureText, count: items.length, items
+      } : null;
+    })
+    .filter((group): group is BulkGroup => group !== null)
+    .sort((a, b) => b.count - a.count);
+}
 const DESTINATIONS: Array<[string, string]> = [["EU", "EU · Europe, Israel, Turkey"], ["KR", "Korea"], ["CN", "China"], ["TW", "Taiwan"], ["IN", "India"], ["JP", "Japan"], ["OTH", "Other"]];
 const CLASSES = ["MA", "MB", "MC", "MD", "ME", "MF"];
 const monthNames: Record<string, string> = { "1": "Jan", "01": "Jan", "2": "Feb", "02": "Feb", "3": "Mar", "03": "Mar", "4": "Apr", "04": "Apr", "5": "May", "05": "May", "6": "Jun", "06": "Jun", "7": "Jul", "07": "Jul", "8": "Aug", "08": "Aug", "9": "Sep", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec" };
@@ -187,64 +227,137 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const onSaved = useCallback((id: string, patch: Partial<Item>) => { setRows((old) => old.map((r) => r.id === id ? { ...r, ...patch } : r)); setOpenId(null); }, []);
   async function analyzeVisibleQueue() {
     const pending = visible.filter((row) => row.source_status === "WORKING" && !row.judge);
-    const selected = pending.slice(0, 250);
-    if (!selected.length) { setBulkNotice("No pending records in the current filter."); setBulkGroups([]); setBulkCoverage(null); return; }
-    setBulkBusy(true); setBulkError(""); setBulkNotice(""); setUndoItems([]);
+    if (!pending.length) {
+      setBulkNotice("No pending records in the current filter.");
+      setBulkGroups([]); setBulkCoverage(null); setBulkEvaluated(0); setBulkNotFound(0); setBulkAnalyzed(true);
+      return;
+    }
+    const batches = chunkItems(pending);
+    setBulkBusy(true); setBulkError(""); setBulkNotice(""); setBulkGroups([]); setBulkCoverage(null);
+    setBulkEvaluated(0); setBulkNotFound(0); setBulkAnalyzed(false); setUndoItems([]);
     try {
-      const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", ids: selected.map((row) => row.id) }) });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Bulk analysis failed.");
-      setBulkGroups(json.groups as BulkGroup[]);
-      setBulkCoverage(json.coverage as BulkCoverage);
-      setBulkEvaluated(Number(json.evaluated || 0));
-      setBulkNotFound(Number(json.notFound || 0));
-      setBulkAnalyzed(true);
-      setBulkNotice(`Checked ${json.evaluated} pending cases. ${(json.groups || []).length} exact-match group(s) are ready for review.${pending.length > selected.length ? ` Showing first ${selected.length} of ${pending.length}; narrow the filters to analyse the rest.` : ""}`);
-    } catch (error) { setBulkError(error instanceof Error ? error.message : "Bulk analysis failed."); }
-    finally { setBulkBusy(false); }
+      const allCandidates: BulkItem[] = [];
+      const coverage: BulkCoverage = { total: 0, connected: 0, needsReview: 0, missingCas: 0 };
+      let evaluated = 0;
+      let notFound = 0;
+      for (let index = 0; index < batches.length; index += 1) {
+        setBulkNotice(`Analysing batch ${index + 1} of ${batches.length} · ${Math.min((index + 1) * BULK_API_LIMIT, pending.length)} of ${pending.length} cases checked.`);
+        const response = await fetch("/api/judgement/bulk", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "preview", ids: batches[index].map((row) => row.id) })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(`Batch ${index + 1}/${batches.length}: ${json.error || "Bulk analysis failed."}`);
+        if (!Array.isArray(json.candidates)) throw new Error(`Batch ${index + 1}/${batches.length}: the server did not return the full candidate list.`);
+        allCandidates.push(...json.candidates as BulkItem[]);
+        evaluated += Number(json.evaluated || 0);
+        notFound += Number(json.notFound || 0);
+        coverage.total += Number(json.coverage?.total || 0);
+        coverage.connected += Number(json.coverage?.connected || 0);
+        coverage.needsReview += Number(json.coverage?.needsReview || 0);
+        coverage.missingCas += Number(json.coverage?.missingCas || 0);
+      }
+      const groups = mergeExactMatchGroups(allCandidates);
+      setBulkGroups(groups); setBulkCoverage(coverage); setBulkEvaluated(evaluated); setBulkNotFound(notFound); setBulkAnalyzed(true);
+      setBulkNotice(`Completed analysis of ${evaluated.toLocaleString("en-US")} pending cases. ${groups.length} exact-match group(s) are ready for review.${notFound ? ` ${notFound} case(s) were not found and need a fresh queue check.` : ""}`);
+    } catch (error) {
+      setBulkAnalyzed(false);
+      setBulkGroups([]); setBulkCoverage(null);
+      setBulkError(error instanceof Error ? error.message : "Bulk analysis failed.");
+      setBulkNotice("Analysis was not completed. No bulk judgement was applied; correct the issue and analyse the queue again.");
+    } finally { setBulkBusy(false); }
   }
 
   async function applyBulkGroup(group: BulkGroup) {
     const labels = group.items.slice(0, 5).map((item) => item.partNo || item.sourceRecordKey).join(", ");
     const extra = group.count > 5 ? ` and ${group.count - 5} more` : "";
-    if (!window.confirm(`Review confirmed: ${group.count} cases have identical source facts and rule results. Apply the recommended ${group.decision} judgement to all?\\n\\n${labels}${extra}\\n\\nReason: ${group.reason}`)) return;
+    if (!window.confirm(`Review confirmed: ${group.count} cases have identical source facts and rule results. Apply the recommended ${group.decision} judgement to all?\n\n${labels}${extra}\n\nReason: ${group.reason}`)) return;
+    const batches = chunkItems(group.items);
     setBulkBusy(true); setBulkError(""); setBulkNotice("");
+    const allUndo: BulkUndoItem[] = [];
+    const failures: string[] = [];
+    let succeeded = 0;
+    let failed = 0;
     try {
-      const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "apply", ids: group.items.map((item) => item.id), signature: group.signature, decision: group.decision }) });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Bulk judgement could not be applied.");
-      const succeeded = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
-      setRows((old) => old.map((row) => !succeeded.has(row.id) ? row : { ...row, judge: group.decision,
-        ok_comment: group.decision === "OK" ? group.comment : null,
-        imds_reject_comment: group.decision === "NG" ? group.comment : null,
-        judgement_procedure: group.procedureText }));
-      setUndoItems((json.undoItems || []) as BulkUndoItem[]);
+      for (let index = 0; index < batches.length; index += 1) {
+        setBulkNotice(`Applying judgement · batch ${index + 1} of ${batches.length}.`);
+        try {
+          const response = await fetch("/api/judgement/bulk", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "apply", ids: batches[index].map((item) => item.id), signature: group.signature, decision: group.decision })
+          });
+          const json = await response.json();
+          if (!response.ok) {
+            failed += batches[index].length;
+            failures.push(`Batch ${index + 1}: ${json.error || "Bulk judgement could not be applied."}`);
+            continue;
+          }
+          const successfulIds = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
+          succeeded += Number(json.succeeded || successfulIds.size);
+          failed += Number(json.failed || 0);
+          allUndo.push(...(json.undoItems || []) as BulkUndoItem[]);
+          setRows((old) => old.map((row) => !successfulIds.has(row.id) ? row : { ...row, judge: group.decision,
+            ok_comment: group.decision === "OK" ? group.comment : null,
+            imds_reject_comment: group.decision === "NG" ? group.comment : null,
+            judgement_procedure: group.procedureText }));
+          for (const item of (json.results || []) as Array<{ok:boolean;error?:string}>) {
+            if (!item.ok && item.error) failures.push(item.error);
+          }
+        } catch (error) {
+          failed += batches[index].length;
+          failures.push(`Batch ${index + 1}: ${error instanceof Error ? error.message : "Network error"}`);
+          break;
+        }
+      }
+      setUndoItems(allUndo);
       setBulkGroups((old) => old.filter((item) => item.signature !== group.signature));
-      setBulkNotice(`Saved ${json.succeeded} judgement(s). ${json.failed ? `${json.failed} case(s) were not changed and remain available for review.` : "All cases in this group were saved."} Excel sync has been queued.`);
-      if (json.failed) setBulkError((json.results || []).filter((item: { ok: boolean }) => !item.ok).map((item: { error?: string }) => item.error).filter(Boolean).join(" · "));
-    } catch (error) { setBulkError(error instanceof Error ? error.message : "Bulk judgement could not be applied."); }
-    finally { setBulkBusy(false); }
+      setBulkNotice(`Saved ${succeeded.toLocaleString("en-US")} of ${group.count.toLocaleString("en-US")} judgements. ${failed ? `${failed} case(s) were not saved and remain in the pending queue.` : "All cases in this group were saved."} Excel sync has been queued.`);
+      if (failures.length) setBulkError([...new Set(failures)].join(" · "));
+    } finally { setBulkBusy(false); }
   }
 
   async function undoBulk() {
     if (!undoItems.length || !window.confirm(`Undo the last bulk action for ${undoItems.length} case(s)? This is available only while those records remain unchanged.`)) return;
-    setBulkBusy(true); setBulkError("");
+    const batches = chunkItems(undoItems);
+    setBulkBusy(true); setBulkError(""); setBulkNotice("");
+    const remaining = new Map(undoItems.map((item) => [item.id, item]));
+    const errors: string[] = [];
+    let undoneCount = 0;
     try {
-      const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "undo", items: undoItems }) });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Undo failed.");
-      const undone = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
-      const before = new Map(undoItems.map((item) => [item.id, item.before]));
-      setRows((old) => old.map((row) => {
-        if (!undone.has(row.id)) return row;
-        const snapshot = before.get(row.id)!;
-        return { ...row, judge: null, assigned_person: snapshot.assigned_person, starting_date: snapshot.starting_date,
-          judgement_procedure: snapshot.judgement_procedure, ok_comment: snapshot.ok_comment, imds_reject_comment: snapshot.imds_reject_comment };
-      }));
-      setUndoItems((old) => old.filter((item) => !undone.has(item.id)));
-      setBulkNotice(`Undid ${json.undone} judgement(s).${json.failed ? ` ${json.failed} case(s) had changed and were left untouched.` : ""}`);
-    } catch (error) { setBulkError(error instanceof Error ? error.message : "Undo failed."); }
-    finally { setBulkBusy(false); }
+      for (let index = 0; index < batches.length; index += 1) {
+        setBulkNotice(`Undoing bulk judgement · batch ${index + 1} of ${batches.length}.`);
+        try {
+          const response = await fetch("/api/judgement/bulk", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "undo", items: batches[index] })
+          });
+          const json = await response.json();
+          if (!response.ok) {
+            errors.push(`Batch ${index + 1}: ${json.error || "Undo failed."}`);
+            continue;
+          }
+          const undone = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
+          const before = new Map(batches[index].map((item) => [item.id, item.before]));
+          setRows((old) => old.map((row) => {
+            if (!undone.has(row.id)) return row;
+            const snapshot = before.get(row.id)!;
+            return { ...row, judge: null, assigned_person: snapshot.assigned_person, starting_date: snapshot.starting_date,
+              judgement_procedure: snapshot.judgement_procedure, ok_comment: snapshot.ok_comment, imds_reject_comment: snapshot.imds_reject_comment };
+          }));
+          undone.forEach((id) => remaining.delete(id));
+          undoneCount += Number(json.undone || undone.size);
+          for (const item of (json.results || []) as Array<{ok:boolean;error?:string}>) {
+            if (!item.ok && item.error) errors.push(item.error);
+          }
+        } catch (error) {
+          errors.push(`Batch ${index + 1}: ${error instanceof Error ? error.message : "Network error"}`);
+          break;
+        }
+      }
+      setUndoItems([...remaining.values()]);
+      setBulkNotice(`Undid ${undoneCount.toLocaleString("en-US")} judgement(s).${remaining.size ? ` ${remaining.size} case(s) could not be undone and remain available for retry.` : ""}`);
+      if (errors.length) setBulkError([...new Set(errors)].join(" · "));
+    } finally { setBulkBusy(false); }
   }
 
   const updated = sourceDate ? new Date(sourceDate).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : null;
