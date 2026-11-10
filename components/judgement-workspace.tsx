@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, LoaderCircle, Mail, Search, ShieldCheck, UserRound } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, Layers3, LoaderCircle, Mail, ScanSearch, Search, ShieldCheck, Sparkles, Undo2, UserRound } from "lucide-react";
 import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,11 +11,21 @@ type Item = {
   ok_comment: string | null; imds_reject_comment: string | null; case_id: string | null; cas: string; substance_name: string;
 };
 type Tab = "pending" | "judged" | "km";
+type BulkItem = { id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null; cas: string; substanceName: string; recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string } };
+type BulkGroup = { signature: string; decision: "OK" | "NG"; comment: string; reason: string; procedureText: string; count: number; items: BulkItem[] };
+type BulkUndoItem = { id: string; decision: "OK" | "NG"; lastChangeDate: string; before: { assigned_person: string | null; starting_date: string | null; judgement_procedure: string | null; judge: null; ok_comment: string | null; imds_reject_comment: string | null } };
+type BulkCoverage = { total: number; connected: number; needsReview: number; missingCas: number };
 const PAGE = 80;
 const DESTINATIONS: Array<[string, string]> = [["EU", "EU · Europe, Israel, Turkey"], ["KR", "Korea"], ["CN", "China"], ["TW", "Taiwan"], ["IN", "India"], ["JP", "Japan"], ["OTH", "Other"]];
 const CLASSES = ["MA", "MB", "MC", "MD", "ME", "MF"];
 const monthNames: Record<string, string> = { "1": "Jan", "01": "Jan", "2": "Feb", "02": "Feb", "3": "Mar", "03": "Mar", "4": "Apr", "04": "Apr", "5": "May", "05": "May", "6": "Jun", "06": "Jun", "7": "Jul", "07": "Jul", "8": "Aug", "08": "Aug", "9": "Sep", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec" };
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+
+function isProhibitedLabel(value: string) {
+  const text = String(value || "").trim().toLowerCase();
+  return /prohibited|restricted|regulated substance/.test(text)
+    || /^(?:(?:error\s*type|no\.?)\s*)?1[4-8](?:\.0)?(?:\b|$)/.test(text);
+}
 
 function StepIcon({ status }: { status: StepStatus }) {
   if (status === "DONE") return <CircleCheck size={15} className="jx-ok"/>;
@@ -131,7 +141,20 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
+  const [substanceOnly, setSubstanceOnly] = useState(false);
+  const [bulkGroups, setBulkGroups] = useState<BulkGroup[]>([]);
+  const [bulkCoverage, setBulkCoverage] = useState<BulkCoverage | null>(null);
+  const [bulkEvaluated, setBulkEvaluated] = useState(0);
+  const [bulkNotFound, setBulkNotFound] = useState(0);
+  const [bulkAnalyzed, setBulkAnalyzed] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+  const [bulkNotice, setBulkNotice] = useState("");
+  const [undoItems, setUndoItems] = useState<BulkUndoItem[]>([]);
   const canEdit = ["admin", "preparer", "reviewer"].includes(role);
+  const prohibitedRows = rows.filter((row) => isProhibitedLabel(row.error_type_label));
+  const prohibitedPending = prohibitedRows.filter((row) => row.source_status === "WORKING" && !row.judge).length;
+  const prohibitedMissingCas = prohibitedRows.filter((row) => !row.cas?.trim()).length;
 
   const counts = useMemo(() => ({
     pending: rows.filter((r) => r.source_status === "WORKING" && !r.judge).length,
@@ -151,16 +174,79 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       if (tab === "pending" && (r.source_status !== "WORKING" || r.judge)) return false;
       if (tab === "judged" && !r.judge) return false;
       if (tab === "km" && (!r.judge || r.km_judge)) return false;
+      if (substanceOnly && !isProhibitedLabel(r.error_type_label)) return false;
       if (errorType !== "All Error Types" && r.error_type_label !== errorType) return false;
       if (month !== "All" && String(r.source_month || "") !== month) return false;
       return !q || [r.source_record_key, r.delivery_part_no, r.supplier_code, r.error_type_label, r.cas, r.substance_name].some((v) => String(v || "").toLowerCase().includes(q));
     });
-  }, [rows, tab, errorType, month, search]);
-  const filterKey = [tab, errorType, month, search].join("|");
+  }, [rows, tab, errorType, month, search, substanceOnly]);
+  const filterKey = [tab, errorType, month, search, substanceOnly].join("|");
   const [prevKey, setPrevKey] = useState(filterKey);
   if (prevKey !== filterKey) { setPrevKey(filterKey); setLimit(PAGE); setOpenId(null); }
 
   const onSaved = useCallback((id: string, patch: Partial<Item>) => { setRows((old) => old.map((r) => r.id === id ? { ...r, ...patch } : r)); setOpenId(null); }, []);
+  async function analyzeVisibleQueue() {
+    const pending = visible.filter((row) => row.source_status === "WORKING" && !row.judge);
+    const selected = pending.slice(0, 250);
+    if (!selected.length) { setBulkNotice("No pending records in the current filter."); setBulkGroups([]); setBulkCoverage(null); return; }
+    setBulkBusy(true); setBulkError(""); setBulkNotice(""); setUndoItems([]);
+    try {
+      const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", ids: selected.map((row) => row.id) }) });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Bulk analysis failed.");
+      setBulkGroups(json.groups as BulkGroup[]);
+      setBulkCoverage(json.coverage as BulkCoverage);
+      setBulkEvaluated(Number(json.evaluated || 0));
+      setBulkNotFound(Number(json.notFound || 0));
+      setBulkAnalyzed(true);
+      setBulkNotice(`Checked ${json.evaluated} pending cases. ${(json.groups || []).length} exact-match group(s) are ready for review.${pending.length > selected.length ? ` Showing first ${selected.length} of ${pending.length}; narrow the filters to analyse the rest.` : ""}`);
+    } catch (error) { setBulkError(error instanceof Error ? error.message : "Bulk analysis failed."); }
+    finally { setBulkBusy(false); }
+  }
+
+  async function applyBulkGroup(group: BulkGroup) {
+    const labels = group.items.slice(0, 5).map((item) => item.partNo || item.sourceRecordKey).join(", ");
+    const extra = group.count > 5 ? ` and ${group.count - 5} more` : "";
+    if (!window.confirm(`Review confirmed: ${group.count} cases have identical source facts and rule results. Apply the recommended ${group.decision} judgement to all?\\n\\n${labels}${extra}\\n\\nReason: ${group.reason}`)) return;
+    setBulkBusy(true); setBulkError(""); setBulkNotice("");
+    try {
+      const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "apply", ids: group.items.map((item) => item.id), signature: group.signature, decision: group.decision }) });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Bulk judgement could not be applied.");
+      const succeeded = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
+      setRows((old) => old.map((row) => !succeeded.has(row.id) ? row : { ...row, judge: group.decision,
+        ok_comment: group.decision === "OK" ? group.comment : null,
+        imds_reject_comment: group.decision === "NG" ? group.comment : null,
+        judgement_procedure: group.procedureText }));
+      setUndoItems((json.undoItems || []) as BulkUndoItem[]);
+      setBulkGroups((old) => old.filter((item) => item.signature !== group.signature));
+      setBulkNotice(`Saved ${json.succeeded} judgement(s). ${json.failed ? `${json.failed} case(s) were not changed and remain available for review.` : "All cases in this group were saved."} Excel sync has been queued.`);
+      if (json.failed) setBulkError((json.results || []).filter((item: { ok: boolean }) => !item.ok).map((item: { error?: string }) => item.error).filter(Boolean).join(" · "));
+    } catch (error) { setBulkError(error instanceof Error ? error.message : "Bulk judgement could not be applied."); }
+    finally { setBulkBusy(false); }
+  }
+
+  async function undoBulk() {
+    if (!undoItems.length || !window.confirm(`Undo the last bulk action for ${undoItems.length} case(s)? This is available only while those records remain unchanged.`)) return;
+    setBulkBusy(true); setBulkError("");
+    try {
+      const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "undo", items: undoItems }) });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Undo failed.");
+      const undone = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
+      const before = new Map(undoItems.map((item) => [item.id, item.before]));
+      setRows((old) => old.map((row) => {
+        if (!undone.has(row.id)) return row;
+        const snapshot = before.get(row.id)!;
+        return { ...row, judge: null, assigned_person: snapshot.assigned_person, starting_date: snapshot.starting_date,
+          judgement_procedure: snapshot.judgement_procedure, ok_comment: snapshot.ok_comment, imds_reject_comment: snapshot.imds_reject_comment };
+      }));
+      setUndoItems((old) => old.filter((item) => !undone.has(item.id)));
+      setBulkNotice(`Undid ${json.undone} judgement(s).${json.failed ? ` ${json.failed} case(s) had changed and were left untouched.` : ""}`);
+    } catch (error) { setBulkError(error instanceof Error ? error.message : "Undo failed."); }
+    finally { setBulkBusy(false); }
+  }
+
   const updated = sourceDate ? new Date(sourceDate).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : null;
 
   return <div className="jx">
@@ -170,6 +256,42 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     </header>
     {queryError && <div className="jx-error"><AlertTriangle size={14}/> {queryError}</div>}
     {rows.length === 0 && !queryError && <div className="jx-empty"><strong>No current-year source records</strong><span>Commit the current G-CATS workbook from Daily G-CATS Update to fill the queue.</span></div>}
+
+    <section className="jx-command">
+      <div className="jx-command-head">
+        <div><span className="jx-command-kicker"><Sparkles size={13}/> SMART JUDGEMENT</span>
+          <h2>Review identical cases together</h2>
+          <p>Analyse the pending queue, compare complete source facts and rule traces, then apply one reviewed recommendation to an exact-match group.</p>
+        </div>
+        <button type="button" className="jx-analyze" onClick={() => void analyzeVisibleQueue()} disabled={bulkBusy || !canEdit}>
+          {bulkBusy ? <LoaderCircle size={15} className="spin"/> : <ScanSearch size={15}/>} Analyse pending cases
+        </button>
+      </div>
+      <div className="jx-command-metrics">
+        <div><span>Pending in filter</span><strong>{visible.filter((row) => row.source_status === "WORKING" && !row.judge).length.toLocaleString("en-US")}</strong></div>
+        <div><span>Exact-match groups</span><strong>{bulkGroups.length.toLocaleString("en-US")}</strong></div>
+        <div><span>Prohibited cases</span><strong>{prohibitedRows.length.toLocaleString("en-US")}</strong><small>{prohibitedPending} pending · {prohibitedMissingCas} without CAS</small></div>
+        <div><span>Queue connection</span><strong>{live ? "Live" : "Sync pending"}</strong><small>{rows.length.toLocaleString("en-US")} source records loaded</small></div>
+      </div>
+      {bulkError && <div className="jx-bulk-error" role="alert"><AlertTriangle size={14}/>{bulkError}</div>}
+      {bulkNotice && <div className="jx-bulk-notice"><CheckCheck size={14}/>{bulkNotice}</div>}
+      {bulkAnalyzed && <div className="jx-coverage">
+        <div><strong>Prohibited substance coverage</strong><span>{bulkCoverage?.connected || 0} connected · {bulkCoverage?.needsReview || 0} need review · {bulkCoverage?.missingCas || 0} missing CAS</span></div>
+        <div className="jx-coverage-meta">{bulkEvaluated} analysed{bulkNotFound ? ` · ${bulkNotFound} no longer available` : ""}</div>
+      </div>}
+      {undoItems.length > 0 && <div className="jx-undo-row"><span><strong>{undoItems.length} cases</strong> changed in the last bulk action</span><button type="button" onClick={() => void undoBulk()} disabled={bulkBusy}><Undo2 size={14}/> Undo bulk action</button></div>}
+    </section>
+
+    {bulkAnalyzed && <section className="jx-groups">
+      <div className="jx-groups-heading"><div><span className="jx-command-kicker"><Layers3 size={13}/> MATCHED GROUPS</span><h2>Bulk judgement review</h2></div><span>{bulkGroups.length} group(s)</span></div>
+      {bulkGroups.length ? bulkGroups.map((group) => <article className="jx-group" key={group.signature}>
+        <div className="jx-group-top"><div><span className="jx-group-count">{group.count} identical cases</span><h3>{group.items[0]?.errorType || "Matched rule cases"}</h3></div><span className={"jx-pill " + group.decision.toLowerCase()}>Recommended {group.decision}</span></div>
+        <p className="jx-group-reason">{group.reason}</p>
+        {group.comment && <div className="jx-group-comment"><strong>Recommended judgement comment</strong><span>{group.comment}</span></div>}
+        <details className="jx-group-details"><summary>Review all {group.count} cases and source identifiers</summary><div className="jx-group-case-list">{group.items.map((item) => <div key={item.id}><strong>{item.partNo || "Part number missing"}</strong><span>{item.supplierCode || "Supplier —"} · {item.cas || "CAS unavailable"} · {item.substanceName || item.sourceRecordKey}</span></div>)}</div></details>
+        <div className="jx-group-actions"><span><ShieldCheck size={13}/> Exact facts + rule trace match · human confirmation required</span><button type="button" onClick={() => void applyBulkGroup(group)} disabled={bulkBusy || !canEdit}>{bulkBusy ? <LoaderCircle size={14} className="spin"/> : <CheckCheck size={14}/>} Apply {group.decision} to all {group.count}</button></div>
+      </article>) : <div className="jx-no-groups"><Layers3 size={18}/><strong>No safe exact-match groups found</strong><span>Cases with missing evidence, different material facts or HOLD recommendations remain in individual review. Nothing was judged automatically.</span></div>}
+    </section>}
 
     <nav className="jx-tabs" aria-label="Queue">
       {([["pending", "To judge", counts.pending], ["judged", "Judged", counts.judged], ["km", "Awaiting KM", counts.km]] as const).map(([k, label, n]) =>
@@ -181,7 +303,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"><option value="All">All months</option>{months.map((m) => <option key={m} value={m}>{monthNames[m] || m}</option>)}</select>
     </div>
     <div className="jx-types" role="group" aria-label="Error type">
-      <button type="button" className={errorType === "All Error Types" ? "on" : ""} onClick={() => setErrorType("All Error Types")}>All</button>
+      <button type="button" className={!substanceOnly && errorType === "All Error Types" ? "on" : ""} onClick={() => { setErrorType("All Error Types"); setSubstanceOnly(false); }}>All</button><button type="button" className={"jx-prohibited-filter " + (substanceOnly ? "on" : "")} onClick={() => { setSubstanceOnly((value) => !value); setErrorType("All Error Types"); }}>Prohibited substances <b>{prohibitedPending}</b></button>
       {types.map(([name, n]) => <button type="button" key={name} className={errorType === name ? "on" : ""} onClick={() => setErrorType(errorType === name ? "All Error Types" : name)}><span>{name}</span><b>{n}</b></button>)}
     </div>
 

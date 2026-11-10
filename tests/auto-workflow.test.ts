@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { extractRowFacts } from "@/lib/judgement/row-facts";
 import { lookupPbPolicy } from "@/lib/judgement/pb-policy";
-import { runAutoWorkflow } from "@/lib/judgement/auto";
+import { runAutoWorkflow, detectKind } from "@/lib/judgement/auto";
 
 const blank = extractRowFacts({});
 
@@ -153,5 +153,15 @@ describe("more Appendix II flows", () => {
     expect(run2({ errorType: "Application44ERROR", facts: f, supplierConfirmation: "SUPPLIER_CONFIRMED" }).recommendation.state).toBe("OK");
     expect(run2({ errorType: "24", facts: f, supplierConfirmation: "INPUT_MISTAKE" }).recommendation.state).toBe("NG");
     expect(run2({ errorType: "19", facts: f }).recommendation.state).toBe("HOLD");
+  });
+});
+
+
+describe("substance error type routing", () => {
+  it("connects numeric G-CATS substance codes 14–18 to the substance resolver", () => {
+    for (const label of ["14", "No.14", "Error Type 15", "16. Prohibited substance", "17", "18.0"]) {
+      expect(detectKind(label)).toBe("substance");
+    }
+    expect(detectKind("19")).toBe("manual");
   });
 });

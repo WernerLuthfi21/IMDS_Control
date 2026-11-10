@@ -1,6 +1,6 @@
 import { selectFlow, runFlow, pb71Run, FLOW_SOURCE, type FlowRun } from "@/lib/judgement/flows";
 import { evaluateJudgement, type JudgementInput } from "@/lib/judgement/engine";
-import { lookupSubstance, normalizeCas } from "@/lib/reference-data";
+import { isValidCas, lookupSubstance, lookupSubstanceByName, normalizeCas } from "@/lib/reference-data";
 import { lookupPbPolicy, PB_SOURCE } from "@/lib/judgement/pb-policy";
 import type { RowFacts } from "@/lib/judgement/row-facts";
 import type { JudgementResult } from "@/lib/types";
@@ -29,7 +29,8 @@ export function detectKind(errorType: string): AutoOutput["kind"] {
   if (/^(sms mass|6)$/.test(t.trim())) return "sms";
   if (/application\s*44\s*error/.test(t) || /^24$/.test(t.trim())) return "app44";
   if (/elv\s*\(pb\)/.test(t)) return "pb";
-  if (/prohibited substance/.test(t)) return "substance";
+  if (/prohibited|restricted|regulated substance/.test(t)) return "substance";
+  if (/^(?:(?:error\s*type|no\.?)\s*)?1[4-8](?:\.0)?(?:\b|$)/.test(t.trim())) return "substance";
   return "manual";
 }
 
@@ -41,8 +42,32 @@ function toRecommendation(r: JudgementResult): AutoRecommendation {
 
 function substanceSteps(facts: RowFacts) {
   const steps: AutoStep[] = [];
-  const cas = normalizeCas(facts.cas || "");
-  const lookup = cas ? lookupSubstance(cas) : null;
+  const rawCas = String(facts.cas || "");
+  const casMatches = [...rawCas.matchAll(/\b\d{2,7}\s*[-‐‑‒–—]\s*\d{2}\s*[-‐‑‒–—]\s*\d\b/g)]
+    .map((match) => normalizeCas(match[0])).filter((value) => isValidCas(value));
+  let cas = casMatches.length === 1 ? casMatches[0] : normalizeCas(rawCas);
+  let nameResolved = false;
+  if ((!cas || !isValidCas(cas)) && facts.substanceName) {
+    const named = lookupSubstanceByName(facts.substanceName);
+    if (named.casCandidates.length === 1) { cas = named.casCandidates[0]; nameResolved = true; }
+    else {
+      steps.push({
+        id: "gadsl", title: "Search CAS / exact substance name in GADSL 2026 V1",
+        status: "MANUAL",
+        detail: named.casCandidates.length > 1
+          ? \`Exact substance-name match has \${named.casCandidates.length} CAS candidates. Confirm the CAS from the source IMDS record; the system will not choose between them.\`
+          : "CAS is missing or masked and no exact one-to-one substance-name match was found. Search the source reference manually."
+      });
+      steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "MANUAL", detail: "A unique CAS is required before the Appendix 3 and dedicated-flow lookup can be completed." });
+      return { steps, gadslNo: "", tszText: "", flowName: "", lookup: null };
+    }
+  }
+  if (casMatches.length > 1) {
+    steps.push({ id: "gadsl", title: "Search CAS in GADSL 2026 V1", status: "MANUAL", detail: "The source row contains more than one valid CAS number. Resolve each substance as a separate case; no CAS is selected automatically." });
+    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "MANUAL", detail: "Multiple CAS values require a case-by-case reference lookup." });
+    return { steps, gadslNo: "", tszText: "", flowName: "", lookup: null };
+  }
+  const lookup = cas && isValidCas(cas) ? lookupSubstance(cas) : null;
   let gadslNo = "", tszText = "", flowName = "";
   if (!cas || !lookup) {
     steps.push({ id: "gadsl", title: "Search CAS in GADSL 2026 V1", status: "MANUAL", detail: "CAS No. is blank or masked in the source row (Confidential Substances). Search by substance name manually." });

@@ -29,16 +29,23 @@ export default async function JudgementPage() {
   let rows: Array<Record<string, unknown>> = [];
   let queryError: string | null = latestError?.message || null;
   if (latestSource?.source_batch_id) {
-    const result = await supabase.from("gcat_error_items")
-      .select("id,source_record_key,error_type_label,delivery_part_no,supplier_code,source_status,source_year,source_month,judge,km_judge,source_judge_label,source_km_judge_label,assigned_person,starting_date,judgement_procedure,ok_comment,imds_reject_comment,last_change_date,case_id,raw_source")
-      .eq("source_batch_id", latestSource.source_batch_id)
-      .eq("source_year", String(year))
-      .order("source_month", { ascending: false })
-      .order("last_change_date", { ascending: false, nullsFirst: true })
-      .range(0, 4999);
-    if (result.error) queryError = result.error.message;
-    else rows = ((result.data || []) as Array<Record<string, unknown>>).map(({ raw_source, ...rest }) => {
-      // Only the few fields the list needs go to the browser; the full source row stays on the server.
+    // Read every row in bounded pages. Never silently hide cases after a fixed 5,000-row window.
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const result = await supabase.from("gcat_error_items")
+        .select("id,source_record_key,error_type_label,delivery_part_no,supplier_code,source_status,source_year,source_month,judge,km_judge,source_judge_label,source_km_judge_label,assigned_person,starting_date,judgement_procedure,ok_comment,imds_reject_comment,last_change_date,case_id,raw_source")
+        .eq("source_batch_id", latestSource.source_batch_id)
+        .eq("source_year", String(year))
+        .order("source_month", { ascending: false })
+        .order("last_change_date", { ascending: false, nullsFirst: true })
+        .range(from, from + pageSize - 1);
+      if (result.error) { queryError = result.error.message; break; }
+      const batch = (result.data || []) as Array<Record<string, unknown>>;
+      rows.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+    rows = rows.map(({ raw_source, ...rest }) => {
+      // Only display fields go to the browser; source evidence stays on the server.
       const f = extractRowFacts(raw_source as Record<string, unknown> | null);
       return { ...rest, cas: f.cas, substance_name: f.substanceName };
     });

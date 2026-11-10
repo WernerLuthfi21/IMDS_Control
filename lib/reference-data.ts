@@ -30,6 +30,33 @@ function textHasCas(text: unknown, cas: string) {
   return text.replace(/_x000D_/g, "\n").split(/[\n,; ]+/).some((token) => normalizeCas(token) === cas);
 }
 
+
+function normalizeSubstanceName(value: unknown) {
+  return String(value ?? "").normalize("NFKC").toLocaleLowerCase("en")
+    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+/** Exact normalized-name fallback when the IMDS row masks CAS. Ambiguous names stay in manual review. */
+export function lookupSubstanceByName(rawName: string) {
+  const key = normalizeSubstanceName(rawName);
+  if (!key || key.length < 4) return { gadsl: [] as GadslRecord[], tsz: [] as typeof tsz3Records, casCandidates: [] as string[] };
+  const gadsl = gadslRecords.filter((row) => normalizeSubstanceName(row.substance) === key);
+  const tsz = tsz3Records.filter((row) => normalizeSubstanceName(row.values?.[2]) === key);
+  const candidates = new Set<string>();
+  for (const row of gadsl) {
+    const cas = normalizeCas(row.casOriginal || "");
+    if (isValidCas(cas)) candidates.add(cas);
+  }
+  for (const row of tsz) {
+    const raw = String(row.values?.[3] ?? "");
+    for (const match of raw.matchAll(/\b\d{2,7}\s*[-‐‑‒–—]\s*\d{2}\s*[-‐‑‒–—]\s*\d\b/g)) {
+      const cas = normalizeCas(match[0]);
+      if (isValidCas(cas)) candidates.add(cas);
+    }
+  }
+  return { gadsl, tsz, casCandidates: [...candidates] };
+}
+
 export function lookupSubstance(rawCas: string) {
   const cas = normalizeCas(rawCas);
   const active = gadslRecords.filter((row) => normalizeCas(row.casOriginal || "") === cas);
