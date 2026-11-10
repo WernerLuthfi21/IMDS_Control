@@ -111,61 +111,128 @@
     return result;
   }
 
+  // ---- Loading status + instant start from the last copy kept on this device ----
+  var CACHE_DB = "imds-tracker-cache", CACHE_KEY = "shared-master";
+  function cacheOpen() {
+    return new Promise(function (resolve) {
+      try {
+        var req = indexedDB.open(CACHE_DB, 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore("kv"); };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { resolve(null); };
+      } catch (e) { resolve(null); }
+    });
+  }
+  function cacheGet() {
+    return cacheOpen().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (resolve) {
+        try { var r = db.transaction("kv").objectStore("kv").get(CACHE_KEY); r.onsuccess = function () { resolve(r.result || null); }; r.onerror = function () { resolve(null); }; } catch (e) { resolve(null); }
+      });
+    });
+  }
+  function cachePut(value) {
+    return cacheOpen().then(function (db) { if (!db) return; try { db.transaction("kv", "readwrite").objectStore("kv").put(value, CACHE_KEY); } catch (e) { /* cache is optional */ } });
+  }
+  var loadEl = null;
+  function loadStatus(kind, text, retry) {
+    if (!loadEl) {
+      var st = document.createElement("style");
+      st.textContent = "#imds-load{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9998;display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:999px;background:#fff;color:#1f2933;font:600 13px system-ui,sans-serif;box-shadow:0 6px 24px rgba(40,20,80,.18);border:1px solid #e8e1f1;transition:opacity .4s}" +
+        "#imds-load.ok{border-color:#91c8a9}#imds-load.err{border-color:#e7a4ad;color:#b91c1c}#imds-load.fade{opacity:0;pointer-events:none}" +
+        "#imds-load i{width:14px;height:14px;border-radius:50%;border:2px solid #c4b5fd;border-top-color:#6d28d9;animation:imdsspin .8s linear infinite}#imds-load.ok i,#imds-load.err i{display:none}" +
+        "#imds-load button{border:1px solid #ddd;background:#fff;border-radius:8px;padding:3px 10px;cursor:pointer;font:inherit}@keyframes imdsspin{to{transform:rotate(360deg)}}";
+      document.head.appendChild(st);
+      loadEl = document.createElement("div"); loadEl.id = "imds-load"; loadEl.setAttribute("role", "status"); loadEl.setAttribute("aria-live", "polite");
+      document.body.appendChild(loadEl);
+    }
+    loadEl.className = kind === "ok" ? "ok" : kind === "err" ? "err" : "";
+    loadEl.innerHTML = "<i></i><span></span>" + (retry ? '<button type="button">Retry</button>' : "");
+    loadEl.querySelector("span").textContent = text;
+    if (retry) loadEl.querySelector("button").onclick = retry;
+    if (kind === "ok") window.setTimeout(function () { if (loadEl) loadEl.classList.add("fade"); }, 2200);
+  }
+
+  var lastEtag = null, hasData = false;
+  function applyPayload(payload) {
+    var dataset = buildSharedDataset(payload.rows);
+    if (!dataset.records.length) return null;
+    var contacts = sharedContacts(payload.contacts);
+    dataset.rawRecords.forEach(function (record) {
+      if (!contacts.has(record.company.toUpperCase())) {
+        contacts.set(record.company.toUpperCase(), { company: record.company, pic: record.email || "", cc: "", spv: "", note: "" });
+      }
+    });
+    commitDataset(dataset, contacts);
+    SRC.fileName = "Shared IMDS Master";
+    SRC.sheetName = "Part List LATEST";
+    SRC.fileHandle = null;
+    SRC.lastFile = null;
+    SRC.lastSync = new Date();
+    SRC.graphConnected = false;
+    afterLoad();
+    if (typeof setConnectionState === "function") setConnectionState("CONNECTED");
+    if (typeof setSourceStatus === "function") setSourceStatus("Shared master live · " + dataset.validation.total.toLocaleString() + " unique parts · " + new Date().toLocaleTimeString(), "ok");
+    window.__IMDS_SHARED_MASTER_READY__ = true;
+    window.__IMDS_SHARED_MASTER_LAST_SYNC__ = new Date().toISOString();
+    hasData = true;
+    return dataset;
+  }
+
   async function refreshSharedMaster(silent) {
     if (busy) return;
     busy = true;
+    var shown = !silent || !hasData;
+    if (!silent && !hasData) loadStatus("busy", "Connecting to database…");
+    else if (!silent) loadStatus("busy", "Checking for updates…");
     try {
-      var response = await fetch("/api/imds-master/tracker-data", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "same-origin",
-        headers: { "Accept": "application/json" }
-      });
-      var payload = await response.json();
+      var headers = { "Accept": "application/json" };
+      if (lastEtag && hasData) headers["If-None-Match"] = lastEtag;
+      var response = await fetch("/api/imds-master/tracker-data", { method: "GET", cache: "no-store", credentials: "same-origin", headers: headers });
+      if (response.status === 304) {
+        if (!silent) loadStatus("ok", "Up to date · " + new Date().toLocaleTimeString());
+        return "same";
+      }
+      var raw = await response.text(), payload;
+      try { payload = JSON.parse(raw); } catch (e) { throw new Error("The server returned an unexpected response (HTTP " + response.status + ")."); }
       if (!response.ok) throw new Error(payload && payload.error ? payload.error : "Shared master could not be loaded.");
       if (!Array.isArray(payload.rows)) throw new Error("Shared master response is invalid.");
-
-      var dataset = buildSharedDataset(payload.rows);
-      if (!dataset.records.length) {
-        if (!silent && typeof toast === "function") toast("Shared master is empty. Upload Part List LATEST in Master Data first.", "info");
+      if (!payload.rows.length) {
         if (typeof setConnectionState === "function") setConnectionState("NOT_CONNECTED");
-        return;
+        if (shown) loadStatus("err", "The shared master is empty. Upload the IMDS Remaining master in Settings.");
+        return "empty";
       }
-
-      var contacts = sharedContacts(payload.contacts);
-      dataset.rawRecords.forEach(function (record) {
-        if (!contacts.has(record.company.toUpperCase())) {
-          contacts.set(record.company.toUpperCase(), {
-            company: record.company, pic: record.email || "", cc: "", spv: "", note: ""
-          });
-        }
-      });
-
-      commitDataset(dataset, contacts);
-      SRC.fileName = "Shared IMDS Master";
-      SRC.sheetName = "Part List LATEST";
-      SRC.fileHandle = null;
-      SRC.lastFile = null;
-      SRC.lastSync = new Date();
-      SRC.graphConnected = false;
-
-      afterLoad();
-      if (typeof setConnectionState === "function") setConnectionState("CONNECTED");
-      if (typeof setSourceStatus === "function") {
-        setSourceStatus("Shared master live · " + dataset.validation.total.toLocaleString() + " unique parts · " + new Date().toLocaleTimeString(), "ok");
-      }
-      window.__IMDS_SHARED_MASTER_READY__ = true;
-      window.__IMDS_SHARED_MASTER_LAST_SYNC__ = new Date().toISOString();
-      if (!silent && typeof toast === "function") toast("Shared IMDS Master refreshed.", "ok");
+      var dataset = applyPayload(payload);
+      lastEtag = response.headers.get("ETag") || null;
+      if (lastEtag) cachePut({ etag: lastEtag, payload: payload, savedAt: Date.now() });
+      if (dataset && (shown || !silent)) loadStatus("ok", "Live · " + dataset.validation.total.toLocaleString() + " parts");
+      return "ok";
     } catch (error) {
       console.error("IMDS Tracker shared-master refresh failed.", error);
-      if (!silent && typeof toast === "function") toast(error && error.message ? error.message : "Shared master refresh failed.", "err");
+      var message = error && error.message ? error.message : "Shared master refresh failed.";
+      if (!silent || !hasData) loadStatus("err", hasData ? "Could not refresh: " + message : message, function () { refreshSharedMaster(false); });
       if (!window.__IMDS_SHARED_MASTER_READY__ && typeof setConnectionState === "function") setConnectionState("SOURCE_ERROR");
+      return "error";
     } finally {
       busy = false;
     }
   }
 
+  // Show the last copy instantly, then verify against the database in the background.
+  async function startFast() {
+    loadStatus("busy", "Connecting to database…");
+    try {
+      var cached = await cacheGet();
+      if (cached && cached.payload && Array.isArray(cached.payload.rows) && cached.payload.rows.length) {
+        applyPayload(cached.payload);
+        lastEtag = cached.etag || null;
+        loadStatus("busy", "Showing saved data · checking for updates…");
+      }
+    } catch (e) { /* fall through to the network */ }
+    var result = await refreshSharedMaster(hasData);
+    if (result === "same") loadStatus("ok", "Live · up to date");
+    else if (result === "error" && hasData) loadStatus("err", "Could not reach the database; showing the last saved data.", function () { refreshSharedMaster(false); });
+  }
 
   // ---- Tracker-native panels: Settings → shared master import; Follow-up → sequential supplier e-mail ----
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]; }); }
@@ -333,7 +400,7 @@
 
   function start() {
     initSharedPanels();
-    refreshSharedMaster(false);
+    startFast();
     window.setTimeout(autoSync, 4000);
     window.setInterval(autoSync, 60000);
     timer = window.setInterval(function () {

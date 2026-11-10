@@ -5,7 +5,10 @@ import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const COLUMNS = "id,project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,supplier_promise_date,imds_status,part_status,status_update,md_id_version,md_status_update_date,comment,md_system_records,source_row,updated_at";
+const PAGE = 500;
+
+export async function GET(request: Request) {
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -14,18 +17,31 @@ export async function GET() {
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
-  const parts: Record<string, unknown>[] = [];
-  for (let from = 0; ; from += 500) {
-    const { data, error } = await supabase.from("imds_master_parts")
-      .select("id,project,vendor_code,main_pic_email,company_name,part_name,part_no,submission_plan,supplier_promise_date,imds_status,part_status,status_update,md_id_version,md_status_update_date,comment,md_system_records,source_row,updated_at")
-      .order("project", { ascending: true, nullsFirst: true })
-      .order("company_name", { ascending: true, nullsFirst: true })
-      .order("part_no", { ascending: true, nullsFirst: true })
-      .range(from, from + 499);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    parts.push(...(data || []) as Record<string, unknown>[]);
-    if (!data || data.length < 500) break;
+  // Cheap version check first: if nothing changed since the browser's copy, answer 304 and skip the heavy read.
+  const [{ count, error: countError }, { data: newest }, { count: contactCount }, { data: newestContact }] = await Promise.all([
+    supabase.from("imds_master_parts").select("id", { count: "exact", head: true }),
+    supabase.from("imds_master_parts").select("updated_at").order("updated_at", { ascending: false }).limit(1),
+    supabase.from("supplier_contacts").select("id", { count: "exact", head: true }).eq("active", true),
+    supabase.from("supplier_contacts").select("updated_at").order("updated_at", { ascending: false }).limit(1)
+  ]);
+  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
+  const etag = `W/"${count ?? 0}-${newest?.[0]?.updated_at ?? "none"}-${contactCount ?? 0}-${newestContact?.[0]?.updated_at ?? "none"}"`;
+  if (request.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304, headers: { ETag: etag, "Cache-Control": "private, no-cache" } });
   }
+
+  // Read all pages in parallel instead of one after another.
+  const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE));
+  const results = await Promise.all(Array.from({ length: pages }, (_, i) => supabase.from("imds_master_parts")
+    .select(COLUMNS)
+    .order("project", { ascending: true, nullsFirst: true })
+    .order("company_name", { ascending: true, nullsFirst: true })
+    .order("part_no", { ascending: true, nullsFirst: true })
+    .order("id", { ascending: true })
+    .range(i * PAGE, i * PAGE + PAGE - 1)));
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return NextResponse.json({ error: failed.error.message }, { status: 500 });
+  const parts = results.flatMap((r) => (r.data || []) as unknown as Record<string, unknown>[]);
 
   const { data: contactRows } = await supabase.from("supplier_contacts")
     .select("supplier_code,supplier_name,email,contact_role,active")
@@ -75,5 +91,5 @@ export async function GET() {
     contacts: contactList,
     total: parts.length,
     refreshedAt: new Date().toISOString()
-  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }, { headers: { "Cache-Control": "private, no-cache", ETag: etag } });
 }
