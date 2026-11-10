@@ -108,22 +108,28 @@ Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Den
 
 Pengiriman beruntun: tombol **Send all sequentially** di Tracker > Follow-up mengirim satu supplier, menunggu balasan, lalu lanjut ke berikutnya. Supplier yang sudah diemail dalam `FOLLOWUP_MIN_GAP_HOURS` terakhir dilewati dan dilaporkan.
 
-## 6b. Pusat follow-up supplier (Tracker → Follow-up → "E-mail suppliers")
+## 6b. Pusat e-mail (Tracker → Follow-up → "Send e-mails")
 
-**Migrasi baru (wajib dijalankan sekali):** `supabase/migrations/20261110000000_tracker_settings.sql` (tabel `imds_tracker_settings`, aditif). Cek dulu versi migrasi remote; jangan reset database.
+Semua e-mail ke supplier sekarang lewat **satu tempat**. Tombol *Remind*, *Send reminder*, *Status recap e-mail* di mana pun hanya membuka pusat ini (modal lama sudah dihapus).
 
-Isi halaman:
-- **Part mana:** "Belum submit / ditolak" (supplier harus bertindak) atau "Semua yang belum ACCEPTED".
-- **Model:** semua, atau tap model tertentu saja (bisa lebih dari satu).
-- **Template:** pilih template; subjek/isi bisa diedit per supplier lewat tombol Preview (hanya untuk supplier itu).
-- **CC:** CC wajib (terkunci, diatur di Settings), plus centang management menengah (staff/SPV/DPH/GM), top management (MD/VP/PD), buyer PUD, dan CC tambahan. Data diambil dari Directory.
-- **Lampiran:** PDF recap dan/atau Excel daftar part number yang belum submit (dibuat otomatis per supplier, kolom kanan untuk tanggal rencana).
-- **Kirim:** centang supplier, "Send selected" mengirim satu per satu dengan progress. Supplier yang baru dikirimi (lihat `FOLLOWUP_MIN_GAP_HOURS`) dilewati kecuali "Send even if sent recently" dicentang.
-- "Handed to Power Automate" artinya flow menerima permintaan; pengiriman email sebenarnya tetap dicek di Sent items Outlook.
+**Tiga jenis e-mail, masing-masing punya template (teks asli, boleh diubah sedikit):**
+1. **Request (kick-off):** minta supplier konfirmasi status dan tanggal rencana submit.
+2. **Follow-up:** kejar satu supplier tentang part yang belum submit.
+3. **Status recap:** satu e-mail progres ke semua PIC supplier (lampiran: PDF executive summary + Excel semua part outstanding).
 
-**Settings → Follow-up e-mail:** edit template (placeholder `{supplier} {code} {count} {models} {partlist} {sender} {date}`), CC wajib, CC default, lampiran default, cakupan default, jumlah maksimum part di badan email. Hanya admin/preparer yang bisa menyimpan.
+**Alur 5 langkah di layar:** jenis e-mail → part & model (belum submit, atau semua yang belum ACCEPTED; semua model atau model tertentu) → template/pengirim → CC & lampiran → Preview lalu kirim. Template default per jenis ditandai "(default)".
 
-**Directory tersimpan di database.** Kontak (termasuk management sampai top management) disimpan di server dan dimuat otomatis di setiap browser. Browser yang sudah punya kontak lokal akan digabung (hanya menambah yang belum ada di server, tidak menimpa). Setelah edit, tersimpan otomatis dalam ±2 detik; status tampil di halaman Directory.
+**CC wajib:** `fuad-qc@`, `hendrick.kurdianto@`, `Michael.Aldryan@` (@toyota.co.id) selalu ikut CC dan tidak bisa dimatikan saat mengirim; server menambahkannya lagi jika hilang. Anggota tim pengirim lain juga ikut CC (kecuali pengirimnya sendiri). Opsional per kirim: management menengah, top management, PUD buyer, dan CC tambahan. Daftar CC wajib diubah di **Settings → E-mail templates and rules**.
+
+**Lampiran per supplier (otomatis):** PDF recap dan Excel daftar part number yang belum submit (kolom kanan untuk tanggal rencana supplier). Di panel supplier juga ada tombol **Export Excel** (semua part supplier + status).
+
+**Pengiriman:** lewat Power Automate (sequential, ada progress). "Handed to Power Automate" berarti flow menerima; cek Outlook Sent items untuk memastikan terkirim. Belum dikonfigurasi? Tiap e-mail tetap bisa dibuka sebagai **draft Outlook** lewat Preview. Supplier yang baru dikirimi dilewati kecuali "Send even if e-mailed recently" dicentang (`FOLLOWUP_MIN_GAP_HOURS`).
+
+**Migrasi sekali jalan (wajib agar template & Directory tersimpan di server):** jalankan `supabase/migrations/20261110000000_tracker_settings.sql` di Supabase → SQL editor (atau tombol **Copy the SQL** di Settings → E-mail templates). Sebelum itu, template bawaan tetap dipakai tetapi tidak bisa disimpan. Cek versi migrasi remote dulu; jangan reset database.
+
+**Directory tersimpan di database.** Kontak (sampai top management) dimuat otomatis di setiap browser; tersimpan otomatis ±2 detik setelah diedit.
+
+**PUD buyer:** Directory → tab PUD buyers → *Update buyers from a pasted list*. Tempel baris dari Excel: `email ⇥ nama buyer` (mengisi e-mail buyer) dan/atau `kode ⇥ kode ⇥ nama supplier ⇥ buyer` (menetapkan buyer ke supplier). Tidak ada yang dihapus; supplier yang belum ada di Directory dilaporkan.
 
 ## 7. Flow B: Excel Master → website (edit manual di Excel)
 
