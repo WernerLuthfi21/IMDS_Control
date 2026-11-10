@@ -44,6 +44,28 @@ export function toPartMasterExcelRow(row: MasterRecord) {
   return output;
 }
 
+const LEGACY_HEADERS: Array<[string, string]> = [["MasterKey", "KEY"], ["master_key", "KEY"], ["P/No.", "PART NO."], ["ID / Ver", "ID / VER"], ["Date", "STATUS DATE"], ["Comment", "COMMENT"], ["No.", "NO."]];
+
+/**
+ * Batches queued BEFORE the sheet was simplified still carry the old header names (MasterKey, P/No., ...).
+ * Convert them to the current 13-column shape and drop rows that have no key, so the flow never receives a row it cannot match.
+ */
+export function normalizeQueuedPayload(payload: unknown): { payload: Record<string, unknown>; dropped: number } {
+  const base = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+  const rows = Array.isArray(base.rows) ? (base.rows as Record<string, unknown>[]) : [];
+  const out: Record<string, unknown>[] = [];
+  let dropped = 0;
+  for (const row of rows) {
+    const r: Record<string, unknown> = { ...row };
+    for (const [from, to] of LEGACY_HEADERS) if (from in r && !(to in r)) r[to] = r[from];
+    if (!("PART STATUS" in r) && "IMDS STATUS" in r) r["PART STATUS"] = r["IMDS STATUS"];
+    const clean: Record<string, unknown> = {};
+    for (const h of ["NO.", "PROJECT", "VENDOR CODE", "MAIN PIC EMAIL", "COMPANY NAME", "PART NAME", "PART NO.", "SUBMISSION PLAN", "PART STATUS", "ID / VER", "STATUS DATE", "COMMENT", "KEY"]) clean[h] = r[h] ?? "";
+    if (String(clean.KEY).trim()) out.push(clean); else dropped++;
+  }
+  return { payload: { ...base, rows: out }, dropped };
+}
+
 /** Add durable batches before calling Power Automate. Failed or unconfigured deliveries remain retryable. */
 export async function enqueuePartMasterRows(
   supabase: SupabaseClient,
@@ -115,7 +137,10 @@ export async function dispatchPartMasterOutbox(
     if (claimError) throw new Error(`Could not claim master sync item: ${claimError.message}`);
     if (!claimed?.length) continue;
 
-    const result = await postToFlow(url, secret, job.payload);
+    const normalized = normalizeQueuedPayload(job.payload);
+    const result = (normalized.payload.rows as unknown[]).length
+      ? await postToFlow(url, secret, normalized.payload)
+      : { ok: false, status: 0, error: "This queued batch has no rows with a KEY (old format). Nothing was sent; run Sync to Excel now to queue fresh data." };
     const { error: updateError } = await supabase
       .from("imds_tracker_outbox")
       .update({
