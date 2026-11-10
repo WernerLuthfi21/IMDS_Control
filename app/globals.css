@@ -515,3 +515,10 @@ html[data-theme="dark"] .jx-types button,html[data-theme="dark"] .jx-filters sel
 html[data-theme="dark"] .jx-types button.on{background:#1d5633;border-color:#327a49;color:#fff}
 html[data-theme="dark"] .jx-search input{background:transparent;color:#e3eee6}
 html[data-theme="dark"] .jx-comment textarea{background:#142019;border-color:#35483a;color:#e6eee8}
+
+
+/* Judgement-only: direct navigation from routing review to the source case. */
+.jx-group-case-open{justify-self:start;min-height:27px;padding:0 9px;border:1px solid #dce9df;border-radius:7px;background:#f5faf6;color:#256440;font-size:9px;font-weight:700;cursor:pointer}
+.jx-group-case-open:hover{background:#eaf5ed;border-color:#b9d6c1}
+html[data-theme="dark"] .jx-group-case-open{background:#1a3324;border-color:#35513c;color:#a3e2b6}
+html[data-theme="dark"] .jx-group-case-open:hover{background:#20432d;border-color:#52745c}
