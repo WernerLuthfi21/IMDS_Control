@@ -17,6 +17,17 @@ export type BulkCandidate = {
   eligible: boolean; inPendingQueue: boolean; prohibited: boolean;
   prohibitedStatus: "CONNECTED" | "NEEDS_REVIEW" | "NOT_PROHIBITED"; reviewReason: string;
 };
+
+export function prohibitedConnectionStatus(input: {
+  prohibited: boolean;
+  gadslStatus?: string;
+  tszStatus?: string;
+  flowImplemented: boolean;
+}): "CONNECTED" | "NEEDS_REVIEW" | "NOT_PROHIBITED" {
+  if (!input.prohibited) return "NOT_PROHIBITED";
+  const hasReferenceMatch = input.gadslStatus === "DONE" || input.tszStatus === "DONE";
+  return hasReferenceMatch && input.flowImplemented ? "CONNECTED" : "NEEDS_REVIEW";
+}
 function stable(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
   if (value && typeof value === "object") {
@@ -51,16 +62,27 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
   const signature = createHash("sha256").update(stable(keyPayload)).digest("hex");
   const hasOpenStep = auto.steps.some((step) => step.status === "MANUAL" || step.status === "NEEDS_INPUT");
   const needsInput = Object.values(auto.needs).some(Boolean);
+  const prohibited = kind === "substance";
+  const gadsl = auto.steps.find((step) => step.id === "gadsl");
+  const tsz = auto.steps.find((step) => step.id === "tsz");
+  const prohibitedStatus = prohibitedConnectionStatus({
+    prohibited,
+    gadslStatus: gadsl?.status,
+    tszStatus: tsz?.status,
+    flowImplemented: auto.flow?.implemented === true
+  });
+  // A substance case is bulk-safe only when its reference match and dedicated flow
+  // are both connected. A partial reference hit must never be treated as a routed case.
   const flowIsSafe = auto.kind !== "substance" ||
     Boolean(auto.flow?.implemented && !auto.flow.next && auto.flow.outcome && auto.flow.outcome.state === auto.recommendation.state);
   const eligible = (auto.recommendation.state === "OK" || auto.recommendation.state === "NG")
     && auto.kind !== "manual" && !hasOpenStep && !needsInput && flowIsSafe
+    && (!prohibited || prohibitedStatus === "CONNECTED")
     && Boolean(auto.recommendation.comment.trim()) && Boolean(auto.procedureText.trim());
-  const prohibited = kind === "substance";
-  const gadsl = auto.steps.find((step) => step.id === "gadsl");
-  const tsz = auto.steps.find((step) => step.id === "tsz");
-  const connected = prohibited && (gadsl?.status === "DONE" || tsz?.status === "DONE") && Boolean(auto.flow);
-  const reviewReason = eligible ? auto.recommendation.reason
+  const connected = prohibitedStatus === "CONNECTED";
+  const reviewReason = prohibited && !connected
+    ? "The case is not fully connected to a verified GADSL / TSZ reference and an implemented dedicated flow. Review CAS, substance name and Appendix routing."
+    : eligible ? auto.recommendation.reason
     : auto.recommendation.state === "HOLD" ? auto.recommendation.reason
     : auto.steps.find((step) => step.status === "MANUAL" || step.status === "NEEDS_INPUT")?.detail
     || (needsInput ? "One or more required inputs are still missing." : "This case does not meet strict bulk-judgement conditions.");
@@ -70,7 +92,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     substanceName: facts.substanceName, kind, recommendation: auto.recommendation,
     procedureText: auto.procedureText, signature, eligible,
     inPendingQueue: item.source_status === "WORKING" && !item.judge,
-    prohibited, prohibitedStatus: !prohibited ? "NOT_PROHIBITED" : connected ? "CONNECTED" : "NEEDS_REVIEW",
+    prohibited, prohibitedStatus,
     reviewReason
   };
 }
