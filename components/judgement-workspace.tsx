@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, Layers3, LoaderCircle, Mail, ScanSearch, Search, ShieldCheck, Sparkles, Undo2, UserRound } from "lucide-react";
-import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
+import { detectKind, type AutoOutput, type StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
 
 type Item = {
@@ -62,9 +62,7 @@ const monthNames: Record<string, string> = { "1": "Jan", "01": "Jan", "2": "Feb"
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 
 function isProhibitedLabel(value: string) {
-  const text = String(value || "").trim().toLowerCase();
-  return /prohibited|restricted|regulated substance/.test(text)
-    || /^(?:(?:error\s*type|no\.?)\s*)?1[4-8](?:\.0)?(?:\b|$)/.test(text);
+  return detectKind(value) === "substance";
 }
 
 function StepIcon({ status }: { status: StepStatus }) {
@@ -184,6 +182,8 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [substanceOnly, setSubstanceOnly] = useState(false);
   const [bulkGroups, setBulkGroups] = useState<BulkGroup[]>([]);
   const [bulkCoverage, setBulkCoverage] = useState<BulkCoverage | null>(null);
+  const [bulkReviewItems, setBulkReviewItems] = useState<BulkItem[]>([]);
+  const [bulkReviewCount, setBulkReviewCount] = useState(0);
   const [bulkEvaluated, setBulkEvaluated] = useState(0);
   const [bulkNotFound, setBulkNotFound] = useState(0);
   const [bulkAnalyzed, setBulkAnalyzed] = useState(false);
@@ -229,11 +229,13 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     const pending = visible.filter((row) => row.source_status === "WORKING" && !row.judge);
     if (!pending.length) {
       setBulkNotice("No pending records in the current filter.");
-      setBulkGroups([]); setBulkCoverage(null); setBulkEvaluated(0); setBulkNotFound(0); setBulkAnalyzed(true);
+      setBulkGroups([]); setBulkCoverage(null); setBulkReviewItems([]); setBulkReviewCount(0);
+      setBulkEvaluated(0); setBulkNotFound(0); setBulkAnalyzed(true);
       return;
     }
     const batches = chunkItems(pending);
     setBulkBusy(true); setBulkError(""); setBulkNotice(""); setBulkGroups([]); setBulkCoverage(null);
+    setBulkReviewItems([]); setBulkReviewCount(0);
     setBulkEvaluated(0); setBulkNotFound(0); setBulkAnalyzed(false); setUndoItems([]);
     try {
       const allCandidates: BulkItem[] = [];
@@ -258,11 +260,14 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
         coverage.missingCas += Number(json.coverage?.missingCas || 0);
       }
       const groups = mergeExactMatchGroups(allCandidates);
-      setBulkGroups(groups); setBulkCoverage(coverage); setBulkEvaluated(evaluated); setBulkNotFound(notFound); setBulkAnalyzed(true);
+      const reviewCases = allCandidates.filter((item) => item.prohibited && item.prohibitedStatus !== "CONNECTED");
+      setBulkGroups(groups); setBulkCoverage(coverage);
+      setBulkReviewCount(reviewCases.length); setBulkReviewItems(reviewCases.slice(0, 100));
+      setBulkEvaluated(evaluated); setBulkNotFound(notFound); setBulkAnalyzed(true);
       setBulkNotice(`Completed analysis of ${evaluated.toLocaleString("en-US")} pending cases. ${groups.length} exact-match group(s) are ready for review.${notFound ? ` ${notFound} case(s) were not found and need a fresh queue check.` : ""}`);
     } catch (error) {
       setBulkAnalyzed(false);
-      setBulkGroups([]); setBulkCoverage(null);
+      setBulkGroups([]); setBulkCoverage(null); setBulkReviewItems([]); setBulkReviewCount(0);
       setBulkError(error instanceof Error ? error.message : "Bulk analysis failed.");
       setBulkNotice("Analysis was not completed. No bulk judgement was applied; correct the issue and analyse the queue again.");
     } finally { setBulkBusy(false); }
@@ -388,10 +393,23 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       </div>
       {bulkError && <div className="jx-bulk-error" role="alert"><AlertTriangle size={14}/>{bulkError}</div>}
       {bulkNotice && <div className="jx-bulk-notice"><CheckCheck size={14}/>{bulkNotice}</div>}
-      {bulkAnalyzed && <div className="jx-coverage">
-        <div><strong>Prohibited substance coverage</strong><span>{bulkCoverage?.connected || 0} connected · {bulkCoverage?.needsReview || 0} need review · {bulkCoverage?.missingCas || 0} missing CAS</span></div>
-        <div className="jx-coverage-meta">{bulkEvaluated} analysed{bulkNotFound ? ` · ${bulkNotFound} no longer available` : ""}</div>
-      </div>}
+      {bulkAnalyzed && <>
+        <div className="jx-coverage">
+          <div><strong>Prohibited substance coverage</strong><span>{bulkCoverage?.connected || 0} connected · {bulkCoverage?.needsReview || 0} need review · {bulkCoverage?.missingCas || 0} missing CAS</span></div>
+          <div className="jx-coverage-meta">{bulkEvaluated} analysed{bulkNotFound ? ` · ${bulkNotFound} no longer available` : ""}</div>
+        </div>
+        {bulkReviewCount > 0 && <details className="jx-group-details">
+          <summary>{bulkReviewCount} prohibited substance case(s) need routing review</summary>
+          <div className="jx-group-case-list">
+            {bulkReviewItems.map((item) => <div key={item.id}>
+              <strong>{item.partNo || item.sourceRecordKey} · {item.cas || "CAS unavailable"}</strong>
+              <span>{item.errorType} · {item.supplierCode || "Supplier unavailable"} · {item.substanceName || "Substance name unavailable"}</span>
+              <span>{item.reviewReason}</span>
+            </div>)}
+          </div>
+          {bulkReviewCount > bulkReviewItems.length && <span className="jx-coverage-meta">Showing the first {bulkReviewItems.length} of {bulkReviewCount} cases. Use the Prohibited substances filter to review the remaining records individually.</span>}
+        </details>}
+      </>}
       {undoItems.length > 0 && <div className="jx-undo-row"><span><strong>{undoItems.length} cases</strong> changed in the last bulk action</span><button type="button" onClick={() => void undoBulk()} disabled={bulkBusy}><Undo2 size={14}/> Undo bulk action</button></div>}
     </section>
 
