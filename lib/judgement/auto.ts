@@ -55,7 +55,7 @@ function substanceSteps(facts: RowFacts) {
         id: "gadsl", title: "Search CAS / exact substance name in GADSL 2026 V1",
         status: "MANUAL",
         detail: named.casCandidates.length > 1
-          ? \`Exact substance-name match has \${named.casCandidates.length} CAS candidates. Confirm the CAS from the source IMDS record; the system will not choose between them.\`
+          ? "Exact substance-name match has " + named.casCandidates.length + " CAS candidates. Confirm the CAS from the source IMDS record; the system will not choose between them."
           : "CAS is missing or masked and no exact one-to-one substance-name match was found. Search the source reference manually."
       });
       steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "MANUAL", detail: "A unique CAS is required before the Appendix 3 and dedicated-flow lookup can be completed." });
@@ -80,7 +80,7 @@ function substanceSteps(facts: RowFacts) {
     id: "gadsl", title: "Search CAS in GADSL 2026 V1",
     status: g.length ? "DONE" : "INFO",
     detail: g.length
-      ? `${cas} → GADSL No. ${gadslNo} · ${firstLine(g[0].substance)} · class ${g[0].classification}${g.length > 1 ? ` (+${g.length - 1} more entries)` : ""}`
+      ? `${cas}${nameResolved ? " (CAS resolved by exact substance name)" : ""} → GADSL No. ${gadslNo} · ${firstLine(g[0].substance)} · class ${g[0].classification}${g.length > 1 ? ` (+${g.length - 1} more entries)` : ""}`
       : `${cas} not found in GADSL 2026 V1${lookup.deletedGadslMatches.length ? " (found in the deleted-substance list)" : ""}.`
   });
   const t = lookup.tszGroups[0];
