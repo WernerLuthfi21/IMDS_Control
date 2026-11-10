@@ -222,9 +222,21 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }, [rows, tab, errorType, month, search, substanceOnly]);
   const filterKey = [tab, errorType, month, search, substanceOnly].join("|");
   const [prevKey, setPrevKey] = useState(filterKey);
-  if (prevKey !== filterKey) { setPrevKey(filterKey); setLimit(PAGE); setOpenId(null); }
+  if (prevKey !== filterKey) {
+    setPrevKey(filterKey); setLimit(PAGE); setOpenId(null);
+    // Results belong to a specific filter snapshot. Never leave stale groups available
+    // after the user's queue scope changes.
+    setBulkGroups([]); setBulkCoverage(null); setBulkReviewItems([]); setBulkReviewCount(0);
+    setBulkEvaluated(0); setBulkNotFound(0); setBulkAnalyzed(false);
+    setBulkNotice(""); setBulkError("");
+  }
 
   const onSaved = useCallback((id: string, patch: Partial<Item>) => { setRows((old) => old.map((r) => r.id === id ? { ...r, ...patch } : r)); setOpenId(null); }, []);
+  const openReviewCase = useCallback((id: string) => {
+    const index = visible.findIndex((row) => row.id === id);
+    if (index >= 0) setLimit((current) => Math.max(current, index + 1));
+    setOpenId(id);
+  }, [visible]);
   async function analyzeVisibleQueue() {
     const pending = visible.filter((row) => row.source_status === "WORKING" && !row.judge);
     if (!pending.length) {
@@ -262,7 +274,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       const groups = mergeExactMatchGroups(allCandidates);
       const reviewCases = allCandidates.filter((item) => item.prohibited && item.prohibitedStatus !== "CONNECTED");
       setBulkGroups(groups); setBulkCoverage(coverage);
-      setBulkReviewCount(reviewCases.length); setBulkReviewItems(reviewCases.slice(0, 100));
+      setBulkReviewCount(reviewCases.length); setBulkReviewItems(reviewCases);
       setBulkEvaluated(evaluated); setBulkNotFound(notFound); setBulkAnalyzed(true);
       setBulkNotice(`Completed analysis of ${evaluated.toLocaleString("en-US")} pending cases. ${groups.length} exact-match group(s) are ready for review.${notFound ? ` ${notFound} case(s) were not found and need a fresh queue check.` : ""}`);
     } catch (error) {
@@ -405,9 +417,9 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
               <strong>{item.partNo || item.sourceRecordKey} · {item.cas || "CAS unavailable"}</strong>
               <span>{item.errorType} · {item.supplierCode || "Supplier unavailable"} · {item.substanceName || "Substance name unavailable"}</span>
               <span>{item.reviewReason}</span>
+              <button type="button" className="jx-group-case-open" onClick={() => openReviewCase(item.id)}>Open case →</button>
             </div>)}
-          </div>
-          {bulkReviewCount > bulkReviewItems.length && <span className="jx-coverage-meta">Showing the first {bulkReviewItems.length} of {bulkReviewCount} cases. Use the Prohibited substances filter to review the remaining records individually.</span>}
+          </div>}
         </details>}
       </>}
       {undoItems.length > 0 && <div className="jx-undo-row"><span><strong>{undoItems.length} cases</strong> changed in the last bulk action</span><button type="button" onClick={() => void undoBulk()} disabled={bulkBusy}><Undo2 size={14}/> Undo bulk action</button></div>}
