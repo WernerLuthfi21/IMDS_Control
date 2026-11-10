@@ -1,65 +1,52 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG, directoryEmails, isOutstanding, partListText, renderTemplate, resolveCc, sanitizeConfig, selectParts } from "@/lib/followup/center";
+import { DEFAULT_CONFIG, DEFAULT_REQUIRED_CC, KINDS, PLACEHOLDERS, mergeCc, sanitizeConfig } from "@/lib/followup/center";
 
-describe("which parts are chased", () => {
-  it("action scope = supplier must act; working/accepted/protected are not chased", () => {
-    for (const s of ["NOT SUBMITTED", "REJECTED", "", null, "Not yet submitted"]) expect(isOutstanding(s, "action")).toBe(true);
-    for (const s of ["TMMIN WORKING", "ACCEPTED", "DEAD (NEW SMS)", "NOT TO BE COLLECTED"]) expect(isOutstanding(s, "action")).toBe(false);
-  });
-  it("all scope also includes TMMIN WORKING but never ACCEPTED or protected", () => {
-    expect(isOutstanding("TMMIN WORKING", "all")).toBe(true);
-    expect(isOutstanding("ACCEPTED", "all")).toBe(false);
-    expect(isOutstanding("DEAD (NEW SMS)", "all")).toBe(false);
-  });
-  it("filters by model", () => {
-    const parts = [{ project: "688D", imds_status: "NOT SUBMITTED" }, { project: "737D", imds_status: "NOT SUBMITTED" }, { project: "688D", imds_status: "ACCEPTED" }];
-    expect(selectParts(parts, "action", ["688d"])).toHaveLength(1);
-    expect(selectParts(parts, "action", [])).toHaveLength(2);
-  });
-});
-
-describe("templates", () => {
-  it("fills placeholders and leaves unknown braces alone", () => {
-    expect(renderTemplate("Hi {supplier} ({count}) {x}", { supplier: "ACME", count: 3 })).toBe("Hi ACME (3) {x}");
-  });
-  it("shortens a long part list", () => {
-    const parts = Array.from({ length: 30 }, (_, i) => ({ project: "688D", part_no: "P" + i }));
-    const t = partListText(parts, 25).split("\n");
-    expect(t).toHaveLength(26);
-    expect(t[25]).toMatch(/5 part lainnya/);
-  });
-});
-
-describe("config is always safe", () => {
-  it("falls back to defaults and drops bad data", () => {
-    const c = sanitizeConfig({ templates: [{ id: "a", name: "", subject: "s", body: "b" }], requiredCc: "ok@x.co.id; not-an-email", defaultTemplateId: "nope", maxPartsInBody: 9999, attachments: { pdf: false } });
-    expect(c.templates).toEqual(DEFAULT_CONFIG.templates);
-    expect(c.requiredCc).toEqual(["ok@x.co.id"]);
-    expect(c.maxPartsInBody).toBe(100);
-    expect(c.attachments).toEqual({ pdf: false, xlsx: true });
-    expect(c.defaultTemplateId).toBe(DEFAULT_CONFIG.templates[0].id);
-  });
-});
-
-describe("CC rules", () => {
-  const dir = { pic: ["pic@a.id"], mid: ["spv@a.id"], top: ["md@a.id"], buyer: ["buyer@tmmin.co.id"] };
-  const config = sanitizeConfig({ requiredCc: ["imds@tmmin.co.id"] });
-  it("required CC is always present, even when every role is switched off", () => {
-    const r = resolveCc({ to: ["pic@a.id"], supplierCc: [], directory: dir, config, roles: { mid: false, top: false, buyer: false }, extra: [] });
-    expect(r.cc).toEqual(["imds@tmmin.co.id"]);
-  });
-  it("adds chosen management roles, extra addresses, and never repeats To or duplicates", () => {
-    const r = resolveCc({ to: ["pic@a.id"], supplierCc: ["spv@a.id"], directory: dir, config, roles: { mid: true, top: true, buyer: false }, extra: ["pic@a.id", "x@y.co.id", "X@y.co.id"] });
-    expect(r.cc).toEqual(["imds@tmmin.co.id", "spv@a.id", "md@a.id", "x@y.co.id"]);
-  });
-});
-
-describe("directory contacts", () => {
-  const directory = { entries: { "ACME INDONESIA": { name: "PT Acme Indonesia", code: "0003", f: { pic1_email: "a@acme.id", spv_email: "s@acme.id", md_email: "m@acme.id", buyer: "BDI" } } }, buyers: { BDI: { email: "bdi@tmmin.co.id" } } };
-  it("matches by vendor code, then by normalized name, and reads PIC / middle / top / buyer", () => {
-    for (const [code, name] of [["0003", "whatever"], ["", "ACME Indonesia, PT"]]) {
-      expect(directoryEmails(directory, code, name)).toEqual({ pic: ["a@acme.id"], mid: ["s@acme.id"], top: ["m@acme.id"], buyer: ["bdi@tmmin.co.id"] });
+describe("default templates", () => {
+  it("has one default template for each of the three kinds", () => {
+    for (const k of KINDS) {
+      const t = DEFAULT_CONFIG.templates.find((x) => x.id === DEFAULT_CONFIG.defaults[k]);
+      expect(t?.kind).toBe(k);
     }
-    expect(directoryEmails(directory, "9999", "Other")).toEqual({ pic: [], mid: [], top: [], buyer: [] });
+  });
+  it("only uses placeholders that the e-mail center can fill", () => {
+    const allowed = new Set<string>(PLACEHOLDERS);
+    for (const t of DEFAULT_CONFIG.templates) for (const m of (t.subject + t.body).match(/\{[a-z]+\}/g) ?? []) expect(allowed.has(m), `${t.id} uses ${m}`).toBe(true);
+  });
+  it("makes the three management addresses mandatory by default", () => {
+    expect(DEFAULT_CONFIG.requiredCc.map((e) => e.toLowerCase())).toEqual(expect.arrayContaining(["fuad-qc@toyota.co.id", "hendrick.kurdianto@toyota.co.id", "michael.aldryan@toyota.co.id"]));
+  });
+});
+
+describe("sanitizeConfig", () => {
+  it("falls back to the built-in templates for empty or invalid input", () => {
+    for (const bad of [null, undefined, 5, {}, { templates: "x" }]) {
+      const c = sanitizeConfig(bad);
+      for (const k of KINDS) expect(c.templates.some((t) => t.kind === k)).toBe(true);
+      expect(c.requiredCc).toEqual(DEFAULT_REQUIRED_CC.map((e) => e.toLowerCase()));
+    }
+  });
+  it("keeps edited templates, repairs a default that no longer exists and drops invalid e-mail addresses", () => {
+    const c = sanitizeConfig({ templates: [{ id: "a", kind: "request", name: "A", subject: "S", body: "B" }], defaults: { request: "gone" }, requiredCc: ["x@y.com", "nonsense"] });
+    expect(c.defaults.request).toBe("a");
+    expect(c.requiredCc).toEqual(["x@y.com"]);
+    for (const k of KINDS) expect(c.templates.some((t) => t.kind === k)).toBe(true);
+  });
+  it("an explicitly empty required list stays empty (the owner decided)", () => {
+    expect(sanitizeConfig({ requiredCc: [] }).requiredCc).toEqual([]);
+  });
+  it("rejects duplicate ids and unknown kinds become follow-up", () => {
+    const c = sanitizeConfig({ templates: [{ id: "a", kind: "zzz", name: "A", subject: "S", body: "B" }, { id: "a", kind: "request", name: "B", subject: "S", body: "B" }] });
+    expect(c.templates.filter((t) => t.id === "a")).toHaveLength(1);
+    expect(c.templates.find((t) => t.id === "a")?.kind).toBe("followup");
+  });
+});
+
+describe("mergeCc", () => {
+  it("always adds the required list, never the sender or a recipient, without duplicates", () => {
+    const cc = mergeCc({ to: ["p@a.com"], cc: ["P@a.com", "boss@x.com", "me@x.com", "Boss@x.com"], required: ["boss@x.com", "req@x.com"], senderEmail: "ME@x.com" });
+    expect(cc).toEqual(["boss@x.com", "req@x.com"]);
+  });
+  it("re-adds a required address the browser removed", () => {
+    expect(mergeCc({ to: ["p@a.com"], cc: [], required: ["req@x.com"] })).toEqual(["req@x.com"]);
   });
 });

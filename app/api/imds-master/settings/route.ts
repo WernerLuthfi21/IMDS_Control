@@ -7,6 +7,8 @@ import { DEFAULT_CONFIG, sanitizeConfig } from "@/lib/followup/center";
 export const runtime = "nodejs";
 const KEYS = ["directory", "followup_config"] as const;
 type Key = (typeof KEYS)[number];
+const TABLE_MISSING = /schema cache|does not exist|could not find the table/i;
+const MIGRATION_HINT = "The settings table does not exist yet. Open the Supabase SQL editor and run supabase/migrations/20261110000000_tracker_settings.sql once, then try again.";
 const MAX_BYTES: Record<Key, number> = { directory: 3_000_000, followup_config: 200_000 };
 
 /** Versioned settings shared by everyone who uses the Tracker. GET ?key=… ; PUT {key,value,baseVersion}. */
@@ -20,6 +22,10 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   const { data, error } = await supabase.from("imds_tracker_settings").select("value,version,updated_at").eq("key", key).maybeSingle();
+  if (error && TABLE_MISSING.test(error.message)) {
+    // Migration not applied yet: the e-mail center still works with the built-in templates; nothing can be saved until it is.
+    return NextResponse.json({ exists: false, tableMissing: true, value: key === "followup_config" ? DEFAULT_CONFIG : null, version: 0, updatedAt: null }, { headers: { "Cache-Control": "private, no-store" } });
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const value = key === "followup_config" ? sanitizeConfig(data?.value ?? DEFAULT_CONFIG) : (data?.value ?? null);
   return NextResponse.json({ exists: Boolean(data), value, version: data?.version ?? 0, updatedAt: data?.updated_at ?? null }, { headers: { "Cache-Control": "private, no-store" } });
@@ -44,6 +50,7 @@ export async function PUT(request: NextRequest) {
     const { error } = await supabase.from("imds_tracker_settings").insert({ key: body.key, value, version: 1, updated_by: auth.userId });
     if (error) {
       if (/duplicate|unique/i.test(error.message)) return NextResponse.json({ error: "Someone else saved first. Reload to see their version.", conflict: true }, { status: 409 });
+      if (TABLE_MISSING.test(error.message)) return NextResponse.json({ error: MIGRATION_HINT, tableMissing: true }, { status: 503 });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ ok: true, version: 1 });
@@ -51,6 +58,7 @@ export async function PUT(request: NextRequest) {
   const { data, error } = await supabase.from("imds_tracker_settings")
     .update({ value, version: base + 1, updated_by: auth.userId, updated_at: new Date().toISOString() })
     .eq("key", body.key).eq("version", base).select("version");
+  if (error && TABLE_MISSING.test(error.message)) return NextResponse.json({ error: MIGRATION_HINT, tableMissing: true }, { status: 503 });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data?.length) return NextResponse.json({ error: "Someone else saved a newer version. Reload to see it.", conflict: true }, { status: 409 });
   return NextResponse.json({ ok: true, version: base + 1 });
