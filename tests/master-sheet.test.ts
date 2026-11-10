@@ -16,3 +16,15 @@ describe("master sheet row", () => {
     expect(row.KEY).toBe("k1");
   });
 });
+
+import { normalizeQueuedPayload } from "@/lib/imds-master/outbox";
+describe("queued payload from before the simplification", () => {
+  it("maps old headers to the new shape and drops rows without a key", () => {
+    const { payload, dropped } = normalizeQueuedPayload({ type: "imds_tracker_bulk_upsert", rows: [{ MasterKey: "abc", "P/No.": "P1", "IMDS STATUS": "ACCEPTED", "ID / Ver": "1 / 2", Date: "2026-11-01", CEK: "x" }, { "P/No.": "P2" }] });
+    const rows = payload.rows as Record<string, unknown>[];
+    expect(dropped).toBe(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ KEY: "abc", "PART NO.": "P1", "PART STATUS": "ACCEPTED", "ID / VER": "1 / 2", "STATUS DATE": "2026-11-01" });
+    expect(Object.keys(rows[0])).not.toContain("CEK");
+  });
+});
