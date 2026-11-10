@@ -341,7 +341,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
             errors.push(`Batch ${index + 1}: ${json.error || "Undo failed."}`);
             continue;
           }
-          const undone = new Set((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
+          const undone = new Set<string>((json.results || []).filter((item: { ok: boolean }) => item.ok).map((item: { id: string }) => item.id));
           const before = new Map(batches[index].map((item) => [item.id, item.before]));
           setRows((old) => old.map((row) => {
             if (!undone.has(row.id)) return row;
