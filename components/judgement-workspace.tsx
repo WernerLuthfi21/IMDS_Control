@@ -419,7 +419,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
               <span>{item.reviewReason}</span>
               <button type="button" className="jx-group-case-open" onClick={() => openReviewCase(item.id)}>Open case →</button>
             </div>)}
-          </div>}
+          </div>
         </details>}
       </>}
       {undoItems.length > 0 && <div className="jx-undo-row"><span><strong>{undoItems.length} cases</strong> changed in the last bulk action</span><button type="button" onClick={() => void undoBulk()} disabled={bulkBusy}><Undo2 size={14}/> Undo bulk action</button></div>}
