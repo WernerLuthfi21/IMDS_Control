@@ -272,7 +272,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
         coverage.missingCas += Number(json.coverage?.missingCas || 0);
       }
       const groups = mergeExactMatchGroups(allCandidates);
-      const reviewCases = allCandidates.filter((item) => item.prohibited && item.prohibitedStatus !== "CONNECTED");
+      const reviewCases = allCandidates.filter((item) => item.prohibited && (!item.eligible || item.prohibitedStatus !== "CONNECTED"));
       setBulkGroups(groups); setBulkCoverage(coverage);
       setBulkReviewCount(reviewCases.length); setBulkReviewItems(reviewCases);
       setBulkEvaluated(evaluated); setBulkNotFound(notFound); setBulkAnalyzed(true);
@@ -407,15 +407,15 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       {bulkNotice && <div className="jx-bulk-notice"><CheckCheck size={14}/>{bulkNotice}</div>}
       {bulkAnalyzed && <>
         <div className="jx-coverage">
-          <div><strong>Prohibited substance coverage</strong><span>{bulkCoverage?.connected || 0} connected · {bulkCoverage?.needsReview || 0} need review · {bulkCoverage?.missingCas || 0} missing CAS</span></div>
+          <div><strong>Prohibited substance coverage</strong><span>{bulkCoverage?.connected || 0} connected · {bulkCoverage?.needsReview || 0} need routing review · {bulkReviewItems.filter((item) => item.prohibitedStatus === "CONNECTED").length} awaiting input · {bulkCoverage?.missingCas || 0} missing CAS</span></div>
           <div className="jx-coverage-meta">{bulkEvaluated} analysed{bulkNotFound ? ` · ${bulkNotFound} no longer available` : ""}</div>
         </div>
         {bulkReviewCount > 0 && <details className="jx-group-details">
-          <summary>{bulkReviewCount} prohibited substance case(s) need routing review</summary>
+          <summary>{bulkReviewCount} prohibited substance case(s) need follow-up or routing review</summary>
           <div className="jx-group-case-list">
             {bulkReviewItems.map((item) => <div key={item.id}>
               <strong>{item.partNo || item.sourceRecordKey} · {item.cas || "CAS unavailable"}</strong>
-              <span>{item.errorType} · {item.supplierCode || "Supplier unavailable"} · {item.substanceName || "Substance name unavailable"}</span>
+              <span>{item.prohibitedStatus === "CONNECTED" ? "ROUTE CONNECTED · INPUT REQUIRED" : "ROUTE NOT CONNECTED"} · {item.errorType} · {item.supplierCode || "Supplier unavailable"} · {item.substanceName || "Substance name unavailable"}</span>
               <span>{item.reviewReason}</span>
               <button type="button" className="jx-group-case-open" onClick={() => openReviewCase(item.id)}>Open case →</button>
             </div>)}
