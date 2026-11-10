@@ -105,6 +105,7 @@ kbd{font-size:11px;border:1px solid var(--line-strong);border-bottom-width:2px;b
 .brand-logo{width:120px;height:auto;border-radius:8px;background:#fff;padding:4px;border:1px solid var(--line)}
 .confidential{font-size:11px;letter-spacing:.04em;color:var(--faint)}
 .conn-badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--ok-soft);color:var(--ok-ink);white-space:nowrap}
+.side-foot .conn-badge{display:none}
 .conn-badge .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
 .conn-badge.state-warn{background:var(--warn-soft);color:var(--warn-ink)}.conn-badge.state-err{background:var(--bad-soft);color:var(--bad)}.conn-badge.state-neutral{background:var(--neutral-soft);color:var(--neutral)}
 .shell{min-width:0;padding:12px 20px 56px 20px}
@@ -1185,14 +1186,14 @@ function toast(msg,type){
 
 /* ---- Connection badge (truthful states only) ---- */
 const CONNECTION_STATES={
-  NOT_CONNECTED:{text:"Not connected",cls:"state-neutral"},
-  CONNECTING:{text:"Connecting…",cls:"state-warn"},
-  CONNECTED:{text:"Connected",cls:""},
-  REFRESHING:{text:"Refreshing…",cls:"state-warn"},
+  NOT_CONNECTED:{text:"No data yet",cls:"state-neutral"},
+  CONNECTING:{text:"Loading…",cls:"state-warn"},
+  CONNECTED:{text:"Database live",cls:""},
+  REFRESHING:{text:"Updating…",cls:"state-warn"},
   REFRESHED:{text:"Updated",cls:""},
-  SOURCE_ERROR:{text:"Source error",cls:"state-err"},
+  SOURCE_ERROR:{text:"Database error",cls:"state-err"},
   WORKBOOK_ERROR:{text:"Workbook error",cls:"state-err"},
-  NETWORK_ERROR:{text:"Network error",cls:"state-err"}
+  NETWORK_ERROR:{text:"Offline",cls:"state-err"}
 };
 let connState="NOT_CONNECTED";
 function setConnectionState(key){
@@ -1519,7 +1520,7 @@ function renderAll(){
   renderChrome();
   VIEWS.forEach(v=>{const el=$("#view-"+v);if(el)el.hidden=!(UI.view===v&&(has||v==="settings"))});
   const ev=$("#view-empty");if(ev)ev.hidden=!(!has&&UI.view!=="settings");
-  if(!has&&UI.view!=="settings"){ev.innerHTML=emptyHTML("📂","Connect a workbook to begin","The tracker reads your IMDS part list from an Excel workbook. Nothing leaves this browser.",`<button type="button" class="btn btn-primary" data-action="go" data-view="settings">Connect workbook</button>`);return}
+  if(!has&&UI.view!=="settings"){ev.innerHTML=emptyHTML("📂","No part list yet","Upload the IMDS Remaining master once in Settings. After that the Tracker remembers it and loads it automatically every time.",`<button type="button" class="btn btn-primary" data-action="go" data-view="settings">Upload master</button>`);return}
   ({overview:renderOverview,models:renderModels,suppliers:renderSuppliers,followup:renderFollowup,directory:renderDirectory,reports:renderReports,history:renderHistory,settings:renderSettings}[UI.view]||renderOverview)();
   renderDrawer({keep:true});
 }

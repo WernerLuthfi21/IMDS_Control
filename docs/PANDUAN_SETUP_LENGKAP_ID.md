@@ -108,6 +108,23 @@ Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Den
 
 Pengiriman beruntun: tombol **Send all sequentially** di Tracker > Follow-up mengirim satu supplier, menunggu balasan, lalu lanjut ke berikutnya. Supplier yang sudah diemail dalam `FOLLOWUP_MIN_GAP_HOURS` terakhir dilewati dan dilaporkan.
 
+## 6b. Pusat follow-up supplier (Tracker → Follow-up → "E-mail suppliers")
+
+**Migrasi baru (wajib dijalankan sekali):** `supabase/migrations/20261110000000_tracker_settings.sql` (tabel `imds_tracker_settings`, aditif). Cek dulu versi migrasi remote; jangan reset database.
+
+Isi halaman:
+- **Part mana:** "Belum submit / ditolak" (supplier harus bertindak) atau "Semua yang belum ACCEPTED".
+- **Model:** semua, atau tap model tertentu saja (bisa lebih dari satu).
+- **Template:** pilih template; subjek/isi bisa diedit per supplier lewat tombol Preview (hanya untuk supplier itu).
+- **CC:** CC wajib (terkunci, diatur di Settings), plus centang management menengah (staff/SPV/DPH/GM), top management (MD/VP/PD), buyer PUD, dan CC tambahan. Data diambil dari Directory.
+- **Lampiran:** PDF recap dan/atau Excel daftar part number yang belum submit (dibuat otomatis per supplier, kolom kanan untuk tanggal rencana).
+- **Kirim:** centang supplier, "Send selected" mengirim satu per satu dengan progress. Supplier yang baru dikirimi (lihat `FOLLOWUP_MIN_GAP_HOURS`) dilewati kecuali "Send even if sent recently" dicentang.
+- "Handed to Power Automate" artinya flow menerima permintaan; pengiriman email sebenarnya tetap dicek di Sent items Outlook.
+
+**Settings → Follow-up e-mail:** edit template (placeholder `{supplier} {code} {count} {models} {partlist} {sender} {date}`), CC wajib, CC default, lampiran default, cakupan default, jumlah maksimum part di badan email. Hanya admin/preparer yang bisa menyimpan.
+
+**Directory tersimpan di database.** Kontak (termasuk management sampai top management) disimpan di server dan dimuat otomatis di setiap browser. Browser yang sudah punya kontak lokal akan digabung (hanya menambah yang belum ada di server, tidak menimpa). Setelah edit, tersimpan otomatis dalam ±2 detik; status tampil di halaman Directory.
+
 ## 7. Flow B: Excel Master → website (edit manual di Excel)
 
 Detail lengkap: `POWER_AUTOMATE_IMDS_MASTER_SETUP.md` bagian D. Ringkas:
