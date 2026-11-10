@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, Layers3, LoaderCircle, Mail, ScanSearch, Search, ShieldCheck, Sparkles, Undo2, UserRound } from "lucide-react";
 import { detectKind, type AutoOutput, type StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
@@ -187,6 +187,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [bulkEvaluated, setBulkEvaluated] = useState(0);
   const [bulkNotFound, setBulkNotFound] = useState(0);
   const [bulkAnalyzed, setBulkAnalyzed] = useState(false);
+  const analysisRunRef = useRef(0);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState("");
   const [bulkNotice, setBulkNotice] = useState("");
@@ -223,6 +224,8 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const filterKey = [tab, errorType, month, search, substanceOnly].join("|");
   const [prevKey, setPrevKey] = useState(filterKey);
   if (prevKey !== filterKey) {
+    analysisRunRef.current += 1;
+    setBulkBusy(false);
     setPrevKey(filterKey); setLimit(PAGE); setOpenId(null);
     // Results belong to a specific filter snapshot. Never leave stale groups available
     // after the user's queue scope changes.
@@ -238,6 +241,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     setOpenId(id);
   }, [visible]);
   async function analyzeVisibleQueue() {
+    const runId = ++analysisRunRef.current;
     const pending = visible.filter((row) => row.source_status === "WORKING" && !row.judge);
     if (!pending.length) {
       setBulkNotice("No pending records in the current filter.");
@@ -261,6 +265,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
           body: JSON.stringify({ action: "preview", ids: batches[index].map((row) => row.id) })
         });
         const json = await response.json();
+        if (runId !== analysisRunRef.current) return;
         if (!response.ok) throw new Error(`Batch ${index + 1}/${batches.length}: ${json.error || "Bulk analysis failed."}`);
         if (!Array.isArray(json.candidates)) throw new Error(`Batch ${index + 1}/${batches.length}: the server did not return the full candidate list.`);
         allCandidates.push(...json.candidates as BulkItem[]);
@@ -278,11 +283,12 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       setBulkEvaluated(evaluated); setBulkNotFound(notFound); setBulkAnalyzed(true);
       setBulkNotice(`Completed analysis of ${evaluated.toLocaleString("en-US")} pending cases. ${groups.length} exact-match group(s) are ready for review.${notFound ? ` ${notFound} case(s) were not found and need a fresh queue check.` : ""}`);
     } catch (error) {
+      if (runId !== analysisRunRef.current) return;
       setBulkAnalyzed(false);
       setBulkGroups([]); setBulkCoverage(null); setBulkReviewItems([]); setBulkReviewCount(0);
       setBulkError(error instanceof Error ? error.message : "Bulk analysis failed.");
       setBulkNotice("Analysis was not completed. No bulk judgement was applied; correct the issue and analyse the queue again.");
-    } finally { setBulkBusy(false); }
+    } finally { if (runId === analysisRunRef.current) setBulkBusy(false); }
   }
 
   async function applyBulkGroup(group: BulkGroup) {
