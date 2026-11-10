@@ -80,12 +80,14 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     && (!prohibited || prohibitedStatus === "CONNECTED")
     && Boolean(auto.recommendation.comment.trim()) && Boolean(auto.procedureText.trim());
   const connected = prohibitedStatus === "CONNECTED";
+  const unresolvedStep = auto.steps.find((step) => step.status === "MANUAL" || step.status === "NEEDS_INPUT");
   const reviewReason = prohibited && !connected
-    ? "The case is not fully connected to a verified GADSL / TSZ reference and an implemented dedicated flow. Review CAS, substance name and Appendix routing."
+    ? "The case is not fully connected to a verified GADSL / TSZ reference and an implemented dedicated flow."
+      + (unresolvedStep ? ` Next action: ${unresolvedStep.title}. ${unresolvedStep.detail}` : " Review CAS, substance name and Appendix routing.")
+    : unresolvedStep ? `${unresolvedStep.title}: ${unresolvedStep.detail}`
     : eligible ? auto.recommendation.reason
     : auto.recommendation.state === "HOLD" ? auto.recommendation.reason
-    : auto.steps.find((step) => step.status === "MANUAL" || step.status === "NEEDS_INPUT")?.detail
-    || (needsInput ? "One or more required inputs are still missing." : "This case does not meet strict bulk-judgement conditions.");
+    : (needsInput ? "One or more required inputs are still missing." : "This case does not meet strict bulk-judgement conditions.");
   return {
     id: item.id, sourceRecordKey: item.source_record_key, errorType: item.error_type_label,
     partNo: item.delivery_part_no, supplierCode: item.supplier_code, cas: facts.cas,
