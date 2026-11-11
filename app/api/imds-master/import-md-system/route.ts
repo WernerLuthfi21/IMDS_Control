@@ -231,6 +231,9 @@ export async function POST(request: NextRequest) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
 
+    if (workbook.worksheets.length === 0 || workbook.worksheets.every((ws) => ws.rowCount === 0)) {
+      return NextResponse.json({ error: "This file is empty: it has no sheets or no rows. MD System exported a search with 0 results. Search again with a wider “last status changed” period, export it, and upload the new file. Nothing was changed." }, { status: 422 });
+    }
     let sheet = workbook.getWorksheet("Export");
     if (!sheet) {
       sheet = workbook.worksheets.find((ws) => {
@@ -241,7 +244,7 @@ export async function POST(request: NextRequest) {
         return false;
       });
     }
-    if (!sheet) return NextResponse.json({ error: "Could not find an MD System Export sheet or a Part/Item No. header." }, { status: 422 });
+    if (!sheet) return NextResponse.json({ error: "This does not look like an MD System export: no “Export” sheet and no “Part/Item No.” column were found. Nothing was changed." }, { status: 422 });
 
     let headerRow = 0;
     for (let r = 1; r <= Math.min(sheet.rowCount, 15); r++) {
