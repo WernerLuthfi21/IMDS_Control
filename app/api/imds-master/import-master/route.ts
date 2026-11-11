@@ -102,6 +102,9 @@ export async function POST(request: NextRequest) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
 
+    if (workbook.worksheets.length === 0 || workbook.worksheets.every((ws) => ws.rowCount === 0)) {
+      return NextResponse.json({ error: "This file is empty: it has no sheets or no rows. Nothing was changed." }, { status: 422 });
+    }
     let sheet = workbook.getWorksheet("Part List LATEST");
     if (!sheet) {
       sheet = workbook.worksheets.find((ws) => {
