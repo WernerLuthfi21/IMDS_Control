@@ -250,6 +250,127 @@
   }
   function fmtWhen(v) { if (!v) return ""; var d = new Date(v); return isNaN(d.getTime()) ? "" : d.toLocaleString(); }
 
+  // ---- Importing workbooks: shared by the Settings boxes and by dropping a file anywhere on the page ----
+  var importing = false, panelNotify = null;
+  function report(kind, text) { try { toast(text, kind === "err" ? "err" : kind === "ok" ? "ok" : "info"); } catch (e) { /* toast unavailable */ } if (panelNotify) panelNotify(kind, text); }
+  function sleep(ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); }
+  function isNetworkError(e) { return e && (e.name === "TypeError" || /failed to fetch|networkerror|load failed/i.test(String(e.message))); }
+
+  // The server may finish a long import even if the connection drops. Ask it before telling anyone it failed.
+  async function importOutcome(kind, file, startedAt) {
+    for (var i = 0; i < 12; i++) {
+      try {
+        var j = await api("/api/imds-master/parts?page=1&pageSize=1");
+        var rec = kind === "master" ? j.latestMasterImport : j.latestMdsImport;
+        if (rec && rec.file_name === file.name && new Date(rec.created_at).getTime() >= startedAt - 2000) return rec;
+      } catch (e) { /* keep waiting */ }
+      await sleep(4000);
+    }
+    return null;
+  }
+
+  async function importWorkbook(kind, file) {
+    if (!file) return false;
+    if (!/\.xlsx$/i.test(file.name)) { report("err", file.name + " is not an .xlsx workbook."); return false; }
+    if (importing) { report("info", "Another file is still being imported. Please wait a moment."); return false; }
+    importing = true;
+    var startedAt = Date.now(), endpoint = kind === "master" ? "/api/imds-master/import-master" : "/api/imds-master/import-md-system";
+    loadStatus("busy", "Importing " + file.name + "…");
+    try {
+      var j;
+      try {
+        if (file.size <= 3.5 * 1024 * 1024) {
+          // Small files go straight to the server in one request: one step, nothing else that can fail.
+          var form = new FormData(); form.append("file", file, file.name);
+          j = await api(endpoint, { method: "POST", body: form });
+        } else {
+          var slot = await api("/api/imds-master/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, fileSize: file.size }) });
+          if (!slot.signedUrl) throw new Error("The upload could not start. Sign in again and retry.");
+          var fd = new FormData(); fd.append("cacheControl", "3600"); fd.append("", file);
+          var up = null;
+          for (var attempt = 0; attempt < 3 && !(up && up.ok); attempt++) {
+            try { up = await fetch(slot.signedUrl, { method: "PUT", body: fd, headers: { "x-upsert": "false" } }); } catch (e) { if (attempt === 2) throw e; await sleep(1200); }
+          }
+          if (!up.ok) throw new Error("Upload to storage failed (HTTP " + up.status + ").");
+          j = await api(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storagePath: slot.path, fileName: file.name }) });
+        }
+      } catch (e) {
+        if (!isNetworkError(e) && !(e && /time limit|unexpected response/i.test(String(e.message)))) throw e;
+        loadStatus("busy", "Connection interrupted — checking whether the server finished…");
+        var rec = await importOutcome(kind, file, startedAt);
+        if (!rec) throw new Error("The connection to the server was interrupted and the import could not be confirmed. Check your internet connection and try once more; nothing is imported twice.");
+        j = null;
+      }
+      var text = j ? (kind === "master"
+        ? "Master updated: " + (j.inserted || 0) + " new, " + (j.updated || 0) + " refreshed from " + (j.totalRows || 0) + " rows."
+        : "MD System updated: " + (j.matchedSourceRows || 0) + " of " + (j.totalRows || 0) + " rows matched" + (j.autoStatusUpdated ? " · " + j.autoStatusUpdated + " status(es) changed" : "") + (j.unmatchedRows ? " · " + j.unmatchedRows + " not in the master" : "") + ".")
+        : "Import finished on the server (" + file.name + ").";
+      report("ok", text);
+      loadStatus("ok", "Updated · loading the latest data…");
+      refreshSharedMaster(false);
+      if (typeof window.__imdsSmReload === "function") window.__imdsSmReload();
+      window.setTimeout(autoSync, 800);          // push the changes to Excel right away
+      return true;
+    } catch (e) {
+      report("err", (e && e.message ? e.message : "Import failed.") + " (" + file.name + ")");
+      loadStatus("err", "Import failed");
+      return false;
+    } finally { importing = false; }
+  }
+
+  // Which of the two files is this? Sheet names are decisive; the file name is the fallback.
+  async function detectKind(file) {
+    try {
+      if (window.XLSX && XLSX.read) {
+        var wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", bookSheets: true });
+        var names = (wb.SheetNames || []).map(function (n) { return String(n).toLowerCase(); });
+        if (names.indexOf("export") >= 0) return "mds";
+        if (names.indexOf("part list latest") >= 0) return "master";
+        if (!names.length) return "mds";            // an empty search export: the server explains it
+      }
+    } catch (e) { /* fall back to the name */ }
+    if (/searchresult|md.?system|inbox/i.test(file.name)) return "mds";
+    if (/remaining|master|part.?list/i.test(file.name)) return "master";
+    return null;
+  }
+
+  function initGlobalDrop() {
+    var depth = 0, veil = null;
+    function ensure() {
+      if (veil) return veil;
+      var st = document.createElement("style");
+      st.textContent = "#imds-veil{position:fixed;inset:10px;z-index:9997;border:2px dashed rgba(139,92,246,.75);border-radius:18px;background:rgba(109,40,217,.07);display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .15s}#imds-veil.on{opacity:1}#imds-veil span{padding:8px 16px;border-radius:999px;background:var(--surface,#fff);color:inherit;font:600 13px system-ui,sans-serif;box-shadow:0 6px 24px rgba(40,20,80,.18)}.drop-tip{opacity:.55;font-size:12px;margin:10px 0 0}";
+      document.head.appendChild(st);
+      veil = document.createElement("div"); veil.id = "imds-veil"; veil.setAttribute("aria-hidden", "true"); veil.innerHTML = "<span>Drop the Excel file to update the data</span>";
+      document.body.appendChild(veil); return veil;
+    }
+    function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
+    // These areas already handle their own files (Directory import, the local-file fallback).
+    function foreign(t) { return t && t.closest && t.closest("#dir-import,#dir-drop,#dropzone,section[aria-labelledby='h-source']"); }
+    document.addEventListener("dragenter", function (e) { if (!hasFiles(e) || foreign(e.target)) return; e.preventDefault(); depth++; ensure().classList.add("on"); });
+    document.addEventListener("dragover", function (e) { if (!hasFiles(e) || foreign(e.target)) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"; });
+    document.addEventListener("dragleave", function (e) { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth && veil) veil.classList.remove("on"); });
+    document.addEventListener("drop", async function (e) {
+      if (!hasFiles(e) || foreign(e.target)) return;
+      e.preventDefault(); depth = 0; if (veil) veil.classList.remove("on");
+      var files = Array.prototype.slice.call(e.dataTransfer.files || []);
+      var zone = e.target.closest && e.target.closest("[data-kind]"), forced = zone ? zone.getAttribute("data-kind") : null;
+      var jobs = [];
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i];
+        if (!/\.xlsx$/i.test(f.name)) { report("err", f.name + " is not an .xlsx workbook."); continue; }
+        var k = forced || await detectKind(f);
+        if (!k) { report("err", "Could not tell what " + f.name + " is. Drop it on one of the two boxes in Settings."); continue; }
+        jobs.push({ kind: k, file: f });
+      }
+      jobs.sort(function (a, b) { return (a.kind === "master" ? 0 : 1) - (b.kind === "master" ? 0 : 1); });   // master first, then MD System
+      for (var j = 0; j < jobs.length; j++) await importWorkbook(jobs[j].kind, jobs[j].file);
+    });
+    // A faint hint on the Overview; invisible unless you look for it.
+    var hero = document.querySelector(".hero");
+    if (hero && !hero.querySelector(".drop-tip")) { ensure(); var tip = document.createElement("p"); tip.className = "drop-tip"; tip.textContent = "Tip: drop an updated Excel file anywhere on this page to update the data."; (hero.querySelector(".hero-copy") || hero).appendChild(tip); }
+  }
+
   function initSharedPanels() {
     if (document.getElementById("shared-import-panel")) return;
     var settings = document.getElementById("view-settings");
@@ -278,7 +399,7 @@
       panel.insertAdjacentElement("afterend", toggle);
       toggle.querySelector("button").onclick = function () { legacy.hidden = !legacy.hidden; };
     }
-    var msg = panel.querySelector("#sm-msg"), working = false;
+    var msg = panel.querySelector("#sm-msg");
     function say(kind, text) { msg.className = "log " + (kind === "err" ? "err" : ""); msg.textContent = text; msg.classList.remove("hidden"); }
     async function loadState() {
       try {
@@ -296,32 +417,11 @@
         panel.querySelector("#sm-sync").textContent = (s.configured ? "Excel sync via Power Automate" : "Excel sync not configured (updates stay safely queued)") + " · " + s.queue.pending + " pending / " + s.queue.failed + " failed / " + s.queue.sent + " sent";
       } catch (e) { panel.querySelector("#sm-sync").textContent = "Excel sync: " + e.message; }
     }
-    async function run(kind, file) {
-      if (!file || working) return;
-      if (!/\.xlsx$/i.test(file.name)) { say("err", "Please choose an .xlsx workbook."); return; }
-      working = true;
-      try {
-        say("info", "Uploading " + file.name + "…");
-        var slot = await api("/api/imds-master/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, fileSize: file.size }) });
-        if (!slot.signedUrl) throw new Error("The upload could not start. Sign in again and retry.");
-        var fd = new FormData(); fd.append("cacheControl", "3600"); fd.append("", file);
-        var up = await fetch(slot.signedUrl, { method: "PUT", body: fd, headers: { "x-upsert": "false" } });
-        if (!up.ok) throw new Error("Upload to storage failed (HTTP " + up.status + ").");
-        say("info", "File uploaded. Importing rows — large workbooks can take up to a minute…");
-        var j = await api(kind === "master" ? "/api/imds-master/import-master" : "/api/imds-master/import-md-system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storagePath: slot.path, fileName: file.name }) });
-        say("ok", kind === "master"
-          ? "Master updated: " + (j.inserted || 0) + " new, " + (j.updated || 0) + " refreshed, " + (j.skipped || 0) + " skipped from " + (j.totalRows || 0) + " rows."
-          : "MD System import: " + (j.matchedMasterRows || 0) + " rows matched; " + (j.ambiguousRows || 0) + " ambiguous; " + (j.unmatchedRows || 0) + " unmatched.");
-        refreshSharedMaster(false); loadState();
-      } catch (e) { say("err", e && e.message ? e.message : "Import failed."); }
-      finally { working = false; }
-    }
+    panelNotify = say;
+    async function run(kind, file) { await importWorkbook(kind, file); loadState(); }
     Array.prototype.forEach.call(panel.querySelectorAll("label.dropzone"), function (lab) {
       var kind = lab.getAttribute("data-kind"), input = lab.querySelector("input");
       input.onchange = function () { run(kind, input.files && input.files[0]); input.value = ""; };
-      lab.addEventListener("dragover", function (e) { e.preventDefault(); lab.classList.add("dragover"); });
-      lab.addEventListener("dragleave", function () { lab.classList.remove("dragover"); });
-      lab.addEventListener("drop", function (e) { e.preventDefault(); lab.classList.remove("dragover"); run(kind, e.dataTransfer.files && e.dataTransfer.files[0]); });
     });
     panel.querySelector("#sm-refresh").onclick = function () { refreshSharedMaster(false); loadState(); };
     panel.querySelector("#sm-sync-now").onclick = async function () {
@@ -834,6 +934,7 @@
 
   function start() {
     initSharedPanels();
+    initGlobalDrop();
     initBuyerPaste();
     initDirectorySync();
     startFast();

@@ -4,7 +4,7 @@ import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { enqueuePartMasterRows, dispatchPartMasterOutbox } from "@/lib/imds-master/outbox";
+import { enqueuePartMasterRows, type dispatchPartMasterOutbox } from "@/lib/imds-master/outbox";
 import { fixedPartNo, planCandidatePatch, type MdItem } from "@/lib/imds-master/md-current";
 
 export const runtime = "nodejs";
@@ -469,10 +469,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    for (const item of updates.values()) {
-      const { error } = await supabase.from("imds_master_parts").update(item.patch).eq("id", item.candidate.id);
-      if (error) {
-        return NextResponse.json({ error: `MD System history was saved, but master update failed for ${item.candidate.master_key}: ${error.message}`, batchId: batch.id }, { status: 500 });
+    // Updates run in small parallel groups: one sequential round trip per row made large exports overrun the 60 s limit.
+    const pending = [...updates.values()];
+    for (let index = 0; index < pending.length; index += 12) {
+      const results = await Promise.all(pending.slice(index, index + 12).map(async (item) => ({ item, ...(await supabase.from("imds_master_parts").update(item.patch).eq("id", item.candidate.id)) })));
+      const failed = results.find((r) => r.error);
+      if (failed?.error) {
+        return NextResponse.json({ error: `MD System history was saved, but master update failed for ${failed.item.candidate.master_key}: ${failed.error.message}`, batchId: batch.id }, { status: 500 });
       }
     }
 
@@ -486,7 +489,9 @@ export async function POST(request: NextRequest) {
         changedRows.push(...(data || []) as MasterRecord[]);
       }
       await enqueuePartMasterRows(supabase, auth.userId, changedRows, "md_system_search_import");
-      powerAutomate = await dispatchPartMasterOutbox(supabase, 50);
+      // Pushing to Excel is not part of this request: it is queued and the Tracker sends it right after (and every minute),
+      // so a slow Power Automate can never make the import time out.
+      powerAutomate = { configured: Boolean(process.env.POWER_AUTOMATE_TRACKER_URL?.trim() && process.env.POWER_AUTOMATE_SECRET?.trim()), sent: 0, failed: 0, pending: changedRows.length, error: "Queued; the Tracker pushes it to Excel next." };
     }
 
     await supabase.from("audit_events").insert({
