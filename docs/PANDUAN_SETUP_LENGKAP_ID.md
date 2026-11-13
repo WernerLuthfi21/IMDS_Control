@@ -144,8 +144,10 @@ Tanpa Premium: edit **di Tracker** (otomatis ke Excel via Flow A). Edit manual d
 ## 8. Kerja harian
 
 1. Buka Tracker (otomatis memuat dari database).
-2. Settings > **MD System search results**: drag & drop file `SearchResult_*.xlsx` terbaru. Status/ID/Ver/tanggal diperbarui sesuai aturan Bagian 2; Excel master ikut diperbarui lewat Flow A.
-3. Follow-up > **Send all sequentially**.
+2. **Seret file Excel ke halaman mana pun di Tracker** (Overview, Settings, dll.). Aplikasi mengenali sendiri hasil MD System (sheet "Export") atau master IMDS Remaining (sheet "Part List LATEST"); jika keduanya dijatuhkan sekaligus, master diproses lebih dulu. Selama menyeret muncul bingkai putus-putus tipis; hasil tampil sebagai notifikasi singkat. Kotak di Settings tetap bisa diklik.
+3. Follow-up > **Send e-mails** (lihat 6b).
+
+Catatan teknis: file kecil (≤3,5 MB) dikirim dalam satu permintaan; import MD System memperbarui baris secara paralel; dorongan ke Excel diantrekan dan dikirim otomatis oleh Tracker segera setelah import. Jika koneksi terputus saat server masih bekerja, Tracker memeriksa hasilnya dulu sebelum menyatakan gagal, jadi tidak ada import ganda.
 
 ## 9. Urutan uji (jangan dilewati)
 
