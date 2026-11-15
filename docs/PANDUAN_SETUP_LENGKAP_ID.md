@@ -114,8 +114,8 @@ Gejala "Power Automate is not ready" di Follow-up → Send e-mails berarti salah
 
 1. **Buat flow** (power automate.com → My flows → New flow → Instant cloud flow, nama `IMDS Tracker - Supplier Follow-up`). Pemicu yang tersedia tanpa Premium: **When a Teams webhook request is received** (jangan pakai *When an HTTP request is received*; itu Premium).
 2. **Parse JSON**: Content = `triggerBody()`, Schema = isi `docs/power-automate/supplier-email.schema.json` (Generate from sample bila perlu).
-3. **Condition** rahasia: `triggerOutputs()?['headers']?['x-imds-secret']` *is equal to* nilai rahasia Anda (string acak panjang, buat sendiri). **No** = tambahkan aksi *Response* status 401 lalu *Terminate*.
-4. Di **Yes**: **Office 365 Outlook → Send an email (V2)** dengan To = `to`, CC = `cc`, Subject = `subject`, Body = `body`; lampiran (jika ada) lihat Flow C di atas. Tambahkan **Response** status 200 di akhir (jika tidak ada Response, website menganggap flow gagal).
+3. **Condition** rahasia: `triggerOutputs()?['headers']?['x-imds-secret']` *is equal to* nilai rahasia Anda (string acak panjang, buat sendiri). **No** = tambahkan aksi *Terminate* (Status: Cancelled). Jangan pakai *Response*: itu Premium.
+4. Di **Yes**: **Office 365 Outlook → Send an email (V2)** dengan To = `to`, CC = `cc`, Subject = `subject`, Body = `body`; lampiran (jika ada) lihat Flow C di atas. Tidak perlu *Response* (Premium): pemicu langsung membalas 202 ke website, dan website menganggap 2xx sebagai diterima. Karena itu "Handed to Power Automate" tidak membuktikan e-mail terkirim; cek *Run history* flow.
 5. **Save**, buka pemicu, salin **HTTP POST URL**.
 6. Di **Vercel → Project → Settings → Environment Variables** (Production) isi:
    - `POWER_AUTOMATE_EMAIL_URL` = URL dari langkah 5
