@@ -10,7 +10,7 @@ const TRANSPORT: Record<string, string> = { http: "direct (HTTP)", mail: "via ma
 
 function Step({ ok, label, detail, action }: { ok: boolean; label: string; detail?: string; action?: React.ReactNode }) {
   return <li style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "6px 0" }}>{ok ? <CheckCircle2 size={16} color="#166534"/> : <Circle size={16} color="#a16207"/>}
-      <div style={{ flex: 1 }}><strong>{label}</strong>{detail && <div style={{ fontSize: 12, color: "#5b6b60" }}>{detail}</div>}</div>{action}</li>
+      <div style={{ flex: 1 }}><strong>{label}</strong>{detail && <div style={{ fontSize: 12, color: "var(--muted)" }}>{detail}</div>}</div>{action}</li>
 }
 
 export function AutomationPanel() {
@@ -113,7 +113,7 @@ export function AutomationPanel() {
           <td><button className="btn btn-sm" type="button" onClick={() => setPreview(preview === c.id ? null : c.id)}>{preview === c.id ? "Hide" : "Preview"}</button></td></tr>; })}
       {!shown.length && <tr><td colSpan={6}>No matching open records.</td></tr>}
     </tbody></table></div>
-    {previewMsg && <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "#f6f8f6", border: "1px solid #e2e9e3", borderRadius: 8, padding: 10, marginTop: 8 }}><strong>{previewMsg.subject}</strong>{"\n\n"}{previewMsg.body}</pre>}
+    {previewMsg && <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--line-strong)", borderRadius: 8, padding: 10, marginTop: 8 }}><strong>{previewMsg.subject}</strong>{"\n\n"}{previewMsg.body}</pre>}
 
     <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
       <a className="btn btn-sm" href="/api/automation/export" download><Download size={13}/> Download register CSV (one-time Excel seed)</a>

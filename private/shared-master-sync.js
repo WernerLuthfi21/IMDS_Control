@@ -140,9 +140,9 @@
       var st = document.createElement("style");
       st.textContent = "#imds-bar{position:fixed;left:0;right:0;top:0;height:3px;z-index:9999;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}#imds-bar.on{opacity:1}" +
         "#imds-bar::before{content:'';position:absolute;inset:0;width:40%;background:linear-gradient(90deg,#c4b5fd,#6d28d9);animation:imdsbar 1.1s ease-in-out infinite}@keyframes imdsbar{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}" +
-        "#imds-load{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9998;display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:#fff;color:#1f2933;font:600 12px system-ui,sans-serif;box-shadow:0 6px 24px rgba(40,20,80,.16);border:1px solid #e8e1f1;transition:opacity .4s}" +
-        "#imds-load.ok{border-color:#91c8a9}#imds-load.err{border-color:#e7a4ad;color:#b91c1c}#imds-load.fade{opacity:0;pointer-events:none}" +
-        "#imds-load button{border:1px solid #ddd;background:#fff;border-radius:8px;padding:2px 10px;cursor:pointer;font:inherit}";
+        "#imds-load{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9998;display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:var(--surface,#fff);color:var(--ink,#1f2933);font:600 12px system-ui,sans-serif;box-shadow:0 6px 24px rgba(40,20,80,.16);border:1px solid var(--line-strong,#e8e1f1);transition:opacity .4s}" +
+        "#imds-load.ok{border-color:var(--ok)}#imds-load.err{border-color:var(--bad);color:var(--bad)}#imds-load.fade{opacity:0;pointer-events:none}" +
+        "#imds-load button{border:1px solid var(--line-strong,#ddd);background:transparent;color:inherit;border-radius:8px;padding:2px 10px;cursor:pointer;font:inherit}";
       document.head.appendChild(st);
       barEl = document.createElement("div"); barEl.id = "imds-bar"; barEl.setAttribute("aria-hidden", "true"); document.body.appendChild(barEl);
       loadEl = document.createElement("div"); loadEl.id = "imds-load"; loadEl.setAttribute("role", "status"); loadEl.setAttribute("aria-live", "polite");
@@ -339,7 +339,7 @@
     function ensure() {
       if (veil) return veil;
       var st = document.createElement("style");
-      st.textContent = "#imds-veil{position:fixed;inset:10px;z-index:9997;border:2px dashed rgba(139,92,246,.75);border-radius:18px;background:rgba(109,40,217,.07);display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .15s}#imds-veil.on{opacity:1}#imds-veil span{padding:8px 16px;border-radius:999px;background:var(--surface,#fff);color:inherit;font:600 13px system-ui,sans-serif;box-shadow:0 6px 24px rgba(40,20,80,.18)}.drop-tip{opacity:.55;font-size:12px;margin:10px 0 0}";
+      st.textContent = "#imds-veil{position:fixed;inset:10px;z-index:9997;border:2px dashed rgba(139,92,246,.75);border-radius:18px;background:rgba(109,40,217,.07);display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .15s}#imds-veil.on{opacity:1}#imds-veil span{padding:8px 16px;border-radius:999px;background:var(--surface,#fff);color:inherit;font:600 13px system-ui,sans-serif;box-shadow:0 6px 24px rgba(40,20,80,.18)}.drop-tip{color:var(--muted);font-size:12px;margin:10px 0 0}";
       document.head.appendChild(st);
       veil = document.createElement("div"); veil.id = "imds-veil"; veil.setAttribute("aria-hidden", "true"); veil.innerHTML = "<span>Drop the Excel file to update the data</span>";
       document.body.appendChild(veil); return veil;
@@ -443,7 +443,7 @@
   function dirStatus(text, bad) {
     var tools = document.getElementById("dir-tools"), n = document.getElementById("dir-sync");
     if (!n && tools) { n = document.createElement("span"); n.id = "dir-sync"; n.className = "muted small"; n.setAttribute("role", "status"); n.style.alignSelf = "center"; tools.prepend(n); }
-    if (n) { n.textContent = text; n.style.color = bad ? "#b91c1c" : ""; }
+    if (n) { n.textContent = text; n.style.color = bad ? "var(--bad)" : ""; }
   }
   function schedulePush() {
     if (dirSync.blocked) return;
@@ -508,6 +508,26 @@
     } catch (e) { dirStatus("Directory database unavailable: " + e.message + " (using this browser's copy)", true); }
   }
 
+  // ---- Built-in PUD buyer identities (e-mail only; never overwrites what the user typed) ----
+  var BUYER_SEED = {
+    Puguh: "wahyu.bakhtiar@toyota.co.id", Luthfy: "ahmad.syofyan@toyota.co.id", Omen: "Fathurohman@toyota.co.id",
+    Irman: "irman.firmansyah@toyota.co.id", Taris: "adabina.ladiva@toyota.co.id", Liza: "elizabeth.listya@toyota.co.id",
+    Aries: "aries.fredi@toyota.co.id", Bangun: "arif.santoso@toyota.co.id", Fifi: "anindya.darmawan@toyota.co.id",
+    Regia: "regia.erfawinanda@toyota.co.id"
+  };
+  function seedBuyers() {
+    try {
+      var changed = 0;
+      DIR.buyers = DIR.buyers || {};
+      Object.keys(BUYER_SEED).forEach(function (k) {
+        var hit = Object.keys(DIR.buyers).filter(function (x) { return x.trim().toLowerCase() === k.toLowerCase(); })[0] || k;
+        var b = DIR.buyers[hit] || (DIR.buyers[hit] = {});
+        if (!b.email) { b.email = BUYER_SEED[k].toLowerCase(); changed++; }
+      });
+      if (changed) { saveDir(); try { renderAll(); } catch (e) { /* re-renders on navigation */ } }
+    } catch (e) { /* seed is best-effort */ }
+  }
+
   // ---- E-mail center (Follow-up → "Send e-mails"): ONE place for request, follow-up and recap e-mails ----
   var MAIL_KEY = "imds-mail-opts";
   var KIND_META = {
@@ -526,7 +546,7 @@
       ".fu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:8px 0}.fu-grid .field span{display:block;font-size:12px;font-weight:600;margin-bottom:4px}.fu-grid select,.fu-grid input[type=text],.fu-grid textarea{width:100%}" +
       ".fu-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.fu-chip{border:1px solid var(--line-strong,#d5d0e0);background:var(--surface,#fff);border-radius:999px;padding:3px 11px;font:600 12px system-ui,sans-serif;cursor:pointer;color:inherit}.fu-chip[aria-pressed=true]{background:#6d28d9;border-color:#6d28d9;color:#fff}.fu-chip.lock{background:transparent;border-style:dashed;cursor:default}" +
       ".fu-box{border:1px solid var(--line,#e8e1f1);border-radius:12px;padding:12px}.fu-box h3{font-size:13px;margin:0 0 6px}.fu-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}.fu-prog{height:6px;border-radius:99px;background:rgba(127,127,127,.25);overflow:hidden;flex:1;min-width:140px}.fu-prog i{display:block;height:100%;width:0;background:#6d28d9;transition:width .25s}" +
-      ".fu-res.ok{color:#15803d;font-weight:600}.fu-res.err{color:#dc2626;font-weight:600}.fu-res.skip{color:#ca8a04;font-weight:600}.fu-det td{background:rgba(127,127,127,.08)}.fu-det textarea{width:100%;font:13px/1.45 ui-monospace,monospace;min-height:240px}.fu-det input[type=text]{width:100%}.fu-mail{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fu-only{display:inline-flex;gap:6px;align-items:center}" +
+      ".fu-res.ok{color:var(--ok-ink,#126B42);font-weight:600}.fu-res.err{color:var(--bad,#C62840);font-weight:600}.fu-res.skip{color:var(--warn-ink,#865008);font-weight:600}.fu-det td{background:rgba(127,127,127,.08)}.fu-det textarea{width:100%;font:13px/1.45 ui-monospace,monospace;min-height:240px}.fu-det input[type=text]{width:100%}.fu-mail{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fu-only{display:inline-flex;gap:6px;align-items:center}" +
       ".fu-sql{width:100%;min-height:150px;font:12px/1.4 ui-monospace,monospace}";
     document.head.appendChild(st);
   }
@@ -587,6 +607,12 @@
       '<label class="field" style="margin-top:8px"><span>Extra CC (optional, separate with ;)</span><input type="text" id="fu-extra" autocomplete="off" placeholder="name@company.com"></label></div>' +
       '<div class="fu-box"><h3>Attachments</h3><label class="inline-check"><input type="checkbox" id="fu-att-pdf"> <span id="fu-att-pdf-l"></span></label><br><label class="inline-check"><input type="checkbox" id="fu-att-xlsx"> <span id="fu-att-xlsx-l"></span></label><p class="muted small" style="margin:8px 0 0" id="fu-att-note"></p></div></div>' +
       '<div class="mh"><i>5</i>Review and send</div>' +
+      '<div class="mk" id="fu-mode" role="group" aria-label="Send mode"><button type="button" data-send="test" aria-pressed="true"><b>🧪 Test — only to me</b><span>Nothing reaches a supplier. No CC. Subject starts with [TEST].</span></button><button type="button" data-send="live" aria-pressed="false"><b>🚀 Live — to suppliers</b><span>Real e-mails with the mandatory CC.</span></button></div>' +
+      '<div class="fu-grid" id="fu-opts"><label class="field" id="fu-testto-wrap"><span>Test address</span><input type="text" id="fu-testto" autocomplete="off" placeholder="your.name@toyota.co.id"></label>' +
+      '<label class="field"><span>How many to send now</span><select id="fu-limit"><option value="1">First 1 selected</option><option value="3">First 3 selected</option><option value="5">First 5 selected</option><option value="10">First 10 selected</option><option value="0">All selected</option></select></label>' +
+      '<label class="field"><span>Pause between e-mails</span><select id="fu-pause"><option value="0">None</option><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="15">15 seconds</option></select></label>' +
+      '<label class="inline-check" style="align-self:end"><input type="checkbox" id="fu-stop" checked> Stop at the first failure</label></div>' +
+      '<div class="fu-bar"><button type="button" class="btn btn-secondary btn-sm" id="fu-ping">Send a connection test to me</button><span class="muted small" id="fu-ping-msg" role="status"></span></div>' +
       '<div class="fu-bar"><span id="fu-only" class="fu-only" hidden></span><label class="inline-check" id="fu-all-wrap"><input type="checkbox" id="fu-all"> Select all ready</label><label class="inline-check"><input type="checkbox" id="fu-force"> Send even if e-mailed recently</label><span class="muted small" id="fu-count"></span><span style="flex:1"></span><button type="button" class="btn btn-primary btn-sm" id="fu-send" disabled>Send selected</button></div>' +
       '<div class="fu-bar" id="fu-progwrap" hidden><div class="fu-prog" aria-hidden="true"><i id="fu-prog"></i></div><span class="small" id="fu-prog-text"></span></div>' +
       '<div class="table-wrap"><table class="tbl compact"><thead id="fu-head"></thead><tbody id="fu-body"></tbody></table></div>';
@@ -599,7 +625,8 @@
     ["kind", "scope"].forEach(function (k) { if (saved[k]) S[k] = saved[k]; });
     if (!KIND_META[S.kind]) S.kind = "followup";
     var sender = saved.sender && team()[saved.sender] ? saved.sender : (Object.keys(team())[0] || "");
-    function persist() { lsSet(MAIL_KEY, JSON.stringify({ kind: S.kind, scope: S.scope, sender: $("fu-sender").value, roles: roles(), att: { pdf: $("fu-att-pdf").checked, xlsx: $("fu-att-xlsx").checked }, list: $("fu-list").checked })); }
+    S.live = saved.live === true; S.testTo = saved.testTo || ""; S.limit = saved.limit != null ? String(saved.limit) : "1"; S.pause = saved.pause || "0"; S.stop = saved.stop !== false;
+    function persist() { lsSet(MAIL_KEY, JSON.stringify({ live: S.live, testTo: S.testTo, limit: S.limit, pause: S.pause, stop: S.stop, kind: S.kind, scope: S.scope, sender: $("fu-sender").value, roles: roles(), att: { pdf: $("fu-att-pdf").checked, xlsx: $("fu-att-xlsx").checked }, list: $("fu-list").checked })); }
     function roles() { return { mid: $("fu-cc-mid").checked, top: $("fu-cc-top").checked, buyer: $("fu-cc-buyer").checked }; }
 
     function setMode(m) {
@@ -622,6 +649,7 @@
           $("fu-scope").value = S.scope;
           $("fu-sender").innerHTML = Object.keys(team()).map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
           if (sender) $("fu-sender").value = sender;
+          $("fu-testto").value = S.testTo || mailInfo.me || ""; $("fu-limit").value = S.limit; $("fu-pause").value = S.pause; $("fu-stop").checked = S.stop;
           S.ready = true;
         }
         draw();
@@ -686,16 +714,21 @@
       var rq = (cfg.requiredCc || []);
       $("fu-req").innerHTML = rq.length ? '<span class="muted small">Always on CC:</span> ' + rq.map(function (e) { return '<span class="fu-chip lock" title="Mandatory — change in Settings → E-mail templates">🔒 ' + esc(e) + "</span>"; }).join("") : '<span class="muted small">No mandatory CC set (Settings → E-mail templates).</span>';
       var recap = S.kind === "recap";
+      Array.prototype.forEach.call($("fu-mode").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", String((b.getAttribute("data-send") === "live") === S.live)); });
+      $("fu-testto-wrap").hidden = S.live; $("fu-force").closest("label").hidden = !S.live;
+      $("fu-limit").closest("label").hidden = recap;
       $("fu-att-pdf-l").textContent = recap ? "Executive summary PDF (all suppliers)" : "PDF recap of this supplier's parts";
       $("fu-att-xlsx-l").textContent = recap ? "Excel list of all outstanding parts" : "Excel list of unsubmitted part numbers (supplier fills the plan date)";
       $("fu-att-note").textContent = recap ? "Generated now from the current data." : "Generated per supplier, only with the parts listed in its e-mail.";
       $("fu-list").closest("label").hidden = recap;
       $("fu-all-wrap").hidden = recap;
-      $("fu-send").textContent = recap ? "Send recap" : "Send selected";
+      $("fu-send").textContent = S.live ? (recap ? "Send recap to suppliers" : "Send to suppliers") : (recap ? "Send test recap to me" : "Send test to me");
+      $("fu-send").className = "btn btn-sm " + (S.live ? "btn-primary" : "btn-secondary");
       var onlyEl = $("fu-only");
       if (S.only) { onlyEl.hidden = false; onlyEl.innerHTML = '<span class="fu-chip" aria-pressed="true">' + esc(S.only) + ' ✕</span>'; } else onlyEl.hidden = true;
-      $("fu-state").textContent = (cfg.__missingTable ? "⚠ The settings table is not created yet — built-in templates are used and changes cannot be saved. See Settings → E-mail templates. " : "") +
-        (mailInfo.configured ? "" : "Sending through Power Automate is not configured yet; you can still open each e-mail as an Outlook draft. ") + (mailInfo.canSend ? "" : "Your role cannot send e-mails. ");
+      var su = mailInfo.setup || {}, tick = function (ok, t) { return (ok ? "✔ " : "✖ ") + t; };
+      $("fu-state").textContent = (mailInfo.configured ? "" : "Power Automate is not ready: " + [tick(su.url, "flow URL (POWER_AUTOMATE_EMAIL_URL)"), tick(su.secret, "shared secret (POWER_AUTOMATE_SECRET)")].join(" · ") + ". Add them in Vercel → Settings → Environment Variables and redeploy (step-by-step: docs/PANDUAN_SETUP_LENGKAP_ID.md, section 6c). Until then, use “Open in Outlook draft”. ") + (cfg.__missingTable ? "⚠ The settings table is not created yet — built-in templates are used and changes cannot be saved. See Settings → E-mail templates. " : "") +
+        (mailInfo.canSend ? "" : "Your role cannot send e-mails. ");
       $("fu-state").hidden = !$("fu-state").textContent;
       groups = buildGroups();
       renderTable();
@@ -727,7 +760,7 @@
       }).join("");
       var n = groups.filter(function (g) { return S.selected[g.key] && g.ready; }).length;
       $("fu-count").textContent = n + " selected · " + groups.filter(function (g) { return g.ready; }).length + " of " + groups.length + " ready";
-      $("fu-send").disabled = !n || S.sending || !mailInfo.configured || !mailInfo.canSend;
+      $("fu-send").disabled = (S.live ? !n : !groups.some(function (g) { return g.ready; })) || S.sending || !mailInfo.configured || !mailInfo.canSend;
       $("fu-send").title = !mailInfo.configured ? "Sending is not configured (POWER_AUTOMATE_EMAIL_URL / POWER_AUTOMATE_SECRET)." : "";
       if (S.open) wireDetail();
     }
@@ -770,33 +803,54 @@
     async function sendOne(g) {
       var ed = S.edits[g.key] || {};
       var payload = { kind: S.kind, supplierCode: g.code, supplierName: g.name, to: g.to, cc: g.cc, subject: ed.subject != null ? ed.subject : g.subject, messageBody: ed.body != null ? ed.body : g.body,
-        sender: team()[$("fu-sender").value] || undefined, force: $("fu-force").checked, partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
+        sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: !S.live || undefined, testTo: S.live ? undefined : ($("fu-testto").value || "").trim(), partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
         attachments: { pdf: $("fu-att-pdf").checked && S.kind !== "recap", xlsx: $("fu-att-xlsx").checked } };
       if (S.kind === "recap") payload.extraPdf = await recapPdf();
       return api("/api/imds-master/followups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     }
+    $("fu-mode").onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-send]"); if (!b) return; S.live = b.getAttribute("data-send") === "live"; persist(); draw(); };
+    $("fu-testto").oninput = function () { S.testTo = this.value.trim(); persist(); };
+    $("fu-limit").onchange = function () { S.limit = this.value; persist(); };
+    $("fu-pause").onchange = function () { S.pause = this.value; persist(); };
+    $("fu-stop").onchange = function () { S.stop = this.checked; persist(); };
+    var sleep = function (ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); };
+    $("fu-ping").onclick = async function () {
+      var msg = $("fu-ping-msg"), me = ($("fu-testto").value || mailInfo.me || "").trim();
+      if (!mailInfo.configured) { msg.textContent = "Not ready yet — see the checklist at the top of this page."; msg.style.color = "var(--bad)"; return; }
+      this.disabled = true; msg.style.color = ""; msg.textContent = "Sending…";
+      try {
+        var r = await api("/api/imds-master/followups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "followup", test: true, testTo: me, supplierName: "CONNECTION TEST", to: [me || "x@x.x"], subject: "IMDS Tracker connection test", messageBody: "This is a test from the IMDS Tracker e-mail center.\nIf you can read this, the Power Automate flow accepted the request and your mailbox sent it.\n\nNo supplier received anything.", sender: team()[$("fu-sender").value] || undefined }) });
+        msg.style.color = "var(--ok-ink)"; msg.textContent = "Handed to Power Automate for " + r.to.join(", ") + " (sent from " + r.sentFrom + "). Check your inbox in a minute; if nothing arrives, open the flow's Run history.";
+      } catch (e) { msg.style.color = "var(--bad)"; msg.textContent = e.message; }
+      this.disabled = false;
+    };
     $("fu-send").onclick = async function () {
       if (S.sending) return;
-      var todo = S.kind === "recap" ? groups.filter(function (g) { return g.ready; }) : groups.filter(function (g) { return S.selected[g.key] && g.ready; });
+      var ready = groups.filter(function (g) { return g.ready; });
+      var todo = S.kind === "recap" ? ready : (S.live ? ready.filter(function (g) { return S.selected[g.key]; }) : (ready.filter(function (g) { return S.selected[g.key]; }).length ? ready.filter(function (g) { return S.selected[g.key]; }) : ready));
+      var lim = Number($("fu-limit").value) || 0; if (S.kind !== "recap" && lim) todo = todo.slice(0, lim);
       if (!todo.length) return;
+      var testTo = ($("fu-testto").value || "").trim();
+      if (!S.live && !testTo) { $("fu-testto").focus(); toast("Enter the address that should receive the test.", "info"); return; }
       var att = [$("fu-att-pdf").checked ? "PDF" : "", $("fu-att-xlsx").checked ? "Excel" : ""].filter(Boolean).join(" + ") || "none";
-      var msg = S.kind === "recap" ? "Send ONE recap e-mail to " + todo[0].to.length + " supplier PIC(s)?" : "Send " + todo.length + " e-mail(s), one per supplier?";
-      if (!window.confirm(msg + "\nAttachments: " + att + "\nMandatory CC is added automatically.\nThey go out through Power Automate.")) return;
-      S.sending = true; renderTable(); $("fu-progwrap").hidden = false;
-      var done = 0, ok = 0, skip = 0, fail = 0, last = "";
+      var msg = S.live ? (S.kind === "recap" ? "SEND LIVE: one recap e-mail to " + todo[0].to.length + " supplier PIC(s)?" : "SEND LIVE: " + todo.length + " e-mail(s), one per supplier?") + "\nMandatory CC is added automatically." : "TEST: " + todo.length + " e-mail(s) go only to " + testTo + ". No supplier and no CC receives anything.";
+      if (!window.confirm(msg + "\nAttachments: " + att + "\nThey go out through Power Automate.")) return;
+      S.sending = true; renderTable(); $("fu-progwrap").hidden = false; $("fu-prog").style.width = "0";
+      var done = 0, ok = 0, skip = 0, fail = 0, last = "", pause = Number($("fu-pause").value) || 0, stopped = false;
       for (var i = 0; i < todo.length; i++) {
         var g = todo[i];
-        $("fu-prog-text").textContent = "Sending " + (i + 1) + " of " + todo.length + " — " + g.name;
+        $("fu-prog-text").textContent = (S.live ? "Sending " : "Test ") + (i + 1) + " of " + todo.length + " — " + g.name;
         S.results[g.key] = { kind: "skip", text: "Sending…" }; renderTable();
-        try { var r = await sendOne(g); S.results[g.key] = { kind: "ok", text: "Handed to Power Automate" }; ok++; S.selected[g.key] = false; last = r.sentFrom || ""; mailInfo.lastSent[g.name] = new Date().toISOString(); }
+        try { var r = await sendOne(g); S.results[g.key] = { kind: "ok", text: S.live ? "Handed to Power Automate" : "Test sent to " + testTo }; ok++; last = r.sentFrom || ""; if (S.live) { S.selected[g.key] = false; mailInfo.lastSent[g.name] = new Date().toISOString(); } }
         catch (e) {
           if (e.payload && e.payload.skipped === "RECENTLY_SENT") { S.results[g.key] = { kind: "skip", text: "Skipped — e-mailed recently" }; skip++; }
-          else { S.results[g.key] = { kind: "err", text: e.message }; fail++; }
+          else { S.results[g.key] = { kind: "err", text: e.message }; fail++; if ($("fu-stop").checked) { stopped = true; done++; break; } }
         }
         done++; $("fu-prog").style.width = Math.round(done / todo.length * 100) + "%";
+        if (pause && i < todo.length - 1) await sleep(pause * 1000);
       }
       S.sending = false; renderTable();
-      $("fu-prog-text").textContent = "Finished: " + ok + " handed to Power Automate · " + skip + " skipped · " + fail + " failed" + (last ? " · sent from " + last : "") + ". “Handed over” means the flow accepted it — confirm delivery in Outlook Sent items.";
+      $("fu-prog-text").textContent = "Finished: " + ok + (S.live ? " handed to Power Automate" : " test e-mail(s) handed over") + " · " + skip + " skipped · " + fail + " failed" + (stopped ? " (stopped at the first failure)" : "") + (last ? " · sent from " + last : "") + ". “Handed over” means the flow accepted it — confirm delivery in Outlook Sent items.";
     };
 
     window.__imdsEmailFor = function (company, kind) {
@@ -829,7 +883,7 @@
     after.insertAdjacentElement("afterend", sec);
     var $ = function (id) { return sec.querySelector("#" + id); };
     var cfg = null, version = 0, cur = 0, builtin = null;
-    function say(t, bad) { var m = $("fs-msg"); m.textContent = t; m.style.color = bad ? "#dc2626" : ""; }
+    function say(t, bad) { var m = $("fs-msg"); m.textContent = t; m.style.color = bad ? "var(--bad)" : ""; }
     function stash() { if (!cfg || !cfg.templates[cur]) return; var t = cfg.templates[cur]; t.name = $("fs-name").value; t.subject = $("fs-subj").value; t.body = $("fs-body").value; t.kind = $("fs-kind").value; }
     function label(t) { return (KIND_META[t.kind] ? KIND_META[t.kind].label : t.kind) + " · " + t.name + (cfg.defaults[t.kind] === t.id ? " (default)" : ""); }
     function fillList() { $("fs-tsel").innerHTML = cfg.templates.map(function (t, i) { return '<option value="' + i + '">' + esc(label(t)) + "</option>"; }).join(""); $("fs-tsel").value = String(cur); }
@@ -936,7 +990,7 @@
     initSharedPanels();
     initGlobalDrop();
     initBuyerPaste();
-    initDirectorySync();
+    initDirectorySync().then(seedBuyers, seedBuyers);
     startFast();
     window.setTimeout(autoSync, 4000);
     window.setInterval(autoSync, 60000);
