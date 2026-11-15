@@ -108,6 +108,31 @@ Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Den
 
 Pengiriman beruntun: tombol **Send all sequentially** di Tracker > Follow-up mengirim satu supplier, menunggu balasan, lalu lanjut ke berikutnya. Supplier yang sudah diemail dalam `FOLLOWUP_MIN_GAP_HOURS` terakhir dilewati dan dilaporkan.
 
+## 6c. Menyalakan pengiriman e-mail (tanpa Power Automate Premium)
+
+Gejala "Power Automate is not ready" di Follow-up → Send e-mails berarti salah satu variabel di Vercel belum ada. Urutannya:
+
+1. **Buat flow** (power automate.com → My flows → New flow → Instant cloud flow, nama `IMDS Tracker - Supplier Follow-up`). Pemicu yang tersedia tanpa Premium: **When a Teams webhook request is received** (jangan pakai *When an HTTP request is received*; itu Premium).
+2. **Parse JSON**: Content = `triggerBody()`, Schema = isi `docs/power-automate/supplier-email.schema.json` (Generate from sample bila perlu).
+3. **Condition** rahasia: `triggerOutputs()?['headers']?['x-imds-secret']` *is equal to* nilai rahasia Anda (string acak panjang, buat sendiri). **No** = tambahkan aksi *Response* status 401 lalu *Terminate*.
+4. Di **Yes**: **Office 365 Outlook → Send an email (V2)** dengan To = `to`, CC = `cc`, Subject = `subject`, Body = `body`; lampiran (jika ada) lihat Flow C di atas. Tambahkan **Response** status 200 di akhir (jika tidak ada Response, website menganggap flow gagal).
+5. **Save**, buka pemicu, salin **HTTP POST URL**.
+6. Di **Vercel → Project → Settings → Environment Variables** (Production) isi:
+   - `POWER_AUTOMATE_EMAIL_URL` = URL dari langkah 5
+   - `POWER_AUTOMATE_SECRET` = rahasia yang sama dengan langkah 3
+   - (opsional) `FOLLOWUP_SENDERS` = `Aiko <aiko@toyota.co.id>; Ayu <ayu@toyota.co.id>` (dipisah titik koma; hanya mailbox yang akun flow Anda boleh *Send As*); `FOLLOWUP_MIN_GAP_HOURS` = jeda minimum antar e-mail ke supplier yang sama.
+7. **Redeploy** (Deployments → ⋯ → Redeploy). Variabel baru tidak terbaca sebelum redeploy.
+8. Buka Tracker → Follow-up → **Send e-mails**. Banner kuning harus hilang. Jika masih ada, centang ✔/✖ di banner menunjukkan variabel mana yang belum terbaca.
+
+**Uji tanpa risiko ke supplier (urutan yang disarankan):**
+1. Langkah 5 → **Send a connection test to me**: mengirim 1 e-mail uji ke alamat Anda. Cek inbox dan *Run history* flow.
+2. Mode **🧪 Test — only to me** (default): pilih jenis e-mail, pilih sampai 1/3/5/10 supplier, klik **Send test to me**. Semua e-mail masuk hanya ke alamat Anda, tanpa CC, subjek diawali `[TEST]`, lampiran PDF/Excel dibuat sungguhan. Server menolak alamat uji di luar domain Anda.
+3. Baru ganti ke **🚀 Live — to suppliers**, mulai dengan *First 1 selected*, lalu naikkan. Opsi *Pause between e-mails* dan *Stop at the first failure* melindungi dari antrean gagal.
+
+**Pengiriman terjadwal otomatis (belum ada, sengaja).** Aplikasi belum mengirim sendiri pada jam tertentu: template memakai tenggat per model yang hanya ada di browser, jadi pengiriman terjadwal memerlukan tenggat itu disimpan di server lebih dulu. Sampai itu dibuat, pengiriman dipicu dari tombol di layar (sudah mendukung batch dan jeda).
+
+**Buyer:** e-mail 10 buyer PUD (Puguh, Luthfy, Omen, Irman, Taris, Liza, Aries, Bangun, Fifi, Regia) sudah terisi otomatis di Directory → PUD buyers (hanya jika kosong; tidak menimpa isian Anda). Pemetaan supplier → buyer: seret file `Supplier List & Buyer.xlsx` ke halaman Tracker (atau tempel di kotak *Update buyers from a pasted list*). Daftar supplier tidak disimpan di GitHub.
+
 ## 6b. Pusat e-mail (Tracker → Follow-up → "Send e-mails")
 
 Semua e-mail ke supplier sekarang lewat **satu tempat**. Tombol *Remind*, *Send reminder*, *Status recap e-mail* di mana pun hanya membuka pusat ini (modal lama sudah dihapus).

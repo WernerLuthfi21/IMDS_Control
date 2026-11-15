@@ -32,8 +32,11 @@ export async function GET() {
   const { data } = await supabase.from("imds_tracker_followup_logs").select("supplier_name,sent_at").eq("status", "SENT").gte("sent_at", since).order("sent_at", { ascending: false }).limit(3000);
   const lastSent: Record<string, string> = {};
   for (const row of data || []) if (row.supplier_name && row.sent_at && !lastSent[row.supplier_name]) lastSent[row.supplier_name] = row.sent_at;
+  const hasUrl = /^https:\/\//i.test(process.env.POWER_AUTOMATE_EMAIL_URL?.trim() || ""), hasSecret = Boolean(process.env.POWER_AUTOMATE_SECRET?.trim());
   return NextResponse.json({
-    configured: Boolean(process.env.POWER_AUTOMATE_EMAIL_URL?.trim() && process.env.POWER_AUTOMATE_SECRET?.trim()),
+    configured: hasUrl && hasSecret,
+    setup: { url: hasUrl, secret: hasSecret, senders: parseSenders(process.env.FOLLOWUP_SENDERS).length },
+    me: auth.email,
     senders: parseSenders(process.env.FOLLOWUP_SENDERS),
     canSend: ["admin", "preparer", "reviewer"].includes(auth.role || ""),
     canConfigure: ["admin", "preparer"].includes(auth.role || ""),
@@ -47,6 +50,8 @@ type SendBody = {
   sender?: string; force?: boolean; partIds?: string[]; attachments?: { pdf?: boolean; xlsx?: boolean };
   /** A PDF built in the browser (the executive summary for the recap). */
   extraPdf?: { name?: string; base64?: string };
+  /** Test send: goes only to `testTo`, no mandatory CC, no recently-sent guard, subject marked [TEST]. */
+  test?: boolean; testTo?: string;
 };
 
 const RECAP_NAME = "ALL SUPPLIERS (RECAP)";
@@ -64,20 +69,31 @@ export async function POST(request: NextRequest) {
   const recap = kind === "recap";
   const supplierName = recap ? RECAP_NAME : String(body.supplierName || "").trim();
   if (!supplierName) return NextResponse.json({ error: "Choose one supplier." }, { status: 400 });
-  const to = emailsOf((body.to || []).join(";")).slice(0, recap ? 400 : 20);
+  const test = body.test === true;
+  const senders = parseSenders(process.env.FOLLOWUP_SENDERS);
+  let to = emailsOf((body.to || []).join(";")).slice(0, recap ? 400 : 20);
+  if (test) {
+    // A test may only reach the person who is testing (or their own organisation), never a supplier.
+    const target = emailsOf(String(body.testTo || auth.email || ""))[0];
+    const domains = new Set([auth.email, ...senders.map((x) => x.email)].filter(Boolean).map((x) => String(x).split("@")[1]?.toLowerCase()));
+    if (!target) return NextResponse.json({ error: "Enter a valid test e-mail address." }, { status: 422 });
+    if (!domains.has(target.split("@")[1]?.toLowerCase())) return NextResponse.json({ error: "A test can only be sent to an address in your own organisation." }, { status: 422 });
+    to = [target];
+  }
   if (!to.length) return NextResponse.json({ error: "No valid recipient e-mail. Add the supplier PIC in Directory first." }, { status: 422 });
-  const subject = String(body.subject || "").trim().slice(0, 240);
+  let subject = String(body.subject || "").trim().slice(0, 240);
+  if (test && !/^\[TEST\]/i.test(subject)) subject = `[TEST] ${subject}`.slice(0, 240);
   const messageBody = String(body.messageBody || "").trim().slice(0, 30000);
   if (!subject || !messageBody) return NextResponse.json({ error: "Subject and message are required." }, { status: 422 });
 
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   const config = await loadConfig(supabase);
-  const sender = pickSender(parseSenders(process.env.FOLLOWUP_SENDERS), body.sender);   // not on the allow-list => the flow's own mailbox sends
-  const cc = mergeCc({ to, cc: emailsOf((body.cc || []).join(";")), required: config.requiredCc, senderEmail: sender?.email });
+  const sender = pickSender(senders, body.sender);   // not on the allow-list => the flow's own mailbox sends
+  const cc = test ? [] : mergeCc({ to, cc: emailsOf((body.cc || []).join(";")), required: config.requiredCc, senderEmail: sender?.email });
 
   const gapHours = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
-  if (!body.force && gapHours > 0) {
+  if (!test && !body.force && gapHours > 0) {
     const { data: last } = await supabase.from("imds_tracker_followup_logs").select("sent_at").eq("supplier_name", supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
     if (recentlySent(last?.[0]?.sent_at, new Date(), gapHours)) {
       return NextResponse.json({ error: `${supplierName} was already e-mailed within the last ${gapHours} hours. Nothing was sent.`, skipped: "RECENTLY_SENT" }, { status: 409 });
@@ -114,7 +130,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: log, error: logError } = await supabase.from("imds_tracker_followup_logs").insert({
-    supplier_code: supplierCode || null, supplier_name: supplierName, recipient_email: to.join(";"), cc_emails: cc, subject, message_body: messageBody,
+    supplier_code: supplierCode || null, supplier_name: test ? `[TEST] ${supplierName}` : supplierName, recipient_email: to.join(";"), cc_emails: cc, subject, message_body: messageBody,
     part_count: ids.length, attachment_name: attachments.map((a) => a.name).join(", ") || null, status: "PREPARED", sent_by: auth.userId
   }).select("id").single();
   if (logError || !log) return NextResponse.json({ error: logError?.message || "Could not record the e-mail attempt." }, { status: 500 });
@@ -137,8 +153,8 @@ export async function POST(request: NextRequest) {
   }).eq("id", log.id);
   await supabase.from("audit_events").insert({
     actor_id: auth.userId, action: delivery.ok ? "IMDS_TRACKER_SUPPLIER_EMAIL_SENT" : "IMDS_TRACKER_SUPPLIER_EMAIL_FAILED", entity_type: "imds_tracker_followup", entity_id: log.id,
-    metadata: { kind, supplierCode, recipientCount: to.length, ccCount: cc.length, parts: ids.length, attachments: attachments.map((a) => a.name), status }
+    metadata: { kind, test, supplierCode, recipientCount: to.length, ccCount: cc.length, parts: ids.length, attachments: attachments.map((a) => a.name), status }
   });
   if (!delivery.ok) return NextResponse.json({ error: delivery.error || "Power Automate did not accept this e-mail.", logId: log.id }, { status: 502 });
-  return NextResponse.json({ sent: true, logId: log.id, supplier: supplierName, to, cc, partCount: ids.length, attachments: attachments.map((a) => a.name), sentFrom: sender?.email || "the flow's own mailbox" });
+  return NextResponse.json({ sent: true, logId: log.id, supplier: supplierName, to, cc, partCount: ids.length, attachments: attachments.map((a) => a.name), test, sentFrom: sender?.email || "the flow's own mailbox" });
 }
