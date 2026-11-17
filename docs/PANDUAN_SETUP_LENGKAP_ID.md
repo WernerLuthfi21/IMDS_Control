@@ -195,7 +195,7 @@ Catatan teknis: file kecil (≤3,5 MB) dikirim dalam satu permintaan; import MD 
 
 ## 11. Auto-judge dan memori (Judgement)
 
-**Sekali jalan:** jalankan `supabase/migrations/20261118000000_judgement_memory_autojudge.sql` di Supabase → SQL editor (setelah `20261110000000_tracker_settings.sql`). Cek versi migrasi remote dulu; jangan reset.
+**Sekali jalan:** jalankan `supabase/migrations/20261118000000_judgement_memory_autojudge.sql` lalu `20261118010000_judgement_escalations.sql` di Supabase → SQL editor (setelah `20261110000000_tracker_settings.sql`). Cek versi migrasi remote dulu; jangan reset.
 
 **Memori ("tidak ditanya lagi"):** jawaban Toyota per part number (destination, kelas toleransi massa, jawaban flow milik Toyota) disimpan sekali dan otomatis dipakai untuk kasus yang sama. Di panel kasus tertulis *Remembered from <nama> on <tanggal>*. Pilih jawaban lain untuk menggantinya.
 
@@ -205,3 +205,5 @@ Catatan teknis: file kecil (≤3,5 MB) dikirim dalam satu permintaan; import MD 
 3. **Rules** (admin / rule approver): saklar induk, *Shadow mode*, dan saklar per keluarga aturan (mass, SMS, App 44, Pb, substances). Nama dan tanggal yang menyalakan dicatat.
 4. Kalau saklar induk ON, shadow OFF, dan keluarganya ON: tombol menjadi **Auto-judge** dan kasus yang lengkap disimpan FINAL oleh `Auto-judgement (System)`, dicatat di audit, dan ikut disinkronkan ke Excel seperti simpan manual. Error Type 19, HOLD, data kurang, dan flow yang belum dikodekan tidak pernah difinalkan.
 5. Keputusan otomatis bertanda **Auto OK / Auto NG** di daftar; buka kasusnya lalu **Reopen** (wajib alasan) untuk mengembalikannya ke antrean.
+
+**Eskalasi TMC:** kalau flow berakhir "Contact TMC", panel kasus menampilkan strip kuning. Klik **Mark as sent to TMC** saat sudah dikirim (strip biru), lalu **Record TMC answer** (OK/NG + catatan) saat TMC menjawab (strip hijau). Jawaban itu otomatis dipakai untuk kasus identik berikutnya (part, error type, CAS, flow sama) dan bisa difinalkan oleh auto-judge bila keluarga *substances* dinyalakan.

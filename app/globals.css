@@ -628,3 +628,15 @@ html[data-theme="dark"] .aj-mode.shadow{background:#3a2f18;color:#f1d08b;border-
 @media(max-width:480px){.aj{padding:14px}.aj-copy h2{font-size:16.5px}.aj-top{gap:12px}.aj .cat{width:52px!important;height:52px!important}.aj .cat svg{width:52px;height:52px}}
 /* Phones: keep the top bar on one tidy line */
 @media(max-width:480px){.workspace-switch-link span{display:none}.breadcrumb{overflow:hidden}.breadcrumb strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.environment-pill{display:none}.topbar{gap:6px}.topbar-actions{gap:4px}.topbar .icon-button,.topbar .theme-toggle{width:36px;height:36px;min-width:36px}.panel,.card{min-width:0;max-width:100%}}
+/* TMC escalation strip */
+.jx-tmc{display:grid;gap:8px;padding:11px 13px;border-radius:12px;border:1px solid var(--glass-line);background:var(--amber-bg)}
+.jx-tmc.sent{background:var(--blue-bg)}
+.jx-tmc.confirmed{background:var(--green-bg)}
+.jx-tmc-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:var(--glass-ink);font-size:12.5px}
+.jx-tmc-line small{color:var(--glass-muted)}
+.jx-tmc-dot{width:9px;height:9px;border-radius:50%;background:var(--amber);flex:none}
+.jx-tmc.sent .jx-tmc-dot{background:var(--blue)}.jx-tmc.confirmed .jx-tmc-dot{background:var(--green)}
+.jx-tmc-actions{display:flex;flex-wrap:wrap;gap:8px}
+.jx-tmc-actions button{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--glass-line);background:var(--surface);color:var(--glass-ink);font-size:12px;font-weight:650;cursor:pointer}
+.jx-tmc-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.jx-tmc-form input{flex:1 1 220px;min-width:0;min-height:36px;border-radius:9px;border:1px solid var(--line-strong);padding:0 10px;background:var(--surface);color:var(--ink)}
