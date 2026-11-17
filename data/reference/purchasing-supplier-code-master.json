@@ -1,0 +1,1347 @@
+{
+"meta": {
+"sourceFile": "Supplier_Code.xlsx",
+"sha256": "8499377a18be2908f005021714be54cb25e330712a4fa7c3823c1c3e5ee923da",
+"version": "Supplier Code master (Purchasing)",
+"extractedAt": "2026-11-14T20:27:44",
+"status": "EXTRACTED_PENDING_ADMIN_APPROVAL",
+"rowsWithoutCode": 52,
+"classification": "PROTECTED",
+"classificationConfirmedBy": "Werner (repository owner), 2026-11-18",
+"extractedVia": "Jasmine's G-CATS Auto-Judgement refs-data (suppliers block)"
+},
+"entries": [
+{
+"code": "5010",
+"codeKey": "5010",
+"name": "3M INDONESIA",
+"nameKey": "3M INDONESIA"
+},
+{
+"code": "5159",
+"codeKey": "5159",
+"name": "ADVICS INDONESIA",
+"nameKey": "ADVICS INDONESIA"
+},
+{
+"code": "T007",
+"codeKey": "T007",
+"name": "ADYAWINSA STAMPING INDUSTRIES",
+"nameKey": "ADYAWINSA STAMPING INDUSTRIES"
+},
+{
+"code": "T005",
+"codeKey": "T005",
+"name": "AFIXKOGYO INDONESIA",
+"nameKey": "AFIXKOGYO INDONESIA"
+},
+{
+"code": "5142",
+"codeKey": "5142",
+"name": "AICHI FORGING INDONESIA",
+"nameKey": "AICHI FORGING INDONESIA"
+},
+{
+"code": "5038",
+"codeKey": "5038",
+"name": "AISAN NASMOCO INDUSTRI",
+"nameKey": "AISAN NASMOCO INDUSTRI"
+},
+{
+"code": "5715",
+"codeKey": "5715",
+"name": "AISI AIKEN INDONESIA",
+"nameKey": "AISI AIKEN INDONESIA"
+},
+{
+"code": "5011",
+"codeKey": "5011",
+"name": "AISIN INDONESIA",
+"nameKey": "AISIN INDONESIA"
+},
+{
+"code": "T-009",
+"codeKey": "T009",
+"name": "AKASHI WAHANA INDONESIA",
+"nameKey": "AKASHI WAHANA INDONESIA"
+},
+{
+"code": "T001",
+"codeKey": "T001",
+"name": "AKEBONO BRAKE ASTRA INDONESIA",
+"nameKey": "AKEBONO BRAKE ASTRA INDONESIA"
+},
+{
+"code": "8437",
+"codeKey": "8437",
+"name": "AKSARA BUANA",
+"nameKey": "AKSARA BUANA"
+},
+{
+"code": "5200",
+"codeKey": "5200",
+"name": "APM ARMADA AUTOPARTS",
+"nameKey": "APM ARMADA AUTOPARTS"
+},
+{
+"code": "5396",
+"codeKey": "5396",
+"name": "ARAI RUBBER SEAL INDONESIA",
+"nameKey": "ARAI RUBBER SEAL INDONESIA"
+},
+{
+"code": "5014",
+"codeKey": "5014",
+"name": "ARGAPURA",
+"nameKey": "ARGAPURA"
+},
+{
+"code": "5207",
+"codeKey": "5207",
+"name": "ARMSTRONG INDUSTRI INDONESIA",
+"nameKey": "ARMSTRONG INDUSTRI INDONESIA"
+},
+{
+"code": "5248-1",
+"codeKey": "52481",
+"name": "ART PISTON INDONESIA",
+"nameKey": "ART PISTON INDONESIA"
+},
+{
+"code": "5015",
+"codeKey": "5015",
+"name": "ASAHIMAS FLAT GLASS",
+"nameKey": "ASAHIMAS FLAT GLASS"
+},
+{
+"code": "5002",
+"codeKey": "5002",
+"name": "ASALTA MANDIRI AGUNG",
+"nameKey": "ASALTA MANDIRI AGUNG"
+},
+{
+"code": "T-006",
+"codeKey": "T006",
+"name": "ASIA HODA INDONESIA",
+"nameKey": "ASIA HODA INDONESIA"
+},
+{
+"code": "5",
+"codeKey": "5",
+"name": "ASTRA DAIHATSU MOTOR",
+"nameKey": "ASTRA DAIHATSU MOTOR"
+},
+{
+"code": "5182",
+"codeKey": "5182",
+"name": "ASTRA JUOKU INDONESIA",
+"nameKey": "ASTRA JUOKU INDONESIA"
+},
+{
+"code": "5593",
+"codeKey": "5593",
+"name": "ASTRA KOMPONEN INDONESIA",
+"nameKey": "ASTRA KOMPONEN INDONESIA"
+},
+{
+"code": "5073",
+"codeKey": "5073",
+"name": "ASTRA NIPPON GASKET INDONESIA",
+"nameKey": "ASTRA NIPPON GASKET INDONESIA"
+},
+{
+"code": "8",
+"codeKey": "8",
+"name": "ASTRA OTOPARTS TBK DIV NUSAMETAL",
+"nameKey": "ASTRA OTOPARTS DIV NUSAMETAL"
+},
+{
+"code": "5005",
+"codeKey": "5005",
+"name": "AT INDONESIA",
+"nameKey": "AT INDONESIA"
+},
+{
+"code": "T002",
+"codeKey": "T002",
+"name": "AUTO ANTENNA MANUFACTURING",
+"nameKey": "AUTO ANTENNA MANUFACTURING"
+},
+{
+"code": "5024",
+"codeKey": "5024",
+"name": "AUTOCOMP SYSTEMS INDONESIA",
+"nameKey": "AUTOCOMP SYSTEMS INDONESIA"
+},
+{
+"code": "5040",
+"codeKey": "5040",
+"name": "AUTOLIV INDONESIA",
+"nameKey": "AUTOLIV INDONESIA"
+},
+{
+"code": "5108",
+"codeKey": "5108",
+"name": "AUTOMOTIVE FASTENERS AOYAMA INDONESIA",
+"nameKey": "AUTOMOTIVE FASTENERS AOYAMA INDONESIA"
+},
+{
+"code": "5498",
+"codeKey": "5498",
+"name": "AUTOPLASTIK INDONESIA",
+"nameKey": "AUTOPLASTIK INDONESIA"
+},
+{
+"code": "5625",
+"codeKey": "5625",
+"name": "AUTRANS ASIA INDONESIA",
+"nameKey": "AUTRANS ASIA INDONESIA"
+},
+{
+"code": "5018",
+"codeKey": "5018",
+"name": "BRIDGESTONE TIRE INDONESIA",
+"nameKey": "BRIDGESTONE TIRE INDONESIA"
+},
+{
+"code": "5520",
+"codeKey": "5520",
+"name": "CABININDO PUTRA",
+"nameKey": "CABININDO PUTRA"
+},
+{
+"code": "5659",
+"codeKey": "5659",
+"name": "CABLETECH",
+"nameKey": "CABLETECH"
+},
+{
+"code": "5019",
+"codeKey": "5019",
+"name": "CATURINDO AGUNGJAYA RUBBER",
+"nameKey": "CATURINDO AGUNGJAYA RUBBER"
+},
+{
+"code": "5143",
+"codeKey": "5143",
+"name": "CENTRAL MOTOR WHEEL INDONESIA",
+"nameKey": "CENTRAL MOTOR WHEEL INDONESIA"
+},
+{
+"code": "5175",
+"codeKey": "5175",
+"name": "CHIYODA INTEGRE INDONESIA",
+"nameKey": "CHIYODA INTEGRE INDONESIA"
+},
+{
+"code": "5020",
+"codeKey": "5020",
+"name": "CHUHATSU INDONESIA",
+"nameKey": "CHUHATSU INDONESIA"
+},
+{
+"code": "5601",
+"codeKey": "5601",
+"name": "CIPTA MANDIRI WIRASAKTI",
+"nameKey": "CIPTA MANDIRI WIRASAKTI"
+},
+{
+"code": "5875",
+"codeKey": "5875",
+"name": "CITRA NUGERAH KARYA",
+"nameKey": "CITRA NUGERAH KARYA"
+},
+{
+"code": "2577",
+"codeKey": "2577",
+"name": "CONTINENTAL AUTOMOTIVE INDONESIA",
+"nameKey": "CONTINENTAL AUTOMOTIVE INDONESIA"
+},
+{
+"code": "5157",
+"codeKey": "5157",
+"name": "DAIDO METAL INDONESIA",
+"nameKey": "DAIDO METAL INDONESIA"
+},
+{
+"code": "8266",
+"codeKey": "8266",
+"name": "DAIHATSU DRIVETRAIN MANUFACTURING INDONESIA",
+"nameKey": "DAIHATSU DRIVETRAIN MANUFACTURING INDONESIA"
+},
+{
+"code": "5350",
+"codeKey": "5350",
+"name": "DAIKYO NISHIKAWA TENMA INDONESIA",
+"nameKey": "DAIKYO NISHIKAWA TENMA INDONESIA"
+},
+{
+"code": "5021",
+"codeKey": "5021",
+"name": "DASA WINDU AGUNG",
+"nameKey": "DASA WINDU AGUNG"
+},
+{
+"code": "5624",
+"codeKey": "5624",
+"name": "DATINDO IMAGE WERKS",
+"nameKey": "DATINDO IMAGE WERKS"
+},
+{
+"code": "T015",
+"codeKey": "T015",
+"name": "DELA CEMARA INDAH",
+"nameKey": "DELA CEMARA INDAH"
+},
+{
+"code": "5507",
+"codeKey": "5507",
+"name": "DENAPELLA LESTARI",
+"nameKey": "DENAPELLA LESTARI"
+},
+{
+"code": "5022",
+"codeKey": "5022",
+"name": "DENSO SALES INDONESIA",
+"nameKey": "DENSO SALES INDONESIA"
+},
+{
+"code": "5636",
+"codeKey": "5636",
+"name": "DEWA CIPTA UTAMA",
+"nameKey": "DEWA CIPTA UTAMA"
+},
+{
+"code": "5364",
+"codeKey": "5364",
+"name": "DHARMA CONTROLCABLE INDONESIA",
+"nameKey": "DHARMA CONTROLCABLE INDONESIA"
+},
+{
+"code": "T016",
+"codeKey": "T016",
+"name": "DHARMA ELECTRINDO MANUFACTURING",
+"nameKey": "DHARMA ELECTRINDO MANUFACTURING"
+},
+{
+"code": "5395",
+"codeKey": "5395",
+"name": "DHARMA POLIMETAL",
+"nameKey": "DHARMA POLIMETAL"
+},
+{
+"code": "5263-1",
+"codeKey": "52631",
+"name": "DIAMOND ELECTRIC INDONESIA",
+"nameKey": "DIAMOND ELECTRIC INDONESIA"
+},
+{
+"code": "5335",
+"codeKey": "5335",
+"name": "DINAR MAKMUR",
+"nameKey": "DINAR MAKMUR"
+},
+{
+"code": "T021",
+"codeKey": "T021",
+"name": "EKAMITRA JAYATAMA",
+"nameKey": "EKAMITRA JAYATAMA"
+},
+{
+"code": "5025",
+"codeKey": "5025",
+"name": "ENKEI INDONESIA",
+"nameKey": "ENKEI INDONESIA"
+},
+{
+"code": "5212",
+"codeKey": "5212",
+"name": "EXCEL METAL INDUSTRY",
+"nameKey": "EXCEL METAL INDUSTRY"
+},
+{
+"code": "5045",
+"codeKey": "5045",
+"name": "EXEDY MANUFACTURING INDONESIA",
+"nameKey": "EXEDY MANUFACTURING INDONESIA"
+},
+{
+"code": "5145",
+"codeKey": "5145",
+"name": "FEDERAL NITTAN INDUSTRIES",
+"nameKey": "FEDERAL NITTAN INDUSTRIES"
+},
+{
+"code": "5320",
+"codeKey": "5320",
+"name": "FINE SINTER INDONESIA",
+"nameKey": "FINE SINTER INDONESIA"
+},
+{
+"code": "5627",
+"codeKey": "5627",
+"name": "FRINA LESTARI NUSANTARA",
+"nameKey": "FRINA LESTARI NUSANTARA"
+},
+{
+"code": "5661",
+"codeKey": "5661",
+"name": "FTS AUTOMOTIVE INDONESIA",
+"nameKey": "FTS AUTOMOTIVE INDONESIA"
+},
+{
+"code": "5319",
+"codeKey": "5319",
+"name": "FUJI KINZOKU INDONESIA",
+"nameKey": "FUJI KINZOKU INDONESIA"
+},
+{
+"code": "T022",
+"codeKey": "T022",
+"name": "FUJI SEAT INDONESIA",
+"nameKey": "FUJI SEAT INDONESIA"
+},
+{
+"code": "T023",
+"codeKey": "T023",
+"name": "FUJI TECHNICA INDONESIA",
+"nameKey": "FUJI TECHNICA INDONESIA"
+},
+{
+"code": "5049",
+"codeKey": "5049",
+"name": "FUKOKU TOKAI RUBBER INDONESIA",
+"nameKey": "FUKOKU TOKAI RUBBER INDONESIA"
+},
+{
+"code": "5347",
+"codeKey": "5347",
+"name": "FURUKAWA AUTOMOTIVE SYSTEMS INDONESIA",
+"nameKey": "FURUKAWA AUTOMOTIVE SYSTEMS INDONESIA"
+},
+{
+"code": "5376",
+"codeKey": "5376",
+"name": "FUTABA INDUSTRIAL INDONESIA",
+"nameKey": "FUTABA INDUSTRIAL INDONESIA"
+},
+{
+"code": "5027",
+"codeKey": "5027",
+"name": "GAJAH TUNGGAL",
+"nameKey": "GAJAH TUNGGAL"
+},
+{
+"code": "5028",
+"codeKey": "5028",
+"name": "GARUDA METAL UTAMA",
+"nameKey": "GARUDA METAL UTAMA"
+},
+{
+"code": "5029",
+"codeKey": "5029",
+"name": "GARUDA METALINDO",
+"nameKey": "GARUDA METALINDO"
+},
+{
+"code": "5030",
+"codeKey": "5030",
+"name": "GEMASUARA ADHITAMA",
+"nameKey": "GEMASUARA ADHITAMA"
+},
+{
+"code": "5026",
+"codeKey": "5026",
+"name": "GS BATTERY",
+"nameKey": "GS BATTERY"
+},
+{
+"code": "5308",
+"codeKey": "5308",
+"name": "GS ELECTECH INDONESIA",
+"nameKey": "GS ELECTECH INDONESIA"
+},
+{
+"code": "5640",
+"codeKey": "5640",
+"name": "G-TEKT INDONESIA MANUFACTURING",
+"nameKey": "G TEKT INDONESIA MANUFACTURING"
+},
+{
+"code": "5004",
+"codeKey": "5004",
+"name": "GUNA SENAPUTRA SEJAHTERA",
+"nameKey": "GUNA SENAPUTRA SEJAHTERA"
+},
+{
+"code": "5032",
+"codeKey": "5032",
+"name": "HI-LEX INDONESIA",
+"nameKey": "HI LEX INDONESIA"
+},
+{
+"code": "5751",
+"codeKey": "5751",
+"name": "HITACHI ASTEMO BEKASI MANUFACTURING >> ASTEMO BEKASI MANUFACTURING",
+"nameKey": "HITACHI ASTEMO BEKASI MANUFACTURING ASTEMO BEKASI MANUFACTURING"
+},
+{
+"code": "5750",
+"codeKey": "5750",
+"name": "HITACHI ASTEMO BEKASI POWERTRAIN SYSTEMS >> ASTEMO INDONESIA AUTOMOTIVE SYSTEM",
+"nameKey": "HITACHI ASTEMO BEKASI POWERTRAIN SYSTEMS ASTEMO INDONESIA AUTOMOTIVE SYSTEM"
+},
+{
+"code": "5333",
+"codeKey": "5333",
+"name": "HOWA INDONESIA",
+"nameKey": "HOWA INDONESIA"
+},
+{
+"code": "5639",
+"codeKey": "5639",
+"name": "ICHII INDUSTRIES INDONESIA",
+"nameKey": "ICHII INDUSTRIES INDONESIA"
+},
+{
+"code": "5033",
+"codeKey": "5033",
+"name": "ICHIKOH INDONESIA",
+"nameKey": "ICHIKOH INDONESIA"
+},
+{
+"code": "5034",
+"codeKey": "5034",
+"name": "INDOCIPTA HASTA PERKASA",
+"nameKey": "INDOCIPTA HASTA PERKASA"
+},
+{
+"code": "5301",
+"codeKey": "5301",
+"name": "INDONESIA KOITO",
+"nameKey": "INDONESIA KOITO"
+},
+{
+"code": "5055",
+"codeKey": "5055",
+"name": "INDONESIA STANLEY ELECTRIC",
+"nameKey": "INDONESIA STANLEY ELECTRIC"
+},
+{
+"code": "5346",
+"codeKey": "5346",
+"name": "INDONESIA THAI SUMMIT AUTO",
+"nameKey": "INDONESIA THAI SUMMIT AUTO"
+},
+{
+"code": "5566",
+"codeKey": "5566",
+"name": "INDONESIA THAI SUMMIT PLASTECH",
+"nameKey": "INDONESIA THAI SUMMIT PLASTECH"
+},
+{
+"code": "T027",
+"codeKey": "T027",
+"name": "INDOSAFETY SENTOSA INDUSTRY",
+"nameKey": "INDOSAFETY SENTOSA INDUSTRY"
+},
+{
+"code": "5568",
+"codeKey": "5568",
+"name": "INDOSPRING",
+"nameKey": "INDOSPRING"
+},
+{
+"code": "5306",
+"codeKey": "5306",
+"name": "INGRESS MALINDO VENTURES",
+"nameKey": "INGRESS MALINDO VENTURES"
+},
+{
+"code": "5044",
+"codeKey": "5044",
+"name": "INKOASKU",
+"nameKey": "INKOASKU"
+},
+{
+"code": "5091",
+"codeKey": "5091",
+"name": "INOAC POLYTECHNO INDONESIA",
+"nameKey": "INOAC POLYTECHNO INDONESIA"
+},
+{
+"code": "3608",
+"codeKey": "3608",
+"name": "INTERGLOBAL ELECTRIC PARTS",
+"nameKey": "INTERGLOBAL ELECTRIC PARTS"
+},
+{
+"code": "1",
+"codeKey": "1",
+"name": "INTI GANDA PERDANA",
+"nameKey": "INTI GANDA PERDANA"
+},
+{
+"code": "T026",
+"codeKey": "T026",
+"name": "INTI PANTJA PRESS INDUSTRI",
+"nameKey": "INTI PANTJA PRESS INDUSTRI"
+},
+{
+"code": "5054",
+"codeKey": "5054",
+"name": "IRC INOAC INDONESIA",
+"nameKey": "IRC INOAC INDONESIA"
+},
+{
+"code": "5504",
+"codeKey": "5504",
+"name": "ITOCHU INDONESIA",
+"nameKey": "ITOCHU INDONESIA"
+},
+{
+"code": "5247",
+"codeKey": "5247",
+"name": "ITOKIN INDONESIA",
+"nameKey": "ITOKIN INDONESIA"
+},
+{
+"code": "5631",
+"codeKey": "5631",
+"name": "JALA PRIMA PERKASA",
+"nameKey": "JALA PRIMA PERKASA"
+},
+{
+"code": "5148",
+"codeKey": "5148",
+"name": "JAYA VICTORI CEMERLANG",
+"nameKey": "JAYA VICTORI CEMERLANG"
+},
+{
+"code": "3606",
+"codeKey": "3606",
+"name": "JFD INDONESIA",
+"nameKey": "JFD INDONESIA"
+},
+{
+"code": "5513",
+"codeKey": "5513",
+"name": "JOYSON SAFETY SYSTEMS INDONESIA",
+"nameKey": "JOYSON SAFETY SYSTEMS INDONESIA"
+},
+{
+"code": "5302-1\n5302",
+"codeKey": "530215302",
+"name": "JTEKT INDONESIA",
+"nameKey": "JTEKT INDONESIA"
+},
+{
+"code": "T029",
+"codeKey": "T029",
+"name": "KALIBARU",
+"nameKey": "KALIBARU"
+},
+{
+"code": "5433",
+"codeKey": "5433",
+"name": "KANEMITSU SGS INDONESIA",
+"nameKey": "KANEMITSU SGS INDONESIA"
+},
+{
+"code": "T031",
+"codeKey": "T031",
+"name": "KARYA PUTRA SANGKURIANG",
+"nameKey": "KARYA PUTRA SANGKURIANG"
+},
+{
+"code": "5048",
+"codeKey": "5048",
+"name": "KAYABA INDONESIA",
+"nameKey": "KAYABA INDONESIA"
+},
+{
+"code": "5635",
+"codeKey": "5635",
+"name": "KINUGAWA INDONESIA",
+"nameKey": "KINUGAWA INDONESIA"
+},
+{
+"code": "5348",
+"codeKey": "5348",
+"name": "KOJIMA AUTO TECHNOLOGY INDONESIA",
+"nameKey": "KOJIMA AUTO TECHNOLOGY INDONESIA"
+},
+{
+"code": "5008",
+"codeKey": "5008",
+"name": "KOMPONEN FUTABA NUSAPERSADA",
+"nameKey": "KOMPONEN FUTABA NUSAPERSADA"
+},
+{
+"code": "5309-1",
+"codeKey": "53091",
+"name": "KOTOBUKIYA INDO CLASSIC INDUSTRIES",
+"nameKey": "KOTOBUKIYA INDO CLASSIC INDUSTRIES"
+},
+{
+"code": "5336",
+"codeKey": "5336",
+"name": "KYOKUYO INDUSTRIAL INDONESIA",
+"nameKey": "KYOKUYO INDUSTRIAL INDONESIA"
+},
+{
+"code": "5058",
+"codeKey": "5058",
+"name": "KYORAKU BLOWMOLDING INDONESIA",
+"nameKey": "KYORAKU BLOWMOLDING INDONESIA"
+},
+{
+"code": "5278",
+"codeKey": "5278",
+"name": "KYOWA SYNCHRO TECHNOLOGY INDONESIA",
+"nameKey": "KYOWA SYNCHRO TECHNOLOGY INDONESIA"
+},
+{
+"code": "T044",
+"codeKey": "T044",
+"name": "MAH SING INDONESIA",
+"nameKey": "MAH SING INDONESIA"
+},
+{
+"code": "T042",
+"codeKey": "T042",
+"name": "MANDIRI PANCA PRIMA",
+"nameKey": "MANDIRI PANCA PRIMA"
+},
+{
+"code": "5530",
+"codeKey": "5530",
+"name": "MARUGO RUBBER INDONESIA",
+"nameKey": "MARUGO RUBBER INDONESIA"
+},
+{
+"code": "T043",
+"codeKey": "T043",
+"name": "MAXFOS PRIMA",
+"nameKey": "MAXFOS PRIMA"
+},
+{
+"code": "T039",
+"codeKey": "T039",
+"name": "MEGAH NUSANTARA PERKASA",
+"nameKey": "MEGAH NUSANTARA PERKASA"
+},
+{
+"code": "5328",
+"codeKey": "5328",
+"name": "MEIDOH INDONESIA",
+"nameKey": "MEIDOH INDONESIA"
+},
+{
+"code": "T034",
+"codeKey": "T034",
+"name": "MEKAR ARMADA JAYA",
+"nameKey": "MEKAR ARMADA JAYA"
+},
+{
+"code": "5062",
+"codeKey": "5062",
+"name": "MENARA TERUS MAKMUR",
+"nameKey": "MENARA TERUS MAKMUR"
+},
+{
+"code": "2546",
+"codeKey": "2546",
+"name": "METALART ASTRA INDONESIA",
+"nameKey": "METALART ASTRA INDONESIA"
+},
+{
+"code": "5003",
+"codeKey": "5003",
+"name": "METINDO ERASAKTI",
+"nameKey": "METINDO ERASAKTI"
+},
+{
+"code": "5105",
+"codeKey": "5105",
+"name": "MINDA ASEAN AUTOMOTIVE",
+"nameKey": "MINDA ASEAN AUTOMOTIVE"
+},
+{
+"code": "T037",
+"codeKey": "T037",
+"name": "MITSUBISHI ELECTRIC AUTOMOTIVE INDONESIA",
+"nameKey": "MITSUBISHI ELECTRIC AUTOMOTIVE INDONESIA"
+},
+{
+"code": "5344",
+"codeKey": "5344",
+"name": "MITSUBOSHI BELTING SALES",
+"nameKey": "MITSUBOSHI BELTING SALES"
+},
+{
+"code": "5506",
+"codeKey": "5506",
+"name": "MITSUI KINZOKU ACT INDONESIA --> HILEX ACT WEST JAVA INDONESIA",
+"nameKey": "MITSUI KINZOKU ACT INDONESIA HILEX ACT WEST JAVA INDONESIA"
+},
+{
+"code": "T040",
+"codeKey": "T040",
+"name": "MORNCO INDONESIA",
+"nameKey": "MORNCO INDONESIA"
+},
+{
+"code": "5368",
+"codeKey": "5368",
+"name": "MTAT INDONESIA",
+"nameKey": "MTAT INDONESIA"
+},
+{
+"code": "T045",
+"codeKey": "T045",
+"name": "MULIA INDUSTRINDO",
+"nameKey": "MULIA INDUSTRINDO"
+},
+{
+"code": "5224",
+"codeKey": "5224",
+"name": "MULTI KARYA SINAR DINAMIKA",
+"nameKey": "MULTI KARYA SINAR DINAMIKA"
+},
+{
+"code": "5144",
+"codeKey": "5144",
+"name": "MURAKAMI DELLOYD INDONESIA",
+"nameKey": "MURAKAMI DELLOYD INDONESIA"
+},
+{
+"code": "2533",
+"codeKey": "2533",
+"name": "MUROTECH INDONESIA",
+"nameKey": "MUROTECH INDONESIA"
+},
+{
+"code": "5557",
+"codeKey": "5557",
+"name": "MUSASHI AUTO PARTS INDONESIA",
+"nameKey": "MUSASHI AUTO PARTS INDONESIA"
+},
+{
+"code": "5150",
+"codeKey": "5150",
+"name": "NAMICOH INDONESIA COMPONENT",
+"nameKey": "NAMICOH INDONESIA COMPONENT"
+},
+{
+"code": "5074",
+"codeKey": "5074",
+"name": "NICHIAS SUNIJAYA",
+"nameKey": "NICHIAS SUNIJAYA"
+},
+{
+"code": "T048",
+"codeKey": "T048",
+"name": "NICHIRIN INDONESIA",
+"nameKey": "NICHIRIN INDONESIA"
+},
+{
+"code": "5367",
+"codeKey": "5367",
+"name": "NIFCO INDONESIA",
+"nameKey": "NIFCO INDONESIA"
+},
+{
+"code": "5345",
+"codeKey": "5345",
+"name": "NISHIKAWA KARYA INDONESIA",
+"nameKey": "NISHIKAWA KARYA INDONESIA"
+},
+{
+"code": "T046",
+"codeKey": "T046",
+"name": "NITTO ALAM INDONESIA",
+"nameKey": "NITTO ALAM INDONESIA"
+},
+{
+"code": "5789",
+"codeKey": "5789",
+"name": "NITTO MATERIALS INDONESIA",
+"nameKey": "NITTO MATERIALS INDONESIA"
+},
+{
+"code": "5545",
+"codeKey": "5545",
+"name": "NOK INDONESIA SALES",
+"nameKey": "NOK INDONESIA SALES"
+},
+{
+"code": "5059",
+"codeKey": "5059",
+"name": "NSK INDONESIA",
+"nameKey": "NSK INDONESIA"
+},
+{
+"code": "5060",
+"codeKey": "5060",
+"name": "NT PISTON RING INDONESIA",
+"nameKey": "NT PISTON RING INDONESIA"
+},
+{
+"code": "5611",
+"codeKey": "5611",
+"name": "NTN BEARING INDONESIA",
+"nameKey": "NTN BEARING INDONESIA"
+},
+{
+"code": "5000",
+"codeKey": "5000",
+"name": "NUSA TOYOTETSU",
+"nameKey": "NUSA TOYOTETSU"
+},
+{
+"code": "5006",
+"codeKey": "5006",
+"name": "NUSAHADI CITRAHARMONIS",
+"nameKey": "NUSAHADI CITRAHARMONIS"
+},
+{
+"code": "5178",
+"codeKey": "5178",
+"name": "OCHIAI MENARA INDONESIA",
+"nameKey": "OCHIAI MENARA INDONESIA"
+},
+{
+"code": "5075",
+"codeKey": "5075",
+"name": "OTICS INDONESIA",
+"nameKey": "OTICS INDONESIA"
+},
+{
+"code": "WID5629",
+"codeKey": "WID5629",
+"name": "OTSCON SAFETY INDONESIA",
+"nameKey": "OTSCON SAFETY INDONESIA"
+},
+{
+"code": "5076",
+"codeKey": "5076",
+"name": "PAKARTI RIKEN INDONESIA",
+"nameKey": "PAKARTI RIKEN INDONESIA"
+},
+{
+"code": "5077",
+"codeKey": "5077",
+"name": "PAKOAKUINA",
+"nameKey": "PAKOAKUINA"
+},
+{
+"code": "0048",
+"codeKey": "0048",
+"name": "PATEC PRESISI ENGINEERING",
+"nameKey": "PATEC PRESISI ENGINEERING"
+},
+{
+"code": "T051",
+"codeKey": "T051",
+"name": "PIOLAX INDONESIA",
+"nameKey": "PIOLAX INDONESIA"
+},
+{
+"code": "5615",
+"codeKey": "5615",
+"name": "PROGRESS TOYO INDONESIA",
+"nameKey": "PROGRESS TOYO INDONESIA"
+},
+{
+"code": "T057",
+"codeKey": "T057",
+"name": "REKADAYA MULTI ADIPRIMA",
+"nameKey": "REKADAYA MULTI ADIPRIMA"
+},
+{
+"code": "5580",
+"codeKey": "5580",
+"name": "RESONAC MATERIALS INDONESIA",
+"nameKey": "RESONAC MATERIALS INDONESIA"
+},
+{
+"code": "5112",
+"codeKey": "5112",
+"name": "ROBERT BOSCH",
+"nameKey": "ROBERT BOSCH"
+},
+{
+"code": "T058",
+"codeKey": "T058",
+"name": "ROKI INDONESIA",
+"nameKey": "ROKI INDONESIA"
+},
+{
+"code": "T064-1",
+"codeKey": "T0641",
+"name": "SAGA HIKARI TEKNINDO SEJATI",
+"nameKey": "SAGA HIKARI TEKNINDO SEJATI"
+},
+{
+"code": "5349",
+"codeKey": "5349",
+"name": "SAKAE RIKEN INDONESIA",
+"nameKey": "SAKAE RIKEN INDONESIA"
+},
+{
+"code": "5151",
+"codeKey": "5151",
+"name": "SAKURA JAVA INDONESIA",
+"nameKey": "SAKURA JAVA INDONESIA"
+},
+{
+"code": "5752",
+"codeKey": "5752",
+"name": "SANGO INDONESIA",
+"nameKey": "SANGO INDONESIA"
+},
+{
+"code": "T060",
+"codeKey": "T060",
+"name": "SANKEI DHARMA INDONESIA",
+"nameKey": "SANKEI DHARMA INDONESIA"
+},
+{
+"code": "5942",
+"codeKey": "5942",
+"name": "SANKO GOSEI TECHNOLOGY INDONESIA",
+"nameKey": "SANKO GOSEI TECHNOLOGY INDONESIA"
+},
+{
+"code": "5065",
+"codeKey": "5065",
+"name": "SANOH INDONESIA",
+"nameKey": "SANOH INDONESIA"
+},
+{
+"code": "5628",
+"codeKey": "5628",
+"name": "SANWA MANUFACTURING INDONESIA",
+"nameKey": "SANWA MANUFACTURING INDONESIA"
+},
+{
+"code": "5007",
+"codeKey": "5007",
+"name": "SARI TAKAGI ELOK PRODUK",
+"nameKey": "SARI TAKAGI ELOK PRODUK"
+},
+{
+"code": "5080",
+"codeKey": "5080",
+"name": "SEKISO INDUSTRIES INDONESIA",
+"nameKey": "SEKISO INDUSTRIES INDONESIA"
+},
+{
+"code": "2536",
+"codeKey": "2536",
+"name": "SERVVO FIRE INDONESIA",
+"nameKey": "SERVVO FIRE INDONESIA"
+},
+{
+"code": "5307",
+"codeKey": "5307",
+"name": "SETIA GUNA SEJATI",
+"nameKey": "SETIA GUNA SEJATI"
+},
+{
+"code": "5386",
+"codeKey": "5386",
+"name": "SHINTO KOGYO INDONESIA",
+"nameKey": "SHINTO KOGYO INDONESIA"
+},
+{
+"code": "T059",
+"codeKey": "T059",
+"name": "SINAR BAJA ELECTRIC",
+"nameKey": "SINAR BAJA ELECTRIC"
+},
+{
+"code": "5387",
+"codeKey": "5387",
+"name": "SOMIC INDONESIA",
+"nameKey": "SOMIC INDONESIA"
+},
+{
+"code": "0003",
+"codeKey": "0003",
+"name": "SUGITY CREATIVES",
+"nameKey": "SUGITY CREATIVES"
+},
+{
+"code": "5327",
+"codeKey": "5327",
+"name": "SUGIURA INDONESIA",
+"nameKey": "SUGIURA INDONESIA"
+},
+{
+"code": "5082",
+"codeKey": "5082",
+"name": "SUMI INDO WIRING SYSTEMS",
+"nameKey": "SUMI INDO WIRING SYSTEMS"
+},
+{
+"code": "5083",
+"codeKey": "5083",
+"name": "SUMI RUBBER INDONESIA",
+"nameKey": "SUMI RUBBER INDONESIA"
+},
+{
+"code": "5274",
+"codeKey": "5274",
+"name": "SUMIDEN SINTERED COMPONENTS INDONESIA",
+"nameKey": "SUMIDEN SINTERED COMPONENTS INDONESIA"
+},
+{
+"code": "2539",
+"codeKey": "2539",
+"name": "SUMINOE SURYA TECHNO",
+"nameKey": "SUMINOE SURYA TECHNO"
+},
+{
+"code": "5385",
+"codeKey": "5385",
+"name": "SUMMIT ADYAWINSA INDONESIA",
+"nameKey": "SUMMIT ADYAWINSA INDONESIA"
+},
+{
+"code": "5664",
+"codeKey": "5664",
+"name": "SUMMIT SEOYON AUTOMOTIVE INDONESIA",
+"nameKey": "SUMMIT SEOYON AUTOMOTIVE INDONESIA"
+},
+{
+"code": "5572",
+"codeKey": "5572",
+"name": "SUNCHIRIN INDUSTRIES INDONESIA",
+"nameKey": "SUNCHIRIN INDUSTRIES INDONESIA"
+},
+{
+"code": "T065",
+"codeKey": "T065",
+"name": "SUNGWOO INDONESIA",
+"nameKey": "SUNGWOO INDONESIA"
+},
+{
+"code": "5067",
+"codeKey": "5067",
+"name": "TAIHO NUSANTARA",
+"nameKey": "TAIHO NUSANTARA"
+},
+{
+"code": "4000008408",
+"codeKey": "4000008408",
+"name": "TAIYO KATECS INDONESIA",
+"nameKey": "TAIYO KATECS INDONESIA"
+},
+{
+"code": "5238",
+"codeKey": "5238",
+"name": "TAKAGI SARI MULTI UTAMA",
+"nameKey": "TAKAGI SARI MULTI UTAMA"
+},
+{
+"code": "5147",
+"codeKey": "5147",
+"name": "TG INOAC INDONESIA",
+"nameKey": "TG INOAC INDONESIA"
+},
+{
+"code": "T070",
+"codeKey": "T070",
+"name": "TIMUR MEGAH STEEL",
+"nameKey": "TIMUR MEGAH STEEL"
+},
+{
+"code": "5304",
+"codeKey": "5304",
+"name": "TOKAI RIKA INDONESIA",
+"nameKey": "TOKAI RIKA INDONESIA"
+},
+{
+"code": "5300",
+"codeKey": "5300",
+"name": "TOKAI RIKA SAFETY INDONESIA",
+"nameKey": "TOKAI RIKA SAFETY INDONESIA"
+},
+{
+"code": "5366",
+"codeKey": "5366",
+"name": "TOKAI RUBBER AUTO HOSE INDONESIA",
+"nameKey": "TOKAI RUBBER AUTO HOSE INDONESIA"
+},
+{
+"code": "5365",
+"codeKey": "5365",
+"name": "TOKAI RUBBER INDONESIA",
+"nameKey": "TOKAI RUBBER INDONESIA"
+},
+{
+"code": "T071",
+"codeKey": "T071",
+"name": "TOSAMA ABADI",
+"nameKey": "TOSAMA ABADI"
+},
+{
+"code": "5941",
+"codeKey": "5941",
+"name": "TOYO DENSO INDONESIA",
+"nameKey": "TOYO DENSO INDONESIA"
+},
+{
+"code": "5678",
+"codeKey": "5678",
+"name": "TOYONAGA INDONESIA",
+"nameKey": "TOYONAGA INDONESIA"
+},
+{
+"code": "5626",
+"codeKey": "5626",
+"name": "TOYODA GOSEI INDONESIA",
+"nameKey": "TOYODA GOSEI INDONESIA"
+},
+{
+"code": "5560",
+"codeKey": "5560",
+"name": "TOKAI TOYOTA AUTO BODY EXTRUSION",
+"nameKey": "TOKAI TOYOTA AUTO BODY EXTRUSION"
+},
+{
+"code": "5009",
+"codeKey": "5009",
+"name": "TOYOTA BOSHOKU INDONESIA",
+"nameKey": "TOYOTA BOSHOKU INDONESIA"
+},
+{
+"code": "5162",
+"codeKey": "5162",
+"name": "TOYOTA TSUSHO INDONESIA",
+"nameKey": "TOYOTA TSUSHO INDONESIA"
+},
+{
+"code": "5317",
+"codeKey": "5317",
+"name": "TPR SALES INDONESIA",
+"nameKey": "TPR SALES INDONESIA"
+},
+{
+"code": "T072",
+"codeKey": "T072",
+"name": "T.RAD INDONESIA",
+"nameKey": "T RAD INDONESIA"
+},
+{
+"code": "T067-1",
+"codeKey": "T0671",
+"name": "TRIMITRA CHITRAHASTA",
+"nameKey": "TRIMITRA CHITRAHASTA"
+},
+{
+"code": "5567",
+"codeKey": "5567",
+"name": "TRISAUDARA SENTOSA INDUSTRI",
+"nameKey": "TRISAUDARA SENTOSA INDUSTRI"
+},
+{
+"code": "5634",
+"codeKey": "5634",
+"name": "TSUANG HINE INDUSTRIAL",
+"nameKey": "TSUANG HINE INDUSTRIAL"
+},
+{
+"code": "5357",
+"codeKey": "5357",
+"name": "TSUCHIYA INDONESIA",
+"nameKey": "TSUCHIYA INDONESIA"
+},
+{
+"code": "5359",
+"codeKey": "5359",
+"name": "TUFFINDO NITTOKU AUTONEUM",
+"nameKey": "TUFFINDO NITTOKU AUTONEUM"
+},
+{
+"code": "5329",
+"codeKey": "5329",
+"name": "UNICRAFT NAGURA INDONESIA",
+"nameKey": "UNICRAFT NAGURA INDONESIA"
+},
+{
+"code": "5522",
+"codeKey": "5522",
+"name": "USUI INTERNATIONAL INDONESIA",
+"nameKey": "USUI INTERNATIONAL INDONESIA"
+},
+{
+"code": "5286",
+"codeKey": "5286",
+"name": "UYEMURA INDONESIA",
+"nameKey": "UYEMURA INDONESIA"
+},
+{
+"code": "5453",
+"codeKey": "5453",
+"name": "VELASTO INDONESIA",
+"nameKey": "VELASTO INDONESIA"
+},
+{
+"code": "5267",
+"codeKey": "5267",
+"name": "VUTEQ INDONESIA",
+"nameKey": "VUTEQ INDONESIA"
+},
+{
+"code": "5595",
+"codeKey": "5595",
+"name": "WHETRON JAYA INDONESIA",
+"nameKey": "WHETRON JAYA INDONESIA"
+},
+{
+"code": "5156",
+"codeKey": "5156",
+"name": "YASUNAGA INDONESIA",
+"nameKey": "YASUNAGA INDONESIA"
+},
+{
+"code": "5608",
+"codeKey": "5608",
+"name": "YOGYA PRESISI TEHNIKATAMA INDUSTRI",
+"nameKey": "YOGYA PRESISI TEHNIKATAMA INDUSTRI"
+},
+{
+"code": "5565",
+"codeKey": "5565",
+"name": "YOKOTEN CREATIVE INDONESIA",
+"nameKey": "YOKOTEN CREATIVE INDONESIA"
+},
+{
+"code": "5569",
+"codeKey": "5569",
+"name": "YOROZU AUTOMOTIVE INDONESIA",
+"nameKey": "YOROZU AUTOMOTIVE INDONESIA"
+},
+{
+"code": "T075",
+"codeKey": "T075",
+"name": "YOSKA PRIMA INTI",
+"nameKey": "YOSKA PRIMA INTI"
+},
+{
+"code": "5390",
+"codeKey": "5390",
+"name": "ASANO GEAR INDONESIA",
+"nameKey": "ASANO GEAR INDONESIA"
+},
+{
+"code": "5311",
+"codeKey": "5311",
+"name": "SHIROKI INDONESIA >> TOYOTA BOSHOKU DEVICE INDONESIA",
+"nameKey": "SHIROKI INDONESIA TOYOTA BOSHOKU DEVICE INDONESIA"
+}
+]
+}

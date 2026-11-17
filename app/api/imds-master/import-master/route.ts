@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (!["admin", "preparer"].includes(auth.role || "")) {
-    return NextResponse.json({ error: "Admin or preparer role is required to import the master workbook." }, { status: 403 });
+    return NextResponse.json({ error: "Uploading the master workbook needs the preparer or admin role. Ask an admin to give you that role in Settings → Team access." }, { status: 403 });
   }
 
   const supabase = await createClient();

@@ -19,7 +19,7 @@ const CLASSES = ["MA", "MB", "MC", "MD", "ME", "MF"];
 const rowKey = (partNo: string, family: string, cas: string) => `${partKey(partNo)}|${family}|${cas}`;
 
 function blankFacts(): RowFacts {
-  return { cas: "", substanceName: "", substanceContentPct: "", applicationId: "", materialName: "", matlClass: "", componentPartName: "", deliveryPartName: "", imdsMass: "", drawingMass: "", toleranceClass: "", drawingRefs: [], drawingStatus: "" };
+  return { cas: "", substanceName: "", substanceContentPct: "", applicationId: "", materialName: "", matlClass: "", componentPartName: "", deliveryPartName: "", imdsMass: "", drawingMass: "", toleranceClass: "", drawingRefs: [], drawingStatus: "", companyName: "" };
 }
 const asAsk = (q: FlowQuestion): Ask => ({ id: q.id, text: q.text, options: q.options });
 

@@ -9,6 +9,7 @@ import { gapHoursFromEnv, recentlySent } from "@/lib/followup/guard";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
 import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, type Kind } from "@/lib/followup/center";
+import { buildEml, emlFileName } from "@/lib/followup/eml";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,6 +40,8 @@ export async function GET() {
     me: auth.email,
     senders: parseSenders(process.env.FOLLOWUP_SENDERS),
     canSend: ["admin", "preparer", "reviewer"].includes(auth.role || ""),
+    canDraft: canAccessImdsTracker(auth.role),
+    role: auth.role,
     canConfigure: ["admin", "preparer"].includes(auth.role || ""),
     gapHours: gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS),
     lastSent
@@ -52,6 +55,8 @@ type SendBody = {
   extraPdf?: { name?: string; base64?: string };
   /** Test send: goes only to `testTo`, no mandatory CC, no recently-sent guard, subject marked [TEST]. */
   test?: boolean; testTo?: string;
+  /** "draft": return an Outlook draft (.eml) for the user's own mailbox instead of sending through Power Automate. */
+  mode?: "send" | "draft";
 };
 
 const RECAP_NAME = "ALL SUPPLIERS (RECAP)";
@@ -60,16 +65,19 @@ export async function POST(request: NextRequest) {
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (!["admin", "preparer", "reviewer"].includes(auth.role || "")) {
-    return NextResponse.json({ error: "Admin, preparer or reviewer role is required to send supplier e-mails." }, { status: 403 });
-  }
   const body = await request.json().catch(() => null) as SendBody | null;
+  // Outlook drafts send nothing, so every internal colleague may prepare them; sending needs an editor role.
+  const draftOnly = body?.mode === "draft";
+  if (!["admin", "preparer", "reviewer"].includes(auth.role || "") && !(draftOnly && canAccessImdsTracker(auth.role))) {
+    return NextResponse.json({ error: "Sending supplier e-mails needs the preparer, reviewer or admin role. Use “📨 Outlook drafts”, or ask an admin for the role in Settings → Team access." }, { status: 403 });
+  }
   const kind = (KINDS as readonly string[]).includes(String(body?.kind)) ? (body!.kind as Kind) : null;
   if (!body || !kind) return NextResponse.json({ error: "Choose the kind of e-mail (request, follow-up or recap)." }, { status: 400 });
   const recap = kind === "recap";
   const supplierName = recap ? RECAP_NAME : String(body.supplierName || "").trim();
   if (!supplierName) return NextResponse.json({ error: "Choose one supplier." }, { status: 400 });
   const test = body.test === true;
+  const draft = body.mode === "draft";
   const senders = parseSenders(process.env.FOLLOWUP_SENDERS);
   let to = emailsOf((body.to || []).join(";")).slice(0, recap ? 400 : 20);
   if (test) {
@@ -90,10 +98,10 @@ export async function POST(request: NextRequest) {
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   const config = await loadConfig(supabase);
   const sender = pickSender(senders, body.sender);   // not on the allow-list => the flow's own mailbox sends
-  const cc = test ? [] : mergeCc({ to, cc: emailsOf((body.cc || []).join(";")), required: config.requiredCc, senderEmail: sender?.email });
+  const cc = test ? [] : mergeCc({ to, cc: emailsOf((body.cc || []).join(";")), required: config.requiredCc, senderEmail: draft ? auth.email || undefined : sender?.email });
 
   const gapHours = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
-  if (!test && !body.force && gapHours > 0) {
+  if (!draft && !test && !body.force && gapHours > 0) {
     const { data: last } = await supabase.from("imds_tracker_followup_logs").select("sent_at").eq("supplier_name", supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
     if (recentlySent(last?.[0]?.sent_at, new Date(), gapHours)) {
       return NextResponse.json({ error: `${supplierName} was already e-mailed within the last ${gapHours} hours. Nothing was sent.`, skipped: "RECENTLY_SENT" }, { status: 409 });
@@ -101,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
   const emailUrl = process.env.POWER_AUTOMATE_EMAIL_URL?.trim();
   const flowSecret = process.env.POWER_AUTOMATE_SECRET?.trim() || null;
-  if (!emailUrl || !/^https:\/\//i.test(emailUrl) || !flowSecret) {
+  if (!draft && (!emailUrl || !/^https:\/\//i.test(emailUrl) || !flowSecret)) {
     return NextResponse.json({ error: "POWER_AUTOMATE_EMAIL_URL and POWER_AUTOMATE_SECRET must both be configured. Nothing was sent.", notConfigured: true }, { status: 503 });
   }
 
@@ -129,6 +137,19 @@ export async function POST(request: NextRequest) {
     attachments.push({ name: String(body.extraPdf.name || "IMDS_Submission_Summary.pdf").replace(/[^A-Za-z0-9._-]+/g, "_").slice(0, 80), contentType: "application/pdf", contentBytes: bytes.toString("base64") });
   }
 
+  if (draft) {
+    const eml = buildEml({ to, cc, subject, body: messageBody, attachments });
+    const totalBytes = Buffer.byteLength(eml);
+    if (totalBytes > 4_000_000) return NextResponse.json({ error: "This draft is larger than 4 MB. Untick the PDF or Excel attachment and try again." }, { status: 413 });
+    const { data: dlog } = await supabase.from("imds_tracker_followup_logs").insert({
+      supplier_code: supplierCode || null, supplier_name: test ? `[TEST] ${supplierName}` : supplierName, recipient_email: to.join(";"), cc_emails: cc, subject, message_body: messageBody,
+      part_count: ids.length, attachment_name: attachments.map((a) => a.name).join(", ") || null, status: "PREPARED", sent_by: auth.userId
+    }).select("id").single();
+    await supabase.from("audit_events").insert({ actor_id: auth.userId, action: "IMDS_TRACKER_SUPPLIER_EMAIL_DRAFTED", entity_type: "imds_tracker_followup", entity_id: dlog?.id ?? null,
+      metadata: { kind, supplierCode, recipientCount: to.length, ccCount: cc.length, parts: ids.length, attachments: attachments.map((a) => a.name) } });
+    return NextResponse.json({ draft: true, fileName: emlFileName(supplierName), eml: Buffer.from(eml, "utf8").toString("base64"), to, cc, attachments: attachments.map((a) => a.name) });
+  }
+
   const { data: log, error: logError } = await supabase.from("imds_tracker_followup_logs").insert({
     supplier_code: supplierCode || null, supplier_name: test ? `[TEST] ${supplierName}` : supplierName, recipient_email: to.join(";"), cc_emails: cc, subject, message_body: messageBody,
     part_count: ids.length, attachment_name: attachments.map((a) => a.name).join(", ") || null, status: "PREPARED", sent_by: auth.userId
@@ -146,7 +167,7 @@ export async function POST(request: NextRequest) {
     await supabase.from("imds_tracker_followup_logs").update({ status: "FAILED", error_message: message }).eq("id", log.id);
     return NextResponse.json({ error: message, logId: log.id }, { status: 422 });
   }
-  const delivery = await postToFlow(emailUrl, flowSecret, payload);
+  const delivery = await postToFlow(emailUrl as string, flowSecret, payload);
   const status = delivery.ok ? "SENT" : "FAILED";
   await supabase.from("imds_tracker_followup_logs").update({
     status, sent_at: delivery.ok ? new Date().toISOString() : null, error_message: delivery.error || null, provider_response: { httpStatus: delivery.status, ok: delivery.ok }

@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (!["admin", "preparer", "reviewer"].includes(auth.role || "")) {
-    return NextResponse.json({ error: "Admin, preparer or reviewer role is required to import MD System results." }, { status: 403 });
+    return NextResponse.json({ error: "Uploading MD System results needs the preparer, reviewer or admin role. Ask an admin to give you that role in Settings → Team access." }, { status: 403 });
   }
 
   const supabase = await createClient();

@@ -6,14 +6,15 @@ import type { BulkCandidate } from "@/lib/judgement/bulk";
  * as FINAL by the system without a human, but only for rule families an admin switched on.
  * Error Type 19 and every HOLD stay with people. Every automatic decision is audited and can be reopened.
  */
-export const AUTO_KINDS = ["mass", "sms", "app44", "pb", "substance"] as const;
+export const AUTO_KINDS = ["mass", "sms", "app44", "pb", "substance", "warp"] as const;
 export type AutoKind = (typeof AUTO_KINDS)[number];
 export const AUTO_KIND_LABEL: Record<AutoKind, string> = {
   mass: "Mass tolerance (Error Type 7, TSZ2900G)",
   sms: "SMS mass (Error Type 6, supplier answer on file)",
   app44: "Application 44 (supplier answer on file)",
   pb: "ELV Pb (policy table / App. code 71 flow)",
-  substance: "Prohibited substances (Appendix II flows No.14–18)"
+  substance: "Prohibited substances (Appendix II flows No.14–18)",
+  warp: "WARP part number (No.21, Purchasing supplier code master)"
 };
 export const SYSTEM_ACTOR = "Auto-judgement (System)";
 
@@ -26,7 +27,7 @@ export type AutoJudgeConfig = {
 };
 export const DEFAULT_AUTOJUDGE: AutoJudgeConfig = {
   enabled: false, shadow: true,
-  kinds: { mass: false, sms: false, app44: false, pb: false, substance: false },
+  kinds: { mass: false, sms: false, app44: false, pb: false, substance: false, warp: false },
   approvedBy: null, approvedAt: null
 };
 

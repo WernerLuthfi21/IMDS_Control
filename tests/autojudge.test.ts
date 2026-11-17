@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_AUTOJUDGE, decideAuto, sanitizeAutoJudge, type AutoJudgeConfig } from "@/lib/judgement/autojudge";
 import { isMemoryField, partKey, validMemoryValue, describeMemory } from "@/lib/judgement/memory";
 
-const live: AutoJudgeConfig = { ...DEFAULT_AUTOJUDGE, enabled: true, shadow: false, kinds: { mass: true, sms: true, app44: true, pb: true, substance: true } };
+const live: AutoJudgeConfig = { ...DEFAULT_AUTOJUDGE, enabled: true, shadow: false, kinds: { mass: true, sms: true, app44: true, pb: true, substance: true, warp: true } };
 const base = {
   kind: "mass" as const, eligible: true, inPendingQueue: true, errorType: "Mass tolerance error", reviewReason: "",
   recommendation: { state: "OK" as const, comment: "Within tolerance.", reason: "Inside TSZ2900G band." }
@@ -37,7 +37,7 @@ describe("auto-judgement decision", () => {
     const s = sanitizeAutoJudge({ enabled: "yes", shadow: false, kinds: { mass: true, bogus: true }, approvedBy: 5 });
     expect(s.enabled).toBe(false);
     expect(s.shadow).toBe(false);
-    expect(s.kinds).toEqual({ mass: true, sms: false, app44: false, pb: false, substance: false });
+    expect(s.kinds).toEqual({ mass: true, sms: false, app44: false, pb: false, substance: false, warp: false });
     expect(s.approvedBy).toBeNull();
     expect(sanitizeAutoJudge(null)).toEqual(DEFAULT_AUTOJUDGE);
   });

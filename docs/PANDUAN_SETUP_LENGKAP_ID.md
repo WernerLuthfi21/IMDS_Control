@@ -207,3 +207,19 @@ Catatan teknis: file kecil (≤3,5 MB) dikirim dalam satu permintaan; import MD 
 5. Keputusan otomatis bertanda **Auto OK / Auto NG** di daftar; buka kasusnya lalu **Reopen** (wajib alasan) untuk mengembalikannya ke antrean.
 
 **Eskalasi TMC:** kalau flow berakhir "Contact TMC", panel kasus menampilkan strip kuning. Klik **Mark as sent to TMC** saat sudah dikirim (strip biru), lalu **Record TMC answer** (OK/NG + catatan) saat TMC menjawab (strip hijau). Jawaban itu otomatis dipakai untuk kasus identik berikutnya (part, error type, CAS, flow sama) dan bisa difinalkan oleh auto-judge bila keluarga *substances* dinyalakan.
+
+## 12. Kirim e-mail tanpa Power Automate (untuk semua orang)
+
+Di Tracker → Follow-up → **Send e-mails**, langkah 5 punya tiga mode:
+1. **🧪 Test — only to me**: lewat Power Automate, hanya ke alamat Anda.
+2. **📨 Outlook drafts — my own mailbox**: bisa dipakai **semua orang**, tanpa Power Automate. Website menyiapkan e-mail lengkap (To, CC wajib, subjek, isi, lampiran PDF + Excel) sebagai file `.eml`. Satu supplier → satu file `.eml`; banyak supplier → satu `.zip`. Buka file `.eml` (klik dua kali) → Outlook desktop membukanya sebagai **e-mail baru dari mailbox Anda sendiri** dengan lampiran sudah terpasang → periksa → **Send**. Tidak ada yang terkirim otomatis.
+3. **🚀 Send now — Power Automate**: kirim otomatis lewat flow tim.
+
+Di pratinjau tiap supplier juga ada tombol **📨 Outlook draft with attachments**.
+
+Catatan: file `.eml` terbuka sebagai draft di **Outlook desktop (Windows/Mac)**. Outlook di browser tidak bisa membuka `.eml` sebagai draft; untuk itu pakai **Quick e-mail (no attachments)** lalu lampirkan file yang diunduh.
+
+## 13. Kenapa rekan tidak bisa upload / kirim?
+
+- **Peran**: upload dan kirim butuh peran *preparer*, *reviewer* atau *admin*. Peran *viewer* hanya melihat (tetap bisa membuat Outlook drafts). Admin mengubahnya di **Settings → Team access**.
+- **Tabel belum dibuat**: selama migrasi `20261110000000_tracker_settings.sql` belum dijalankan, Directory (kontak supplier) dan template **hanya tersimpan di browser yang mengisinya**, sehingga rekan lain tidak melihat kontak dan e-mail mereka "tidak siap". Jalankan semua migrasi di bagian 11 sekali, maka semua orang memakai data yang sama.

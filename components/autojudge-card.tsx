@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Bot, LoaderCircle, Play, Power, Scale, Settings2, ShieldCheck } from "lucide-react";
-import { CatMascot, type CatMood } from "@/components/cat-mascot";
+import type { CatMood } from "@/components/cat-mascot";
+import { CatStage } from "@/components/cat-stage";
 
-type Kind = "mass" | "sms" | "app44" | "pb" | "substance";
+type Kind = "mass" | "sms" | "app44" | "pb" | "substance" | "warp";
 type Config = { enabled: boolean; shadow: boolean; kinds: Record<Kind, boolean>; approvedBy: string | null; approvedAt: string | null };
 type Info = { config: Config; version: number; missing: boolean; migrationHint: string | null; canRun: boolean; canConfigure: boolean; systemActor: string };
 type RunResult = { id: string; kind: string; action: "FINAL" | "WOULD_FINAL" | "SKIP"; decision: "OK" | "NG" | null; reason: string };
@@ -14,7 +15,8 @@ const KIND_LABEL: Record<Kind, string> = {
   sms: "SMS mass (Type 6)",
   app44: "Application 44",
   pb: "ELV Pb",
-  substance: "Prohibited substances (No.14–18)"
+  substance: "Prohibited substances (No.14–18)",
+  warp: "WARP part number (No.21)"
 };
 const CHUNK = 100;
 
@@ -101,7 +103,7 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal }: {
   const pct = progress.total ? Math.round(progress.done / progress.total * 100) : 0;
   return <section className="aj" aria-labelledby="aj-title">
     <div className="aj-top">
-      <CatMascot mood={mood} size={68} label={mood === "thinking" ? "Checking cases" : undefined}/>
+      <CatStage mood={mood} size={128}/>
       <div className="aj-copy">
         <span className="aj-kicker"><Bot size={13}/> AUTO-JUDGE <b className={"aj-mode " + mode.toLowerCase()}>{mode}</b></span>
         <h2 id="aj-title">{live ? "Let the system judge what it can" : "See what the system would judge"}</h2>

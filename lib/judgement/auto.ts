@@ -4,13 +4,14 @@ import { isValidCas, lookupSubstance, lookupSubstanceByName, normalizeCas } from
 import { lookupPbPolicy, PB_SOURCE } from "@/lib/judgement/pb-policy";
 import type { RowFacts } from "@/lib/judgement/row-facts";
 import type { JudgementResult } from "@/lib/types";
+import { checkWarp, isWarpError, WARP_SOURCE } from "@/lib/judgement/warp";
 
 export type StepStatus = "DONE" | "NEEDS_INPUT" | "MANUAL" | "INFO";
 export type AutoStep = { id: string; title: string; status: StepStatus; detail: string };
 export type AutoRecommendation = { state: "OK" | "NG" | "HOLD"; comment: string; reason: string };
-export type AutoInput = { errorType: string; facts: RowFacts; destination?: string; toleranceClass?: string; supplierConfirmation?: string; answers?: Record<string, string> };
+export type AutoInput = { errorType: string; facts: RowFacts; supplierCode?: string | null; destination?: string; toleranceClass?: string; supplierConfirmation?: string; answers?: Record<string, string> };
 export type AutoOutput = {
-  kind: "mass" | "sms" | "app44" | "pb" | "substance" | "manual";
+  kind: "mass" | "sms" | "app44" | "pb" | "substance" | "warp" | "manual";
   steps: AutoStep[];
   procedureText: string;
   recommendation: AutoRecommendation;
@@ -25,6 +26,7 @@ const firstLine = (v: unknown) => String(v ?? "").replace(/_x000D_/g, " ").split
 
 export function detectKind(errorType: string): AutoOutput["kind"] {
   const t = errorType.toLowerCase();
+  if (isWarpError(errorType)) return "warp";
   if (/mass tolerance|tolerance range|error.?type.?7/.test(t)) return "mass";
   if (/^(sms mass|6)$/.test(t.trim())) return "sms";
   if (/application\s*44\s*error/.test(t) || /^24$/.test(t.trim())) return "app44";
@@ -202,6 +204,30 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     }
     steps.push(materialStep(facts));
     return { kind, steps, flow, procedureText: procedure(sub.gadslNo, sub.tszText, sub.flowName, extra), recommendation, needs, massBands: null, engineInput, engine: pick(result) };
+  }
+
+  if (kind === "warp") {
+    const engineInput: JudgementInput = { errorType: input.errorType };
+    const result = evaluateJudgement(engineInput);
+    const w = checkWarp(input.supplierCode, facts.companyName);
+    const steps: AutoStep[] = [{ id: "warp-master", title: "Supplier code in Purchasing supplier code master", status: w.found && w.nameMatches !== false ? "DONE" : w.found ? "INFO" : "INFO", detail: `${w.reason} (${WARP_SOURCE})` }];
+    const purchasing = input.answers?.purchasingWarp;
+    let recommendation: AutoRecommendation;
+    if (w.found && w.nameMatches !== false) {
+      recommendation = { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Supplier code is registered in the Purchasing supplier code master (G-CATS Appendix I No.21)." };
+    } else if (purchasing === "Y" || purchasing === "N") {
+      steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "DONE", detail: purchasing === "Y" ? "Purchasing confirmed the supplier code / WARP registration." : "Purchasing says the supplier code is incorrect." });
+      recommendation = purchasing === "Y" ? { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Purchasing Div. confirmed the supplier code." } : { state: "NG", comment: "Supplier code is incorrect.", reason: "Purchasing Div. says the supplier code is incorrect." };
+    } else {
+      steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "NEEDS_INPUT", detail: "Ask Purchasing whether the supplier code / WARP registration is correct." });
+      recommendation = { state: "HOLD", comment: "", reason: "Purchasing Div. must confirm the supplier code (Appendix I No.21)." };
+    }
+    const flow: FlowRun = { flowId: "warp21", title: "No.21 WARP Part number", page: null, implemented: true,
+      trail: [{ question: "Supplier code in Purchasing master?", answer: w.found ? (w.nameMatches === false ? "Yes, name differs" : "Yes") : "No", auto: true }],
+      next: recommendation.state === "HOLD" ? { id: "purchasingWarp", text: "Does Purchasing Div. confirm the supplier code / WARP registration?", options: [["Y", "Yes · confirmed"], ["N", "No · code incorrect"]] } : null,
+      outcome: recommendation.state === "HOLD" ? null : { state: recommendation.state, comment: recommendation.comment, reason: recommendation.reason } };
+    const procedureText = recommendation.state === "HOLD" ? "" : `No.21 WARP: ${w.reason}${purchasing ? ` Purchasing Div.: ${purchasing === "Y" ? "confirmed" : "code incorrect"}.` : ""}`;
+    return { kind, steps, flow, procedureText, recommendation, needs: { destination: false, toleranceClass: false, supplierConfirmation: false }, massBands: null, engineInput, engine: pick(result) };
   }
 
   const engineInput: JudgementInput = { errorType: input.errorType };

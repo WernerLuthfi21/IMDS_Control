@@ -625,7 +625,7 @@ html[data-theme="dark"] .aj-mode.shadow{background:#3a2f18;color:#f1d08b;border-
 @keyframes cat-dot{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes cat-hop{0%{transform:translateY(0)}40%{transform:translateY(-6px)}100%{transform:translateY(0)}}
 @media(max-width:820px){.aj-top{grid-template-columns:auto 1fr}.aj-actions{grid-column:1/-1;min-width:0}}
-@media(max-width:480px){.aj{padding:14px}.aj-copy h2{font-size:16.5px}.aj-top{gap:12px}.aj .cat{width:52px!important;height:52px!important}.aj .cat svg{width:52px;height:52px}}
+@media(max-width:480px){.aj{padding:14px}.aj-copy h2{font-size:16.5px}.aj-top{gap:10px}.aj .cat-stage{width:96px!important;height:96px!important}.aj .cat-stage .cat,.aj .cat-stage .cat svg{width:48px!important;height:48px!important}.aj .g-cube{zoom:.75}}
 /* Phones: keep the top bar on one tidy line */
 @media(max-width:480px){.workspace-switch-link span{display:none}.breadcrumb{overflow:hidden}.breadcrumb strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.environment-pill{display:none}.topbar{gap:6px}.topbar-actions{gap:4px}.topbar .icon-button,.topbar .theme-toggle{width:36px;height:36px;min-width:36px}.panel,.card{min-width:0;max-width:100%}}
 /* TMC escalation strip */
@@ -640,3 +640,23 @@ html[data-theme="dark"] .aj-mode.shadow{background:#3a2f18;color:#f1d08b;border-
 .jx-tmc-actions button{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--glass-line);background:var(--surface);color:var(--glass-ink);font-size:12px;font-weight:650;cursor:pointer}
 .jx-tmc-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .jx-tmc-form input{flex:1 1 220px;min-width:0;min-height:36px;border-radius:9px;border:1px solid var(--line-strong);padding:0 10px;background:var(--surface);color:var(--ink)}
+.jx-dest-code{min-height:34px;max-width:100%;border-radius:9px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:0 8px;font-size:12px}
+/* Miko on green glass cubes (CSS 3D, same technique as the Tracker hero) */
+.cat-stage{position:relative;flex:none;perspective:700px;--rx:0deg;--ry:0deg}
+.cat-scene{position:absolute;z-index:0;left:50%;top:66%;width:1px;height:1px;transform-style:preserve-3d;transform:rotateX(calc(-14deg + var(--rx))) rotateY(calc(24deg + var(--ry)));transition:transform .2s ease-out}
+.g-cube{position:absolute;width:var(--s);height:var(--s);margin:calc(var(--s)/-2) 0 0 calc(var(--s)/-2);transform-style:preserve-3d;transform:translate3d(var(--x),var(--y),var(--z))}
+.g-cube .f{position:absolute;inset:0;border:1px solid rgba(255,255,255,.7);border-radius:7px;background:linear-gradient(135deg,rgba(187,247,208,.6),rgba(34,160,90,.32) 55%,rgba(20,83,45,.4));box-shadow:inset 0 0 8px rgba(255,255,255,.35)}
+.g-cube .f1{transform:translateZ(calc(var(--s)/2));background:linear-gradient(145deg,rgba(220,252,231,.9),rgba(74,190,120,.5) 58%,rgba(22,101,52,.55))}
+.g-cube .f2{transform:rotateY(180deg) translateZ(calc(var(--s)/2));opacity:.75}
+.g-cube .f3{transform:rotateY(90deg) translateZ(calc(var(--s)/2));background:linear-gradient(180deg,rgba(34,160,90,.45),rgba(20,83,45,.6))}
+.g-cube .f4{transform:rotateY(-90deg) translateZ(calc(var(--s)/2));background:linear-gradient(180deg,rgba(134,239,172,.6),rgba(22,101,52,.4))}
+.g-cube .f5{transform:rotateX(90deg) translateZ(calc(var(--s)/2));background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(187,247,208,.6))}
+html[data-theme="dark"] .g-cube .f{border-color:rgba(187,247,208,.25)}
+.cat-poke{position:absolute;left:50%;top:-8%;transform:translateX(-50%);border:0;background:none;padding:0;cursor:pointer;border-radius:50%;z-index:2}
+.cat-poke:focus-visible{outline:3px solid #86d3a5;outline-offset:2px}
+.cat-say{position:absolute;left:80%;top:14%;transform:translateX(-10%);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;padding:6px 10px;border-radius:12px 12px 12px 3px;background:var(--surface);color:var(--glass-ink);border:1px solid var(--glass-line);box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:11.5px;font-weight:650;z-index:3;animation:cat-pop .18s ease-out}
+@keyframes cat-pop{from{opacity:0;transform:translateX(-10%) translateY(4px) scale(.96)}to{opacity:1}}
+@media (prefers-reduced-motion:no-preference){.cat-poke.hop-0 .cat svg,.cat-poke.hop-1 .cat svg{animation:cat-jump .5s cubic-bezier(.3,1.6,.5,1)}.cat-poke.hop-1 .cat svg{animation-name:cat-jump2}}
+@keyframes cat-jump{0%{transform:translateY(0)}40%{transform:translateY(-14px) scale(1.04,.96)}100%{transform:translateY(0)}}
+@keyframes cat-jump2{0%{transform:translateY(0)}40%{transform:translateY(-14px) scale(1.04,.96)}100%{transform:translateY(0)}}
+@media(max-width:480px){.cat-say{left:78%;top:4%;white-space:normal;width:max-content;max-width:150px}}
