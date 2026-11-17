@@ -34,6 +34,25 @@ The procedure suggestion service groups imported history only within the exact h
 
 The judgement service creates a recommendation and trace only. `finalDecision` stays `PENDING`. The final approval RPC requires a reviewer/admin/rule approver and an approved/active rule version, and checks recommendation polarity. Current draft/manual branches remain blocked from finalization until rule governance and source-owner validation are completed.
 
+### Auto-judgement (amended 2026-11-18, repository owner decision)
+
+`lib/judgement/autojudge.ts` + `POST /api/judgement/autorun` may write a FINAL OK/NG on the register (`gcat_error_items.judge`) without a human, under all of these conditions:
+
+| Condition | Where enforced |
+|---|---|
+| Master switch on, shadow mode off, the case's rule family switched on (mass, sms, app44, pb, substance) by an admin/rule approver; who and when is stored in `autojudge_config` and `audit_events` | `decideAuto`, `PUT /api/judgement/autorun` |
+| Case is WORKING and not judged | `decideAuto`, `.is("judge", null)` on update |
+| Engine decided completely: no MANUAL / NEEDS_INPUT step, no missing input, encoded flow with an outcome that matches, comment and procedure present (the same strict test as exact-match bulk) | `evaluateBulkCandidate().eligible` |
+| Never Error Type 19, never HOLD, never `manual` kind | `decideAuto` |
+| Written as `Auto-judgement (System)`, `JUDGEMENT_AUTO_FINAL` audit with reason, signature and the config snapshot, `register_change_log`, Excel outbox like a human save | autorun route |
+| Reopen with a reason (`JUDGEMENT_AUTO_REOPENED`) | autorun route `action: "reopen"` |
+
+Default: OFF with shadow mode on. "Accuracy check" compares the engine with decisions people already made before any family is switched on. This is final inside this application only; nothing is submitted to G-CATS.
+
+### Judgement memory
+
+Toyota-owned answers (vehicle destination, mass tolerance class from the drawing, `usCarpet`, `nonEuReq`) are stored once per delivery part in `judgement_memory` and reused by the single-case check, bulk preview and auto-judge. The UI shows "Remembered from <who> on <date>"; picking a new answer replaces it. Supplier answers stay in `supplier_confirmations`.
+
 ## Automatic row workflow (feat/judgement-auto-workflow)
 
 | Step | Automated | Source |

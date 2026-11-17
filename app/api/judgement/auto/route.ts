@@ -6,6 +6,7 @@ import { extractRowFacts } from "@/lib/judgement/row-facts";
 import { detectKind } from "@/lib/judgement/auto";
 import { familyOfKind, loadConfirmation, describeAnswers } from "@/lib/intake/confirmations";
 import { normalizeCas } from "@/lib/reference-data";
+import { describeMemory, loadPartMemory, type PartMemory } from "@/lib/judgement/memory";
 
 export const runtime = "nodejs";
 const DESTINATIONS = ["EU", "KR", "CN", "TW", "IN", "JP", "OTH"];
@@ -34,14 +35,25 @@ export async function POST(request: NextRequest) {
   // A saved supplier self-check answer for this part is used automatically; anything the reviewer picks in the UI wins.
   const family = familyOfKind(detectKind(item.error_type_label));
   const stored = family ? await loadConfirmation(supabase!, item, family, normalizeCas(facts.cas || "")) : null;
-  const merged: Record<string, string> = { ...(stored?.answers ?? {}), ...answers };
+  // What Toyota already answered for this part is reused; anything picked in the UI wins.
+  let memory: PartMemory = {};
+  let memoryAvailable = true;
+  try { const m = await loadPartMemory(supabase!, [item.delivery_part_no || ""]); memoryAvailable = m.available; memory = m.map.values().next().value ?? {}; } catch { memoryAvailable = false; }
+  const remembered: Record<string, string> = {};
+  for (const [field, entry] of Object.entries(memory)) if (entry && field !== "destination" && field !== "toleranceClass") remembered[field] = entry.value;
+  const merged: Record<string, string> = { ...(stored?.answers ?? {}), ...remembered, ...answers };
+  const destinationUsed = destination ?? memory.destination?.value;
   const supplierConfirmationUsed = supplierConfirmation ?? (stored?.answers.supplierConfirmation && CONFIRMATIONS.includes(stored.answers.supplierConfirmation) ? stored.answers.supplierConfirmation : undefined);
-  const toleranceClassUsed = toleranceClass ?? (!facts.toleranceClass && stored?.answers.toleranceClass && /^M[A-F]$/.test(stored.answers.toleranceClass) ? stored.answers.toleranceClass : undefined);
-  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, destination, toleranceClass: toleranceClassUsed, supplierConfirmation: supplierConfirmationUsed, answers: merged });
+  const toleranceClassUsed = toleranceClass ?? (!facts.toleranceClass && stored?.answers.toleranceClass && /^M[A-F]$/.test(stored.answers.toleranceClass) ? stored.answers.toleranceClass : undefined) ?? (!facts.toleranceClass ? memory.toleranceClass?.value : undefined);
+  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, destination: destinationUsed, toleranceClass: toleranceClassUsed, supplierConfirmation: supplierConfirmationUsed, answers: merged });
+  const usedMemory = Object.values(memory).filter((e) => e && (e.field !== "destination" || !destination) && (e.field !== "toleranceClass" || (!toleranceClass && !facts.toleranceClass)));
+  if (usedMemory.length) {
+    result.steps.unshift({ id: "memory", title: "Remembered for this part", status: "DONE", detail: usedMemory.map((e) => `${e!.field === "destination" ? "Destination" : e!.field === "toleranceClass" ? "Tolerance class" : e!.field} ${e!.value} · ${describeMemory(e!)}`).join(" · ") });
+  }
   if (stored) {
     const when = stored.submitted_at.slice(0, 10);
     result.steps.unshift({ id: "supplier-confirmation", title: "Supplier confirmation on file", status: "DONE", detail: `${stored.supplier_code} answered in its self-check on ${when}${stored.source_file_name ? ` (${stored.source_file_name})` : ""}: ${describeAnswers(stored.answers)}. Self-reported by the supplier; you still decide.` });
     result.procedureText = [result.procedureText, `Supplier self-check confirmation (${stored.supplier_code}, ${when}): ${describeAnswers(stored.answers)}.`].filter(Boolean).join("\n");
   }
-  return NextResponse.json({ result, confirmation: stored ? { submittedAt: stored.submitted_at, supplierCode: stored.supplier_code } : null }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ result, memory: { available: memoryAvailable, values: Object.fromEntries(Object.entries(memory).map(([k, e]) => [k, e ? { value: e.value, note: describeMemory(e) } : null])) }, confirmation: stored ? { submittedAt: stored.submitted_at, supplierCode: stored.supplier_code } : null }, { headers: { "Cache-Control": "no-store" } });
 }

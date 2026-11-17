@@ -33,6 +33,11 @@ Grant roles through a controlled administrator action / SQL, not through client 
 Classification selection is an explicit user attestation. The application does not inspect document markings automatically, scan all text for Confidential labels, or certify legal handling permission. Before external processing, verify that the full document and all included data may be processed by the selected infrastructure and service providers.
 
 
+## Auto-judgement and memory
+
+- Auto-judgement writes final OK/NG only under the conditions in `docs/RULE_COVERAGE.md` (owner decision of 2026-11-18). Settings changes need admin or rule approver and are audited with before/after values. Running needs preparer, reviewer or admin; writes go through the caller's RLS session, never a service-role key.
+- `judgement_memory` stores only short validated codes (destination, tolerance class, Y/N answers) per delivery part number, with who/when. No supplier documents or source rows are copied into it.
+
 ## Database function and row-policy safeguards
 
 - Exposed `public` tables are protected by Row Level Security policies. The later bulk-preparation RPC is `SECURITY INVOKER`, so it remains subject to the caller's table policies; the migration grants reviewer update access to the register while the judgement guard trigger still restricts KM fields to reviewer/admin.

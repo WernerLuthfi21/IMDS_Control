@@ -4,6 +4,7 @@ import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { enqueue, dispatch } from "@/lib/automation/outbox";
 import { evaluateBulkCandidate, groupBulkCandidates, type BulkSourceItem } from "@/lib/judgement/bulk";
+import { loadPartMemory, partKey } from "@/lib/judgement/memory";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -58,7 +59,8 @@ export async function POST(request: NextRequest) {
     if (!ids) return NextResponse.json({ error: "Choose 1–250 unique register records for analysis." }, { status: 400 });
     try {
       const rows = await loadRows(supabase, ids);
-      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row));
+      const memory = (await loadPartMemory(supabase, rows.map((row) => row.delivery_part_no || ""))).map;
+      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no))));
       const prohibited = candidates.filter((item) => item.prohibited);
       return NextResponse.json({
         evaluated: candidates.length, notFound: ids.length - rows.length,
@@ -86,7 +88,8 @@ export async function POST(request: NextRequest) {
     try {
       const rows = await loadRows(supabase, ids);
       if (rows.length !== ids.length) return NextResponse.json({ error: "One or more cases are no longer available. Re-run the preview." }, { status: 409 });
-      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row));
+      const memory = (await loadPartMemory(supabase, rows.map((row) => row.delivery_part_no || ""))).map;
+      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no))));
       const consistent = candidates.length === ids.length
         && candidates.every((item) => item.signature === signature && item.eligible && item.inPendingQueue && item.recommendation.state === decision);
       if (!consistent) return NextResponse.json({ error: "The case data or recommendation changed after preview. Nothing was applied; run the preview again." }, { status: 409 });

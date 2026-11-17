@@ -10,8 +10,8 @@ Read `README.md`, `docs/SOURCE_REGISTER.md`, `docs/RULE_COVERAGE.md` and `docs/S
 - Do not silently merge duplicate workbook headers or multiple historical master sheets.
 - Historical labels are not official Error Type mappings.
 - Numerical Error Type 19 is always HOLD pending process-owner reconciliation of the Version 6 Section II / Appendix I conflict.
-- Never set final OK/NG from the deterministic rule engine. Human reviewer approval is mandatory.
-- Draft/manual rules must not be finalized. Only owner-approved/active rules can pass the database approval RPC.
+- Final OK/NG from the rule engine (auto-judgement) is allowed ONLY for rule families an admin/rule approver switched on in Auto-judge, only for cases the engine decided completely (no open step, no missing input, encoded flow, comment + procedure), and never for Error Type 19 or any HOLD. Every automatic decision is written as `Auto-judgement (System)`, audited (`JUDGEMENT_AUTO_FINAL`), synced like a human save and can be reopened. Default is OFF + shadow mode. Amended on 2026-11-18 by the repository owner (Werner): "OK bisa tanpa manusia asalkan final dan tidak perlu input manusia lagi". All other cases still need human approval.
+- Draft/manual rules must not be finalized. Only owner-approved/active rules can pass the database approval RPC. For auto-judgement, switching a rule family on in Auto-judge is the recorded owner approval (name + date in the settings and audit log); families left off are never finalised by the system.
 - No automated external G-CATS submission is implemented. Never claim that the app clicks SEND, ACCEPT, or submits a result externally.
 - Keep Supabase service-role secrets out of browser code and source control.
 
