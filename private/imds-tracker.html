@@ -1712,6 +1712,7 @@ function renderDrawer({keep=false,focus=false,focusRid=null}={}){
       <button type="button" class="btn btn-primary btn-sm" data-action="reminder" data-supplier="${escAttr(name)}" ${ca.missing?"":"disabled"}>Send reminder</button>
       <button type="button" class="btn btn-secondary btn-sm" data-action="supplier-pdf" data-supplier="${escAttr(name)}">Supplier PDF</button>
       <button type="button" class="btn btn-secondary btn-sm" data-action="supplier-xlsx" data-supplier="${escAttr(name)}">Export Excel</button>
+      <a class="btn btn-ghost btn-sm" href="/judgement?q=${encodeURIComponent((all.find(r=>r.vendorCode)||{}).vendorCode||name)}" title="Open this supplier's G-CATS cases in Judgement">Judgement cases →</a>
       <a class="link-pill" href="${LINK_RULES}" target="_blank" rel="noopener">Important rules</a><a class="link-pill" href="${LINK_GUIDE}" target="_blank" rel="noopener">IMDS guide</a></div>
     <div class="drawer-filters" role="group" aria-label="Filter parts by status">${filters.map(([k,l,n,cls])=>`<button type="button" class="status-chip ${cls} ${UI.drillFilter===k?"active":""}" data-action="drill-filter" data-k="${k}" aria-pressed="${UI.drillFilter===k}">${l}<span class="n num">${fmt(n)}</span></button>`).join("")}</div>
     ${base.length<all.length?`<p class="drawer-note">Showing ${fmt(base.length)} of ${fmt(all.length)} parts — the current scope filters apply. <button type="button" class="link-btn" data-action="clear-filters">Clear filters</button></p>`:""}

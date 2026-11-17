@@ -156,6 +156,16 @@
     if (kind === "ok") window.setTimeout(function () { if (loadEl) loadEl.classList.add("fade"); }, 2000);
   }
 
+  // Deep link from Judgement: /imds-tracker?supplier=<code or name> opens that supplier once the data is in.
+  var deepLinked = false;
+  function deepLinkOnce() {
+    if (deepLinked) return; deepLinked = true;
+    var q = ""; try { q = new URLSearchParams(window.location.search).get("supplier") || ""; } catch (e) { q = ""; }
+    q = q.trim().toUpperCase(); if (!q) return;
+    var hit = (D.records || []).filter(function (r) { return String(r.vendorCode || "").trim().toUpperCase() === q || String(r.company || "").trim().toUpperCase() === q; })[0];
+    if (!hit) { try { toast("Supplier " + q + " is not in the Tracker data.", "info"); } catch (e) { /* toast unavailable */ } return; }
+    try { go("suppliers"); window.setTimeout(function () { openSupplier(hit.company); }, 120); } catch (e) { /* view not ready; the user can open it from Suppliers */ }
+  }
   var lastEtag = null, hasData = false;
   function applyPayload(payload) {
     var dataset = buildSharedDataset(payload.rows);
@@ -167,6 +177,7 @@
       }
     });
     commitDataset(dataset, contacts);
+    window.setTimeout(deepLinkOnce, 0);
     SRC.fileName = "Shared IMDS Master";
     SRC.sheetName = "Part List LATEST";
     SRC.fileHandle = null;

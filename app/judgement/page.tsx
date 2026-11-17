@@ -6,7 +6,8 @@ import { extractRowFacts } from "@/lib/judgement/row-facts";
 
 export const dynamic = "force-dynamic";
 
-export default async function JudgementPage() {
+export default async function JudgementPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const initialSearch = String((await searchParams).q || "").slice(0, 80);
   const auth = await getAuthContext();
   if (!auth.configured) redirect("/setup-required");
   if (!auth.userId) redirect("/login?next=%2Fjudgement");
@@ -58,5 +59,6 @@ export default async function JudgementPage() {
     actorName={auth.displayName || auth.email || "You"}
     sourceDate={latestSource?.source_last_seen_at || null}
     queryError={queryError}
+    initialSearch={initialSearch}
   />;
 }
