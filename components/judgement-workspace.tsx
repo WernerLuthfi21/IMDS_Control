@@ -174,13 +174,14 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
         <textarea rows={2} value={comment} disabled={!judge} placeholder={judge ? "Required" : "Choose OK or NG first"} onChange={(e) => { setComment(e.target.value); setTouched(true); }}/></label>
       <div className="jx-actions">
         <a className="jx-link" href={followUp}><Mail size={13}/> Supplier follow-up</a>
+        {row.supplier_code && <a className="jx-link" href={"/imds-tracker?supplier=" + encodeURIComponent(row.supplier_code)}><Layers3 size={13}/> Supplier in Tracker</a>}
         <button type="button" className="jx-save" disabled={!ready || busy || !auto} onClick={() => judge && void save(judge, comment.trim())}>{busy ? <LoaderCircle size={14} className="spin"/> : <ShieldCheck size={14}/>} {rec && rec.state !== "HOLD" && judge === rec.state ? "Save as recommended" : "Save judgement"}</button>
       </div>
     </div> : <div className="jx-readonly"><ShieldCheck size={14}/> Your role is read-only for judgement updates.</div>}
   </div>;
 }
 
-export function JudgementWorkspace({ rows: initialRows, year, role, actorName, sourceDate, queryError }: { rows: Item[]; year: number; role: string; actorName: string; sourceDate: string | null; queryError: string | null }) {
+export function JudgementWorkspace({ rows: initialRows, year, role, actorName, sourceDate, queryError, initialSearch = "" }: { rows: Item[]; year: number; role: string; actorName: string; sourceDate: string | null; queryError: string | null; initialSearch?: string }) {
   const [rows, setRows] = useState(initialRows);
   const [live, setLive] = useState(false);
   useEffect(() => {
@@ -195,7 +196,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [tab, setTab] = useState<Tab>("pending");
   const [errorType, setErrorType] = useState("All Error Types");
   const [month, setMonth] = useState("All");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [openId, setOpenId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [substanceOnly, setSubstanceOnly] = useState(false);
