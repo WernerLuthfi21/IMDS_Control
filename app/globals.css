@@ -626,3 +626,5 @@ html[data-theme="dark"] .aj-mode.shadow{background:#3a2f18;color:#f1d08b;border-
 @keyframes cat-hop{0%{transform:translateY(0)}40%{transform:translateY(-6px)}100%{transform:translateY(0)}}
 @media(max-width:820px){.aj-top{grid-template-columns:auto 1fr}.aj-actions{grid-column:1/-1;min-width:0}}
 @media(max-width:480px){.aj{padding:14px}.aj-copy h2{font-size:16.5px}.aj-top{gap:12px}.aj .cat{width:52px!important;height:52px!important}.aj .cat svg{width:52px;height:52px}}
+/* Phones: keep the top bar on one tidy line */
+@media(max-width:480px){.workspace-switch-link span{display:none}.breadcrumb{overflow:hidden}.breadcrumb strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.environment-pill{display:none}.topbar{gap:6px}.topbar-actions{gap:4px}.topbar .icon-button,.topbar .theme-toggle{width:36px;height:36px;min-width:36px}.panel,.card{min-width:0;max-width:100%}}
