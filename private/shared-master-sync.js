@@ -618,7 +618,7 @@
       '<label class="field" style="margin-top:8px"><span>Extra CC (optional, separate with ;)</span><input type="text" id="fu-extra" autocomplete="off" placeholder="name@company.com"></label></div>' +
       '<div class="fu-box"><h3>Attachments</h3><label class="inline-check"><input type="checkbox" id="fu-att-pdf"> <span id="fu-att-pdf-l"></span></label><br><label class="inline-check"><input type="checkbox" id="fu-att-xlsx"> <span id="fu-att-xlsx-l"></span></label><p class="muted small" style="margin:8px 0 0" id="fu-att-note"></p></div></div>' +
       '<div class="mh"><i>5</i>Review and send</div>' +
-      '<div class="mk" id="fu-mode" role="group" aria-label="Send mode"><button type="button" data-send="test" aria-pressed="true"><b>🧪 Test — only to me</b><span>Nothing reaches a supplier. No CC. Subject starts with [TEST].</span></button><button type="button" data-send="live" aria-pressed="false"><b>🚀 Live — to suppliers</b><span>Real e-mails with the mandatory CC.</span></button></div>' +
+      '<div class="mk" id="fu-mode" role="group" aria-label="Send mode"><button type="button" data-send="test" aria-pressed="true"><b>🧪 Test — only to me</b><span>Nothing reaches a supplier. No CC. Subject starts with [TEST].</span></button><button type="button" data-send="draft" aria-pressed="false"><b>📨 Outlook drafts — my own mailbox</b><span>Works for everyone, no Power Automate. Opens in your Outlook with the attachments; you press Send.</span></button><button type="button" data-send="live" aria-pressed="false"><b>🚀 Send now — Power Automate</b><span>Sent automatically through the team flow, with the mandatory CC.</span></button></div>' +
       '<div class="fu-grid" id="fu-opts"><label class="field" id="fu-testto-wrap"><span>Test address</span><input type="text" id="fu-testto" autocomplete="off" placeholder="your.name@toyota.co.id"></label>' +
       '<label class="field"><span>How many to send now</span><select id="fu-limit"><option value="1">First 1 selected</option><option value="3">First 3 selected</option><option value="5">First 5 selected</option><option value="10">First 10 selected</option><option value="0">All selected</option></select></label>' +
       '<label class="field"><span>Pause between e-mails</span><select id="fu-pause"><option value="0">None</option><option value="2">2 seconds</option><option value="5">5 seconds</option><option value="15">15 seconds</option></select></label>' +
@@ -636,8 +636,8 @@
     ["kind", "scope"].forEach(function (k) { if (saved[k]) S[k] = saved[k]; });
     if (!KIND_META[S.kind]) S.kind = "followup";
     var sender = saved.sender && team()[saved.sender] ? saved.sender : (Object.keys(team())[0] || "");
-    S.live = saved.live === true; S.testTo = saved.testTo || ""; S.limit = saved.limit != null ? String(saved.limit) : "1"; S.pause = saved.pause || "0"; S.stop = saved.stop !== false;
-    function persist() { lsSet(MAIL_KEY, JSON.stringify({ live: S.live, testTo: S.testTo, limit: S.limit, pause: S.pause, stop: S.stop, kind: S.kind, scope: S.scope, sender: $("fu-sender").value, roles: roles(), att: { pdf: $("fu-att-pdf").checked, xlsx: $("fu-att-xlsx").checked }, list: $("fu-list").checked })); }
+    S.send = saved.send === "live" || saved.send === "draft" || saved.send === "test" ? saved.send : (saved.live === true ? "live" : ""); S.live = S.send === "live"; S.testTo = saved.testTo || ""; S.limit = saved.limit != null ? String(saved.limit) : "1"; S.pause = saved.pause || "0"; S.stop = saved.stop !== false;
+    function persist() { lsSet(MAIL_KEY, JSON.stringify({ send: S.send, live: S.live, testTo: S.testTo, limit: S.limit, pause: S.pause, stop: S.stop, kind: S.kind, scope: S.scope, sender: $("fu-sender").value, roles: roles(), att: { pdf: $("fu-att-pdf").checked, xlsx: $("fu-att-xlsx").checked }, list: $("fu-list").checked })); }
     function roles() { return { mid: $("fu-cc-mid").checked, top: $("fu-cc-top").checked, buyer: $("fu-cc-buyer").checked }; }
 
     function setMode(m) {
@@ -660,6 +660,7 @@
           $("fu-scope").value = S.scope;
           $("fu-sender").innerHTML = Object.keys(team()).map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
           if (sender) $("fu-sender").value = sender;
+          if (!S.send) { S.send = mailInfo.configured && mailInfo.canSend ? "test" : "draft"; S.live = S.send === "live"; }
           $("fu-testto").value = S.testTo || mailInfo.me || ""; $("fu-limit").value = S.limit; $("fu-pause").value = S.pause; $("fu-stop").checked = S.stop;
           S.ready = true;
         }
@@ -725,21 +726,21 @@
       var rq = (cfg.requiredCc || []);
       $("fu-req").innerHTML = rq.length ? '<span class="muted small">Always on CC:</span> ' + rq.map(function (e) { return '<span class="fu-chip lock" title="Mandatory — change in Settings → E-mail templates">🔒 ' + esc(e) + "</span>"; }).join("") : '<span class="muted small">No mandatory CC set (Settings → E-mail templates).</span>';
       var recap = S.kind === "recap";
-      Array.prototype.forEach.call($("fu-mode").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", String((b.getAttribute("data-send") === "live") === S.live)); });
-      $("fu-testto-wrap").hidden = S.live; $("fu-force").closest("label").hidden = !S.live;
+      Array.prototype.forEach.call($("fu-mode").querySelectorAll("button"), function (b) { var m = b.getAttribute("data-send"); b.setAttribute("aria-pressed", String(m === S.send)); if (m === "live") b.title = mailInfo.configured ? "" : "Power Automate is not set up yet. Use Outlook drafts."; });
+      $("fu-testto-wrap").hidden = S.send !== "test"; $("fu-force").closest("label").hidden = !S.live; $("fu-ping").closest(".fu-bar").hidden = S.send === "draft";
       $("fu-limit").closest("label").hidden = recap;
       $("fu-att-pdf-l").textContent = recap ? "Executive summary PDF (all suppliers)" : "PDF recap of this supplier's parts";
       $("fu-att-xlsx-l").textContent = recap ? "Excel list of all outstanding parts" : "Excel list of unsubmitted part numbers (supplier fills the plan date)";
       $("fu-att-note").textContent = recap ? "Generated now from the current data." : "Generated per supplier, only with the parts listed in its e-mail.";
       $("fu-list").closest("label").hidden = recap;
       $("fu-all-wrap").hidden = recap;
-      $("fu-send").textContent = S.live ? (recap ? "Send recap to suppliers" : "Send to suppliers") : (recap ? "Send test recap to me" : "Send test to me");
-      $("fu-send").className = "btn btn-sm " + (S.live ? "btn-primary" : "btn-secondary");
+      $("fu-send").textContent = S.send === "draft" ? (recap ? "Create recap draft" : "Create Outlook drafts") : S.live ? (recap ? "Send recap to suppliers" : "Send to suppliers") : (recap ? "Send test recap to me" : "Send test to me");
+      $("fu-send").className = "btn btn-sm " + (S.send === "test" ? "btn-secondary" : "btn-primary");
       var onlyEl = $("fu-only");
       if (S.only) { onlyEl.hidden = false; onlyEl.innerHTML = '<span class="fu-chip" aria-pressed="true">' + esc(S.only) + ' ✕</span>'; } else onlyEl.hidden = true;
       var su = mailInfo.setup || {}, tick = function (ok, t) { return (ok ? "✔ " : "✖ ") + t; };
-      $("fu-state").textContent = (mailInfo.configured ? "" : "Power Automate is not ready: " + [tick(su.url, "flow URL (POWER_AUTOMATE_EMAIL_URL)"), tick(su.secret, "shared secret (POWER_AUTOMATE_SECRET)")].join(" · ") + ". Add them in Vercel → Settings → Environment Variables and redeploy (step-by-step: docs/PANDUAN_SETUP_LENGKAP_ID.md, section 6c). Until then, use “Open in Outlook draft”. ") + (cfg.__missingTable ? "⚠ The settings table is not created yet — built-in templates are used and changes cannot be saved. See Settings → E-mail templates. " : "") +
-        (mailInfo.canSend ? "" : "Your role cannot send e-mails. ");
+      $("fu-state").textContent = (mailInfo.configured ? "" : "Power Automate is not ready: " + [tick(su.url, "flow URL (POWER_AUTOMATE_EMAIL_URL)"), tick(su.secret, "shared secret (POWER_AUTOMATE_SECRET)")].join(" · ") + ". Add them in Vercel → Settings → Environment Variables and redeploy (step-by-step: docs/PANDUAN_SETUP_LENGKAP_ID.md, section 6c). Until then, use “📨 Outlook drafts” below: it works for everyone from their own mailbox, with the attachments. ") + (cfg.__missingTable ? "⚠ The settings table is not created yet — built-in templates are used and changes cannot be saved. See Settings → E-mail templates. " : "") +
+        (mailInfo.canSend ? "" : "Your role (" + (mailInfo.role || "viewer") + ") cannot send through Power Automate, but you can create 📨 Outlook drafts from your own mailbox. ");
       $("fu-state").hidden = !$("fu-state").textContent;
       groups = buildGroups();
       renderTable();
@@ -759,7 +760,7 @@
         $("fu-rmsg").oninput = function () { (S.edits.RECAP = S.edits.RECAP || {}).body = this.value; };
         $("fu-rout").onclick = function () { outlookDraft(g.to, g.cc, $("fu-rsub").value, $("fu-rmsg").value); };
         $("fu-count").textContent = g.to.length + " recipient(s)";
-        $("fu-send").disabled = S.sending || !mailInfo.configured || !mailInfo.canSend || !g.ready;
+        $("fu-send").disabled = S.sending || (S.send !== "draft" && !mailInfo.configured) || !(S.send === "draft" ? mailInfo.canDraft !== false : mailInfo.canSend) || !g.ready;
         return;
       }
       head.innerHTML = '<tr><th scope="col"><span class="sr-only">Select</span></th><th scope="col">Supplier</th><th scope="col" class="r">Parts</th><th scope="col">Models</th><th scope="col">To</th><th scope="col" class="r">CC</th><th scope="col">Last e-mailed</th><th scope="col">Result</th><th scope="col"><span class="sr-only">Preview</span></th></tr>';
@@ -771,12 +772,12 @@
       }).join("");
       var n = groups.filter(function (g) { return S.selected[g.key] && g.ready; }).length;
       $("fu-count").textContent = n + " selected · " + groups.filter(function (g) { return g.ready; }).length + " of " + groups.length + " ready";
-      $("fu-send").disabled = (S.live ? !n : !groups.some(function (g) { return g.ready; })) || S.sending || !mailInfo.configured || !mailInfo.canSend;
+      $("fu-send").disabled = (S.send !== "test" ? !n : !groups.some(function (g) { return g.ready; })) || S.sending || (S.send !== "draft" && !mailInfo.configured) || !(S.send === "draft" ? mailInfo.canDraft !== false : mailInfo.canSend);
       $("fu-send").title = !mailInfo.configured ? "Sending is not configured (POWER_AUTOMATE_EMAIL_URL / POWER_AUTOMATE_SECRET)." : "";
       if (S.open) wireDetail();
     }
     function detailRow(g, i) {
-      return '<tr class="fu-det" data-d="' + i + '"><td colspan="9"><div class="small"><b>To:</b> ' + esc(g.to.join("; ")) + "<br><b>CC:</b> " + esc(g.cc.join("; ") || "—") + '</div><label class="field" style="margin-top:8px"><span>Subject</span><input type="text" class="fu-sub"></label><label class="field"><span>Message — edit if needed (this supplier only)</span><textarea class="fu-msg"></textarea></label><div class="row-actions"><button type="button" class="btn btn-secondary btn-sm fu-out">Open in Outlook draft</button></div></td></tr>';
+      return '<tr class="fu-det" data-d="' + i + '"><td colspan="9"><div class="small"><b>To:</b> ' + esc(g.to.join("; ")) + "<br><b>CC:</b> " + esc(g.cc.join("; ") || "—") + '</div><label class="field" style="margin-top:8px"><span>Subject</span><input type="text" class="fu-sub"></label><label class="field"><span>Message — edit if needed (this supplier only)</span><textarea class="fu-msg"></textarea></label><div class="row-actions"><button type="button" class="btn btn-primary btn-sm fu-eml">📨 Outlook draft with attachments</button><button type="button" class="btn btn-secondary btn-sm fu-out" title="Opens a new e-mail in your mail app without attachments">Quick e-mail (no attachments)</button></div></td></tr>';
     }
     function wireDetail() {
       var det = $("fu-body").querySelector(".fu-det"); if (!det) return;
@@ -786,6 +787,12 @@
       sub.oninput = function () { (S.edits[g.key] = S.edits[g.key] || {}).subject = sub.value; };
       msg.oninput = function () { (S.edits[g.key] = S.edits[g.key] || {}).body = msg.value; };
       det.querySelector(".fu-out").onclick = function () { outlookDraft(g.to, g.cc, sub.value, msg.value); };
+      det.querySelector(".fu-eml").onclick = async function () {
+        var btn = this; btn.disabled = true; var keep = S.send; S.send = "draft";
+        try { var r = await sendOne(g); await deliverDrafts([{ name: r.fileName, b64: r.eml }]); S.results[g.key] = { kind: "ok", text: "Draft ready" }; }
+        catch (e) { S.results[g.key] = { kind: "err", text: e.message }; }
+        finally { S.send = keep; btn.disabled = false; renderTable(); }
+      };
     }
     function redraw() { persist(); S.selected = {}; S.results = {}; S.edits = {}; $("fu-all").checked = false; draw(); }
 
@@ -814,12 +821,12 @@
     async function sendOne(g) {
       var ed = S.edits[g.key] || {};
       var payload = { kind: S.kind, supplierCode: g.code, supplierName: g.name, to: g.to, cc: g.cc, subject: ed.subject != null ? ed.subject : g.subject, messageBody: ed.body != null ? ed.body : g.body,
-        sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: !S.live || undefined, testTo: S.live ? undefined : ($("fu-testto").value || "").trim(), partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
+        sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: S.send === "test" || undefined, testTo: S.send === "test" ? ($("fu-testto").value || "").trim() : undefined, mode: S.send === "draft" ? "draft" : "send", partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
         attachments: { pdf: $("fu-att-pdf").checked && S.kind !== "recap", xlsx: $("fu-att-xlsx").checked } };
       if (S.kind === "recap") payload.extraPdf = await recapPdf();
       return api("/api/imds-master/followups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     }
-    $("fu-mode").onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-send]"); if (!b) return; S.live = b.getAttribute("data-send") === "live"; persist(); draw(); };
+    $("fu-mode").onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-send]"); if (!b) return; S.send = b.getAttribute("data-send"); S.live = S.send === "live"; persist(); draw(); };
     $("fu-testto").oninput = function () { S.testTo = this.value.trim(); persist(); };
     $("fu-limit").onchange = function () { S.limit = this.value; persist(); };
     $("fu-pause").onchange = function () { S.pause = this.value; persist(); };
@@ -838,21 +845,21 @@
     $("fu-send").onclick = async function () {
       if (S.sending) return;
       var ready = groups.filter(function (g) { return g.ready; });
-      var todo = S.kind === "recap" ? ready : (S.live ? ready.filter(function (g) { return S.selected[g.key]; }) : (ready.filter(function (g) { return S.selected[g.key]; }).length ? ready.filter(function (g) { return S.selected[g.key]; }) : ready));
+      var todo = S.kind === "recap" ? ready : (S.send !== "test" ? ready.filter(function (g) { return S.selected[g.key]; }) : (ready.filter(function (g) { return S.selected[g.key]; }).length ? ready.filter(function (g) { return S.selected[g.key]; }) : ready));
       var lim = Number($("fu-limit").value) || 0; if (S.kind !== "recap" && lim) todo = todo.slice(0, lim);
       if (!todo.length) return;
       var testTo = ($("fu-testto").value || "").trim();
-      if (!S.live && !testTo) { $("fu-testto").focus(); toast("Enter the address that should receive the test.", "info"); return; }
+      if (S.send === "test" && !testTo) { $("fu-testto").focus(); toast("Enter the address that should receive the test.", "info"); return; }
       var att = [$("fu-att-pdf").checked ? "PDF" : "", $("fu-att-xlsx").checked ? "Excel" : ""].filter(Boolean).join(" + ") || "none";
-      var msg = S.live ? (S.kind === "recap" ? "SEND LIVE: one recap e-mail to " + todo[0].to.length + " supplier PIC(s)?" : "SEND LIVE: " + todo.length + " e-mail(s), one per supplier?") + "\nMandatory CC is added automatically." : "TEST: " + todo.length + " e-mail(s) go only to " + testTo + ". No supplier and no CC receives anything.";
+      var msg = S.send === "draft" ? "Create " + todo.length + " Outlook draft(s) with attachments? Nothing is sent: you open each draft in Outlook and press Send." : S.live ? (S.kind === "recap" ? "SEND LIVE: one recap e-mail to " + todo[0].to.length + " supplier PIC(s)?" : "SEND LIVE: " + todo.length + " e-mail(s), one per supplier?") + "\nMandatory CC is added automatically." : "TEST: " + todo.length + " e-mail(s) go only to " + testTo + ". No supplier and no CC receives anything.";
       if (!window.confirm(msg + "\nAttachments: " + att + "\nThey go out through Power Automate.")) return;
       S.sending = true; renderTable(); $("fu-progwrap").hidden = false; $("fu-prog").style.width = "0";
-      var done = 0, ok = 0, skip = 0, fail = 0, last = "", pause = Number($("fu-pause").value) || 0, stopped = false;
+      var drafts = [], done = 0, ok = 0, skip = 0, fail = 0, last = "", pause = Number($("fu-pause").value) || 0, stopped = false;
       for (var i = 0; i < todo.length; i++) {
         var g = todo[i];
-        $("fu-prog-text").textContent = (S.live ? "Sending " : "Test ") + (i + 1) + " of " + todo.length + " — " + g.name;
+        $("fu-prog-text").textContent = (S.send === "draft" ? "Preparing " : S.live ? "Sending " : "Test ") + (i + 1) + " of " + todo.length + " — " + g.name;
         S.results[g.key] = { kind: "skip", text: "Sending…" }; renderTable();
-        try { var r = await sendOne(g); S.results[g.key] = { kind: "ok", text: S.live ? "Handed to Power Automate" : "Test sent to " + testTo }; ok++; last = r.sentFrom || ""; if (S.live) { S.selected[g.key] = false; mailInfo.lastSent[g.name] = new Date().toISOString(); } }
+        try { var r = await sendOne(g); if (r.draft) drafts.push({ name: r.fileName, b64: r.eml }); S.results[g.key] = { kind: "ok", text: r.draft ? "Draft ready" : S.live ? "Handed to Power Automate" : "Test sent to " + testTo }; ok++; last = r.sentFrom || ""; if (S.live) { S.selected[g.key] = false; mailInfo.lastSent[g.name] = new Date().toISOString(); } }
         catch (e) {
           if (e.payload && e.payload.skipped === "RECENTLY_SENT") { S.results[g.key] = { kind: "skip", text: "Skipped — e-mailed recently" }; skip++; }
           else { S.results[g.key] = { kind: "err", text: e.message }; fail++; if ($("fu-stop").checked) { stopped = true; done++; break; } }
@@ -861,8 +868,34 @@
         if (pause && i < todo.length - 1) await sleep(pause * 1000);
       }
       S.sending = false; renderTable();
-      $("fu-prog-text").textContent = "Finished: " + ok + (S.live ? " handed to Power Automate" : " test e-mail(s) handed over") + " · " + skip + " skipped · " + fail + " failed" + (stopped ? " (stopped at the first failure)" : "") + (last ? " · sent from " + last : "") + ". “Handed over” means the flow accepted it — confirm delivery in Outlook Sent items.";
+      if (drafts.length) await deliverDrafts(drafts);
+      $("fu-prog-text").textContent = S.send === "draft" ? "Finished: " + ok + " Outlook draft(s) downloaded" + (fail ? " · " + fail + " failed" : "") + ". Open " + (drafts.length > 1 ? "the .zip, then each .eml file" : "the .eml file") + " — Outlook shows it as a new message from your own mailbox with the attachments. Check it and press Send." : "Finished: " + ok + (S.live ? " handed to Power Automate" : " test e-mail(s) handed over") + " · " + skip + " skipped · " + fail + " failed" + (stopped ? " (stopped at the first failure)" : "") + (last ? " · sent from " + last : "") + ". “Handed over” means the flow accepted it — confirm delivery in Outlook Sent items.";
     };
+
+    function b64bytes(b64) { var bin = atob(b64), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+    var CRC = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+    function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+    /** Minimal ZIP (stored, no compression): enough to hand many .eml drafts over in one download. */
+    function zipBlob(files) {
+      var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+      var u16 = function (v) { return [v & 255, (v >>> 8) & 255]; }, u32 = function (v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; };
+      files.forEach(function (f) {
+        var name = enc.encode(f.name), data = f.bytes, crc = crc32(data);
+        var local = new Uint8Array([].concat([0x50, 0x4b, 3, 4], u16(20), u16(0x0800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0)));
+        parts.push(local, name, data);
+        central.push(new Uint8Array([].concat([0x50, 0x4b, 1, 2], u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+        offset += local.length + name.length + data.length;
+      });
+      var size = central.reduce(function (a, p) { return a + p.length; }, 0);
+      var end = new Uint8Array([].concat([0x50, 0x4b, 5, 6], u16(0), u16(0), u16(files.length), u16(files.length), u32(size), u32(offset), u16(0)));
+      return new Blob(parts.concat(central, [end]), { type: "application/zip" });
+    }
+    async function deliverDrafts(list) {
+      if (list.length === 1) { await saveBlobFile(new Blob([b64bytes(list[0].b64)], { type: "message/rfc822" }), list[0].name, "Outlook draft"); return; }
+      var seen = {};
+      var files = list.map(function (d) { var n = d.name; while (seen[n]) n = n.replace(/(\.eml)$/, "_" + (seen[d.name] = (seen[d.name] || 1) + 1) + "$1"); seen[n] = 1; return { name: n, bytes: b64bytes(d.b64) }; });
+      await saveBlobFile(zipBlob(files), "IMDS_Outlook_drafts_" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date()) + ".zip", "Outlook drafts");
+    }
 
     window.__imdsEmailFor = function (company, kind) {
       S.kind = kind || "followup"; S.only = company || ""; S.models = []; S.open = company || ""; S.selected = {}; S.results = {}; S.edits = {};

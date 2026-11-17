@@ -4,6 +4,7 @@ export type RowFacts = {
   materialName: string; matlClass: string; componentPartName: string; deliveryPartName: string;
   imdsMass: string; drawingMass: string; toleranceClass: string;
   drawingRefs: string[]; drawingStatus: string;
+  companyName: string;
 };
 
 const CLASSES = ["MA", "MB", "MC", "MD", "ME", "MF"];
@@ -17,6 +18,17 @@ function text(raw: Record<string, unknown> | null | undefined, label: string, co
 }
 function mass(raw: Record<string, unknown> | null | undefined, label: string, col: number): string {
   return text(raw, label, col).replace(/,/g, ".");
+}
+
+/** First non-empty value whose header starts with `label` (column numbers differ between log layouts). */
+function byHeader(raw: Record<string, unknown> | null | undefined, label: string): string {
+  if (!raw) return "";
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k.startsWith(label + " [col ")) continue;
+    const s = String(v ?? "").replace(/_x000D_/g, " ").trim();
+    if (s && s !== "***") return s;
+  }
+  return "";
 }
 
 export function extractRowFacts(raw: Record<string, unknown> | null | undefined): RowFacts {
@@ -36,6 +48,7 @@ export function extractRowFacts(raw: Record<string, unknown> | null | undefined)
     drawingMass: mass(raw, "Drawing Mass (g)", 54) || (max && max === min ? max : ""),
     toleranceClass: CLASSES.includes(cls) ? cls : "",
     drawingRefs: [text(raw, "Drawing Info\nDrawing", 37), text(raw, "Drawing Info\nDrawing(2D)", 38), text(raw, "Drawing Info\nDrawing(3D)", 39)].filter(Boolean),
-    drawingStatus: text(raw, "Drawing Info\nDrawing Status", 40)
+    drawingStatus: text(raw, "Drawing Info\nDrawing Status", 40),
+    companyName: byHeader(raw, "Company Name")
   };
 }

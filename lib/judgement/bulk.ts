@@ -41,7 +41,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
   const supplierConfirmation = typeof answers.supplierConfirmation === "string" ? answers.supplierConfirmation : undefined;
   const toleranceClass = facts.toleranceClass || (typeof answers.toleranceClass === "string" && /^M[A-F]$/.test(answers.toleranceClass) ? answers.toleranceClass : undefined);
   const destination = typeof answers.destination === "string" ? answers.destination : undefined;
-  const auto = runAutoWorkflow({ errorType: item.error_type_label, facts, answers, supplierConfirmation, toleranceClass, destination });
+  const auto = runAutoWorkflow({ errorType: item.error_type_label, facts, supplierCode: item.supplier_code, answers, supplierConfirmation, toleranceClass, destination });
   // A flow that ends in "Contact TMC" uses Toyota's recorded answer for the identical case.
   let tmc: BulkCandidate["tmc"] = null;
   let tmcDecided = false;

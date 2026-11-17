@@ -82,3 +82,7 @@ CAS → family mapping: `data/reference/gcats-v5110-cas-families.json` (713 CAS,
 ### TMC escalation (`judgement_escalations`)
 
 When an Appendix II flow ends in "Contact TMC/TMNA/TME/TDEM" (or "Report … to TMC first"), the case shows a TMC strip: NEED → SENT → CONFIRMED (answer OK/NG + note). The answer is stored per case key (part + error type + CAS + flow) and reused for identical cases by the single-case check, exact-match bulk and auto-judge (`4) TMC confirmation: …` is added to the procedure). Nothing is sent to TMC by the application; the reviewer records what TMC answered.
+
+### No.21 WARP Part number (`lib/judgement/warp.ts`)
+
+Supplier code found in the Purchasing supplier code master and the company name matches (or the record has no company name) → OK "Confirmed by Purchasing Div.". Code missing or name differs → the reviewer records Purchasing's answer (Y → OK "Confirmed by Purchasing Div.", N → NG "Supplier code is incorrect."). Auto-judge family `warp`.

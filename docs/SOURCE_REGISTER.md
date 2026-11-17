@@ -46,3 +46,9 @@ The user permits PROTECTED documents to be processed under their authorization a
 ## Governance amendment 2026-11-18
 
 The repository owner allowed system-final OK/NG for complete cases in rule families switched on in Auto-judge (see `CLAUDE.md` and `docs/RULE_COVERAGE.md`). The source references behind each family are unchanged: TSZ2900G Rev.9 (mass tolerance), Appendix I (SMS mass, Application 44 supplier answers), Pb TOYOTA Policy Table and Appendix II No.10 (Pb), Appendix II No.14–18 (substances). Error Type 19 remains HOLD because of the Version 6 Section II / Appendix I conflict.
+
+## Purchasing supplier code master (added 2026-11-18)
+
+`data/reference/purchasing-supplier-code-master.json` — 222 supplier codes from `Supplier_Code.xlsx` ("Supplier Code master (Purchasing)", sha256 8499377a…), extracted 2026-11-14 in Jasmine's G-CATS Auto-Judgement and confirmed **PROTECTED** by the repository owner on 2026-11-18. Used only by the No.21 WARP Part number rule (`lib/judgement/warp.ts`). Replace the file when Purchasing issues a new master and record the new version here.
+
+TMMIN destination codes → rule regions (`lib/judgement/destinations.ts`) come from the same application's code (A–Z codes, V split Israel/other, X split Russia/India).

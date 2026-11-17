@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   const destinationUsed = destination ?? memory.destination?.value;
   const supplierConfirmationUsed = supplierConfirmation ?? (stored?.answers.supplierConfirmation && CONFIRMATIONS.includes(stored.answers.supplierConfirmation) ? stored.answers.supplierConfirmation : undefined);
   const toleranceClassUsed = toleranceClass ?? (!facts.toleranceClass && stored?.answers.toleranceClass && /^M[A-F]$/.test(stored.answers.toleranceClass) ? stored.answers.toleranceClass : undefined) ?? (!facts.toleranceClass ? memory.toleranceClass?.value : undefined);
-  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, destination: destinationUsed, toleranceClass: toleranceClassUsed, supplierConfirmation: supplierConfirmationUsed, answers: merged });
+  const result = runAutoWorkflow({ errorType: item.error_type_label, facts, supplierCode: item.supplier_code, destination: destinationUsed, toleranceClass: toleranceClassUsed, supplierConfirmation: supplierConfirmationUsed, answers: merged });
   const usedMemory = Object.values(memory).filter((e) => e && (e.field !== "destination" || !destination) && (e.field !== "toleranceClass" || (!toleranceClass && !facts.toleranceClass)));
   if (usedMemory.length) {
     result.steps.unshift({ id: "memory", title: "Remembered for this part", status: "DONE", detail: usedMemory.map((e) => `${e!.field === "destination" ? "Destination" : e!.field === "toleranceClass" ? "Tolerance class" : e!.field} ${e!.value} · ${describeMemory(e!)}`).join(" · ") });

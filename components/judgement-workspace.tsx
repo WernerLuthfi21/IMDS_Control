@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronDown, CircleCheck, 
 import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
 import { AutoJudgeCard } from "@/components/autojudge-card";
+import { DEST_CODES, regionOfCode } from "@/lib/judgement/destinations";
 
 const SYSTEM_ACTOR = "Auto-judgement (System)";
 function remember(row: { id: string; delivery_part_no: string | null }, field: string, value: string) {
@@ -155,7 +156,10 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       {loading && !auto && <li className="jx-loading"><LoaderCircle size={14} className="spin"/> Running the automatic checks…</li>}
       {auto?.steps.map((s) => <li key={s.id} className={"jx-step " + s.status.toLowerCase()}><StepIcon status={s.status}/><div><strong>{s.title}</strong><span>{s.detail}</span></div></li>)}
     </ol>
-    {auto?.needs.destination && <div className="jx-ask"><span>Destination</span><Chips label="Destination" value={destination} onPick={(v) => { setDestination(v); if (canEdit) remember(row, "destination", v); }} options={DESTINATIONS}/><small className="jx-hint">Remembered for this part next time.</small></div>}
+    {auto?.needs.destination && <div className="jx-ask"><span>Destination</span><Chips label="Destination" value={destination} onPick={(v) => { setDestination(v); if (canEdit) remember(row, "destination", v); }} options={DESTINATIONS}/>
+      <select className="jx-dest-code" aria-label="Or pick the TMMIN destination code" value="" onChange={(e) => { const r = regionOfCode(e.target.value); if (r) { setDestination(r); if (canEdit) remember(row, "destination", r); } }}>
+        <option value="">or pick the destination code…</option>{DEST_CODES.map(([c, label, r]) => <option key={c} value={c}>{label} → {r}</option>)}
+      </select><small className="jx-hint">Remembered for this part next time.</small></div>}
     {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips full label={auto.flow.next.text} value="" onPick={(v) => { const id = auto.flow!.next!.id; setAnswers((a) => ({ ...a, [id]: v })); if (canEdit && (id === "usCarpet" || id === "nonEuReq")) remember(row, id, v); }} options={auto.flow.next.options}/></div>}
     {auto?.flow && Object.keys(answers).length > 0 && <div className="jx-ask"><button type="button" className="jx-link" onClick={() => setAnswers({})}>Reset flow answers</button></div>}
     {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); if (canEdit) remember(row, "toleranceClass", v); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
