@@ -42,3 +42,7 @@ Examples: `Battery (Pb)`, `Battery (Cd)`, `Tokusetsu Part number`, and `Prohibit
 ## Classification and handling
 
 The user permits PROTECTED documents to be processed under their authorization and expressly prohibits CONFIDENTIAL information. Keep protected source materials in approved private infrastructure. Never bundle the entire master workbook, raw supplier/part rows, supplier PIC email addresses or MDS report into public source control. UNKNOWN classification must be blocked.
+
+## Governance amendment 2026-11-18
+
+The repository owner allowed system-final OK/NG for complete cases in rule families switched on in Auto-judge (see `CLAUDE.md` and `docs/RULE_COVERAGE.md`). The source references behind each family are unchanged: TSZ2900G Rev.9 (mass tolerance), Appendix I (SMS mass, Application 44 supplier answers), Pb TOYOTA Policy Table and Appendix II No.10 (Pb), Appendix II No.14–18 (substances). Error Type 19 remains HOLD because of the Version 6 Section II / Appendix I conflict.

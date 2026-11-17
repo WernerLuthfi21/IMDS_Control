@@ -4,6 +4,7 @@ import { runAutoWorkflow, detectKind, type AutoOutput } from "@/lib/judgement/au
 import { extractRowFacts } from "@/lib/judgement/row-facts";
 import { familyOfKind, loadConfirmation } from "@/lib/intake/confirmations";
 import { normalizeCas } from "@/lib/reference-data";
+import type { PartMemory } from "@/lib/judgement/memory";
 
 export type BulkSourceItem = {
   id: string; source_record_key: string; error_type_label: string;
@@ -25,14 +26,17 @@ function stable(value: unknown): string {
   }
   return JSON.stringify(value) ?? "null";
 }
-export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem): Promise<BulkCandidate> {
+export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem, memory?: PartMemory): Promise<BulkCandidate> {
   const facts = extractRowFacts(item.raw_source);
   const kind = detectKind(item.error_type_label);
   const family = familyOfKind(kind);
   const stored = family ? await loadConfirmation(supabase, item, family, normalizeCas(facts.cas || "")) : null;
-  const answers = stored?.answers ?? {};
+  // Supplier answers first, then what Toyota already answered for this part (destination, class, Toyota-owned flow answers).
+  const remembered: Record<string, string> = {};
+  for (const [field, entry] of Object.entries(memory ?? {})) if (entry) remembered[field] = entry.value;
+  const answers: Record<string, string> = { ...(stored?.answers ?? {}), ...remembered };
   const supplierConfirmation = typeof answers.supplierConfirmation === "string" ? answers.supplierConfirmation : undefined;
-  const toleranceClass = facts.toleranceClass || (typeof answers.toleranceClass === "string" ? answers.toleranceClass : undefined);
+  const toleranceClass = facts.toleranceClass || (typeof answers.toleranceClass === "string" && /^M[A-F]$/.test(answers.toleranceClass) ? answers.toleranceClass : undefined);
   const destination = typeof answers.destination === "string" ? answers.destination : undefined;
   const auto = runAutoWorkflow({ errorType: item.error_type_label, facts, answers, supplierConfirmation, toleranceClass, destination });
   const flow = auto.flow ? {

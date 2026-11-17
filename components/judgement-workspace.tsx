@@ -3,6 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, Layers3, LoaderCircle, Mail, ScanSearch, Search, ShieldCheck, Sparkles, Undo2, UserRound } from "lucide-react";
 import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
+import { AutoJudgeCard } from "@/components/autojudge-card";
+
+const SYSTEM_ACTOR = "Auto-judgement (System)";
+function remember(row: { id: string; delivery_part_no: string | null }, field: string, value: string) {
+  if (!row.delivery_part_no || !value) return;
+  void fetch("/api/judgement/memory", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: row.id, partNo: row.delivery_part_no, field, value }) }).catch(() => { /* memory is a convenience; the judgement itself is unaffected */ });
+}
 
 type Item = {
   id: string; source_record_key: string; error_type_label: string; delivery_part_no: string | null; supplier_code: string | null;
@@ -91,18 +98,30 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
     } catch (e) { setError(e instanceof Error ? e.message : "Save failed."); setBusy(false); }
   }
 
+  const isAuto = row.assigned_person === SYSTEM_ACTOR && Boolean(row.judge);
+  async function reopen() {
+    const reason = window.prompt("Reopen this automatic decision? Give a short reason (kept in the audit log):", "");
+    if (!reason || reason.trim().length < 3) return;
+    setBusy(true); setError("");
+    try {
+      const r = await fetch("/api/judgement/autorun", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reopen", id: row.id, reason }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || "Could not reopen.");
+      onSaved(row.id, { judge: null, ok_comment: null, imds_reject_comment: null, assigned_person: null });
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not reopen."); setBusy(false); }
+  }
   const followUp = "/follow-up?" + new URLSearchParams({ itemId: row.id, supplierCode: row.supplier_code || "", partNo: row.delivery_part_no || "", errorType: row.error_type_label });
   const ready = judge !== "" && comment.trim() !== "";
   return <div className="jx-panel">
-    <div className="jx-auto-line"><UserRound size={13}/> Recorded automatically as <strong>{row.assigned_person || actorName}</strong> · <strong>{row.starting_date || today()}</strong></div>
+    {isAuto ? <div className="jx-auto-line auto"><Sparkles size={13}/> Judged <strong>{row.judge}</strong> automatically by the system on <strong>{row.starting_date || today()}</strong>{canEdit && <button type="button" className="jx-link" onClick={() => void reopen()} disabled={busy}><Undo2 size={13}/> Reopen</button>}</div>
+      : <div className="jx-auto-line"><UserRound size={13}/> Recorded automatically as <strong>{row.assigned_person || actorName}</strong> · <strong>{row.starting_date || today()}</strong></div>}
     <ol className="jx-steps">
       {loading && !auto && <li className="jx-loading"><LoaderCircle size={14} className="spin"/> Running the automatic checks…</li>}
       {auto?.steps.map((s) => <li key={s.id} className={"jx-step " + s.status.toLowerCase()}><StepIcon status={s.status}/><div><strong>{s.title}</strong><span>{s.detail}</span></div></li>)}
     </ol>
-    {auto?.needs.destination && <div className="jx-ask"><span>Destination</span><Chips label="Destination" value={destination} onPick={setDestination} options={DESTINATIONS}/></div>}
-    {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips full label={auto.flow.next.text} value="" onPick={(v) => setAnswers((a) => ({ ...a, [auto.flow!.next!.id]: v }))} options={auto.flow.next.options}/></div>}
+    {auto?.needs.destination && <div className="jx-ask"><span>Destination</span><Chips label="Destination" value={destination} onPick={(v) => { setDestination(v); if (canEdit) remember(row, "destination", v); }} options={DESTINATIONS}/><small className="jx-hint">Remembered for this part next time.</small></div>}
+    {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips full label={auto.flow.next.text} value="" onPick={(v) => { const id = auto.flow!.next!.id; setAnswers((a) => ({ ...a, [id]: v })); if (canEdit && (id === "usCarpet" || id === "nonEuReq")) remember(row, id, v); }} options={auto.flow.next.options}/></div>}
     {auto?.flow && Object.keys(answers).length > 0 && <div className="jx-ask"><button type="button" className="jx-link" onClick={() => setAnswers({})}>Reset flow answers</button></div>}
-    {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
+    {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); if (canEdit) remember(row, "toleranceClass", v); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
     {auto?.needs.supplierConfirmation && <div className="jx-ask"><span>{auto.kind === "mass" ? "Outside ±10% — supplier says" : "Supplier says"}</span>
       <Chips label="Supplier confirmation" value={supplier} onPick={setSupplier} full options={auto.kind === "app44" ? [["SUPPLIER_CONFIRMED", "A · Supplier confirms the application / code"], ["INPUT_MISTAKE", "B · Input mistake"]] : [["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]]}/>
       </div>}
@@ -257,11 +276,16 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     {queryError && <div className="jx-error"><AlertTriangle size={14}/> {queryError}</div>}
     {rows.length === 0 && !queryError && <div className="jx-empty"><strong>No current-year source records</strong><span>Commit the current G-CATS workbook from Daily G-CATS Update to fill the queue.</span></div>}
 
+    <AutoJudgeCard
+      pendingIds={rows.filter((r) => r.source_status === "WORKING" && !r.judge).map((r) => r.id)}
+      judgedIds={rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR).map((r) => r.id)}
+      onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>
+
     <section className="jx-command">
       <div className="jx-command-head">
         <div><span className="jx-command-kicker"><Sparkles size={13}/> SMART JUDGEMENT</span>
           <h2>Review identical cases together</h2>
-          <p>Analyse the pending queue, compare complete source facts and rule traces, then apply one reviewed recommendation to an exact-match group.</p>
+          <p>For cases auto-judge leaves to you: find exact-match groups (same facts, same rule trace) and judge each group once.</p>
         </div>
         <button type="button" className="jx-analyze" onClick={() => void analyzeVisibleQueue()} disabled={bulkBusy || !canEdit}>
           {bulkBusy ? <LoaderCircle size={15} className="spin"/> : <ScanSearch size={15}/>} Analyse pending cases
@@ -315,7 +339,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
             <span className={"jx-state " + (r.judge ? "done" : "pending")}>{r.judge ? <Check size={13}/> : <Clock3 size={13}/>}</span>
             <span className="jx-main"><strong>{r.delivery_part_no || "Part number missing"}</strong><small>{r.error_type_label} · {r.supplier_code || "Supplier —"} · {r.source_record_key}</small></span>
             <span className="jx-sub">{r.cas ? <><code>{r.cas}</code><small>{r.substance_name}</small></> : <small>{r.substance_name || "—"}</small>}</span>
-            <span className={"jx-pill " + (r.judge ? r.judge.toLowerCase() : "pending")}>{r.judge || "Pending"}</span>
+            <span className={"jx-pill " + (r.judge ? r.judge.toLowerCase() : "pending")}>{r.judge ? (r.assigned_person === SYSTEM_ACTOR ? "Auto " + r.judge : r.judge) : "Pending"}</span>
             <ChevronDown size={16} className="jx-chev"/>
           </button>
           {open && <JudgePanel row={r} canEdit={canEdit} actorName={actorName} onSaved={onSaved}/>}
@@ -324,6 +348,6 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       {!visible.length && <li className="jx-empty"><CircleHelp size={18}/><strong>No matching records</strong><span>Change the filters.</span></li>}
     </ul>
     {visible.length > limit && <button type="button" className="jx-more" onClick={() => setLimit((n) => n + PAGE)}>Show {Math.min(PAGE, visible.length - limit)} more · {visible.length - limit} left</button>}
-    <p className="jx-gov"><ShieldCheck size={13}/> Automatic checks only recommend. Saving is your decision and is written to the register with the evaluation trace and audit log.</p>
+    <p className="jx-gov"><ShieldCheck size={13}/> The engine recommends every case. Only rule families an admin switched on in Auto-judge are saved by the system; everything else is your decision. Every save is written with the evaluation trace and audit log, and automatic decisions can be reopened.</p>
   </div>;
 }

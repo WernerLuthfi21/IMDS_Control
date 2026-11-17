@@ -192,3 +192,16 @@ Catatan teknis: file kecil (≤3,5 MB) dikirim dalam satu permintaan; import MD 
 | Upload gagal "storage" | bucket `import-staging` belum ada / migrasi belum diterapkan |
 | Baris dobel di Excel | kolom `KEY` kosong/diubah, atau Concurrency bukan 1 |
 | Excel tidak berubah, antrean "pending" | flow mati/lisensi; lihat Run history, lalu **Sync to Excel now** |
+
+## 11. Auto-judge dan memori (Judgement)
+
+**Sekali jalan:** jalankan `supabase/migrations/20261118000000_judgement_memory_autojudge.sql` di Supabase → SQL editor (setelah `20261110000000_tracker_settings.sql`). Cek versi migrasi remote dulu; jangan reset.
+
+**Memori ("tidak ditanya lagi"):** jawaban Toyota per part number (destination, kelas toleransi massa, jawaban flow milik Toyota) disimpan sekali dan otomatis dipakai untuk kasus yang sama. Di panel kasus tertulis *Remembered from <nama> on <tanggal>*. Pilih jawaban lain untuk menggantinya.
+
+**Auto-judge (kartu dengan kucing di atas halaman Judgement):**
+1. **Preview** menjalankan semua kasus pending dan menunjukkan berapa yang *akan* OK/NG dan berapa yang masih perlu orang, beserta alasannya. Tidak ada yang ditulis.
+2. **Accuracy check** membandingkan keputusan mesin dengan keputusan yang sudah dibuat orang.
+3. **Rules** (admin / rule approver): saklar induk, *Shadow mode*, dan saklar per keluarga aturan (mass, SMS, App 44, Pb, substances). Nama dan tanggal yang menyalakan dicatat.
+4. Kalau saklar induk ON, shadow OFF, dan keluarganya ON: tombol menjadi **Auto-judge** dan kasus yang lengkap disimpan FINAL oleh `Auto-judgement (System)`, dicatat di audit, dan ikut disinkronkan ke Excel seperti simpan manual. Error Type 19, HOLD, data kurang, dan flow yang belum dikodekan tidak pernah difinalkan.
+5. Keputusan otomatis bertanda **Auto OK / Auto NG** di daftar; buka kasusnya lalu **Reopen** (wajib alasan) untuk mengembalikannya ke antrean.
