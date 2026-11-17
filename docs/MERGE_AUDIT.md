@@ -33,9 +33,13 @@ Decision rule for "best of both": (a) agreement with the source documents, (b) t
 - Live Supabase, Power Automate and real data are not reachable from the build sandbox; behaviour against production data is NOT TESTED here.
 - Accuracy depends on the encoded flows; run the accuracy check before switching families on.
 
-## Next PRs
+## Done after part 1
 
-1. Self-check evidence quotes (sheet/line) next to reused supplier answers.
-2. TMC escalation tracker (NEED → SENT → CONFIRMED) for HOLD cases that say "Contact TMC".
-3. TMMIN destination code → region mapping (from B's code) so imported destination codes fill memory automatically.
-4. WARP supplier-code rule once the supplier master's classification is confirmed.
+- TMC escalation tracker (NEED → SENT → CONFIRMED), answers reused for identical cases (part 3).
+- Responsive sweep: iPhone SE to 2560 px, light and dark (part 2).
+
+## Still open
+
+1. Self-check evidence quotes (sheet/line) next to reused supplier answers: needs the supplier's free text stored with `supplier_confirmations`.
+2. TMMIN destination code → region mapping (from B's code) so imported destination codes fill memory automatically: needs the destination column confirmed in the G-CATS export.
+3. WARP supplier-code rule once the Purchasing supplier master's classification is confirmed.

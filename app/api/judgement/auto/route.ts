@@ -7,6 +7,7 @@ import { detectKind } from "@/lib/judgement/auto";
 import { familyOfKind, loadConfirmation, describeAnswers } from "@/lib/intake/confirmations";
 import { normalizeCas } from "@/lib/reference-data";
 import { describeMemory, loadPartMemory, type PartMemory } from "@/lib/judgement/memory";
+import { escalationKey, loadEscalations, needsTmc, tmcRecommendation, type Escalation } from "@/lib/judgement/escalation";
 
 export const runtime = "nodejs";
 const DESTINATIONS = ["EU", "KR", "CN", "TW", "IN", "JP", "OTH"];
@@ -55,5 +56,20 @@ export async function POST(request: NextRequest) {
     result.steps.unshift({ id: "supplier-confirmation", title: "Supplier confirmation on file", status: "DONE", detail: `${stored.supplier_code} answered in its self-check on ${when}${stored.source_file_name ? ` (${stored.source_file_name})` : ""}: ${describeAnswers(stored.answers)}. Self-reported by the supplier; you still decide.` });
     result.procedureText = [result.procedureText, `Supplier self-check confirmation (${stored.supplier_code}, ${when}): ${describeAnswers(stored.answers)}.`].filter(Boolean).join("\n");
   }
-  return NextResponse.json({ result, memory: { available: memoryAvailable, values: Object.fromEntries(Object.entries(memory).map(([k, e]) => [k, e ? { value: e.value, note: describeMemory(e) } : null])) }, confirmation: stored ? { submittedAt: stored.submitted_at, supplierCode: stored.supplier_code } : null }, { headers: { "Cache-Control": "no-store" } });
+  let tmc: { key: string; status: Escalation["status"]; answer: "OK" | "NG" | null; note: string; sentAt: string | null; answeredAt: string | null; by: string | null } | null = null;
+  if (needsTmc(result.recommendation.reason)) {
+    const key = escalationKey({ partNo: item.delivery_part_no, errorType: item.error_type_label, cas: facts.cas, flowId: result.flow?.flowId });
+    let esc: Escalation | undefined;
+    try { esc = (await loadEscalations(supabase!, [item.delivery_part_no || ""])).map.get(key); } catch { esc = undefined; }
+    tmc = { key, status: esc?.status ?? "NEED", answer: esc?.answer ?? null, note: esc?.note ?? "", sentAt: esc?.sentAt ?? null, answeredAt: esc?.answeredAt ?? null, by: esc?.updatedByName ?? null };
+    const rec = esc ? tmcRecommendation(esc) : null;
+    if (rec) {
+      result.recommendation = rec;
+      result.steps.push({ id: "tmc", title: "TMC confirmation", status: "DONE", detail: rec.reason });
+      result.procedureText = [result.procedureText, `4) TMC confirmation: ${rec.comment}`].filter(Boolean).join("\n");
+    } else {
+      result.steps.push({ id: "tmc", title: "TMC confirmation", status: "NEEDS_INPUT", detail: esc?.status === "SENT" ? `Sent to TMC${esc.sentAt ? " on " + esc.sentAt.slice(0, 10) : ""}; waiting for the answer.` : "Ask TMC/TMNA/TME/TDEM, then record the answer here. It will be reused for identical cases." });
+    }
+  }
+  return NextResponse.json({ result, tmc, memory: { available: memoryAvailable, values: Object.fromEntries(Object.entries(memory).map(([k, e]) => [k, e ? { value: e.value, note: describeMemory(e) } : null])) }, confirmation: stored ? { submittedAt: stored.submitted_at, supplierCode: stored.supplier_code } : null }, { headers: { "Cache-Control": "no-store" } });
 }

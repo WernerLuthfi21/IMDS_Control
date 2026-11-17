@@ -45,13 +45,50 @@ function Chips({ options, value, onPick, label, full }: { options: Array<[string
   return <div className="jx-chips" role="radiogroup" aria-label={label}>{options.map(([v, text]) => <button type="button" role="radio" aria-checked={value === v} key={v} className={value === v ? "on" : ""} onClick={() => onPick(v)} title={text}>{full ? text : v}</button>)}</div>;
 }
 
+type Tmc = { key: string; status: "NEED" | "SENT" | "CONFIRMED"; answer: "OK" | "NG" | null; note: string; sentAt: string | null; answeredAt: string | null; by: string | null };
+function TmcStrip({ tmc, row, canEdit, onChanged }: { tmc: Tmc; row: Item; canEdit: boolean; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [answer, setAnswer] = useState<"" | "OK" | "NG">(tmc.answer || "");
+  const [note, setNote] = useState(tmc.note || "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function send(action: "sent" | "answered" | "reset") {
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/judgement/escalations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: tmc.key, itemId: row.id, action, answer: answer || undefined, note }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || "Could not save.");
+      setOpen(false); onChanged();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Could not save."); }
+    finally { setBusy(false); }
+  }
+  const label = tmc.status === "CONFIRMED" ? `TMC answered ${tmc.answer}${tmc.answeredAt ? " on " + tmc.answeredAt.slice(0, 10) : ""}${tmc.by ? " · recorded by " + tmc.by : ""}`
+    : tmc.status === "SENT" ? `Sent to TMC${tmc.sentAt ? " on " + tmc.sentAt.slice(0, 10) : ""} · waiting for the answer` : "This flow needs TMC / TMNA / TME / TDEM confirmation";
+  return <div className={"jx-tmc " + tmc.status.toLowerCase()} role="status">
+    <div className="jx-tmc-line"><span className="jx-tmc-dot" aria-hidden="true"/><strong>{label}</strong>{tmc.note && tmc.status === "CONFIRMED" && <small>“{tmc.note}”</small>}</div>
+    {canEdit && !open && <div className="jx-tmc-actions">
+      {tmc.status === "NEED" && <button type="button" onClick={() => void send("sent")} disabled={busy}>Mark as sent to TMC</button>}
+      <button type="button" onClick={() => setOpen(true)} disabled={busy}>{tmc.status === "CONFIRMED" ? "Change answer" : "Record TMC answer"}</button>
+    </div>}
+    {open && <div className="jx-tmc-form">
+      <Chips label="TMC answer" value={answer} onPick={(v) => setAnswer(v as "OK" | "NG")} options={[["OK", "OK"], ["NG", "NG"]]}/>
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="What TMC said (kept as the judgement comment)" aria-label="TMC note" maxLength={1000}/>
+      <button type="button" className="jx-save" onClick={() => void send("answered")} disabled={busy || !answer}>Save answer</button>
+      <button type="button" className="jx-link" onClick={() => setOpen(false)}>Cancel</button>
+    </div>}
+    {err && <div className="jx-error" role="alert"><AlertTriangle size={13}/> {err}</div>}
+    <small className="jx-hint">The answer is reused automatically for identical cases (same part, error type, CAS and flow).</small>
+  </div>;
+}
+
 function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: boolean; actorName: string; onSaved: (id: string, patch: Partial<Item>) => void }) {
   const [destination, setDestination] = useState("");
   const [toleranceClass, setToleranceClass] = useState("");
   const [supplier, setSupplier] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [auto, setAuto] = useState<AutoOutput | null>(null);
-  const reqKey = [row.id, destination, toleranceClass, supplier, JSON.stringify(answers)].join("|");
+  const [tmc, setTmc] = useState<Tmc | null>(null);
+  const [rev, setRev] = useState(0);
+  const reqKey = [row.id, destination, toleranceClass, supplier, JSON.stringify(answers), rev].join("|");
   const [doneKey, setDoneKey] = useState("");
   const loading = doneKey !== reqKey;
   const [judge, setJudge] = useState<"" | "OK" | "NG">(row.judge === "OK" || row.judge === "NG" ? row.judge : "");
@@ -64,7 +101,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
     let live = true;
     fetch("/api/judgement/auto", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
       body: JSON.stringify({ itemId: row.id, destination: destination || undefined, toleranceClass: toleranceClass || undefined, supplierConfirmation: supplier || undefined, answers }) })
-      .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || "Automatic check failed."); return j.result as AutoOutput; })
+      .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || "Automatic check failed."); setTmc((j.tmc as Tmc) || null); return j.result as AutoOutput; })
       .then((result) => {
         if (!live) return;
         setAuto(result); setError("");
@@ -75,7 +112,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       .finally(() => { if (live) setDoneKey(reqKey); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [row.id, destination, toleranceClass, supplier, answers]);
+  }, [row.id, destination, toleranceClass, supplier, answers, rev]);
 
   const procedure = useMemo(() => auto?.procedureText || row.judgement_procedure || "", [auto, row.judgement_procedure]);
   const rec = auto?.recommendation;
@@ -125,6 +162,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
     {auto?.needs.supplierConfirmation && <div className="jx-ask"><span>{auto.kind === "mass" ? "Outside ±10% — supplier says" : "Supplier says"}</span>
       <Chips label="Supplier confirmation" value={supplier} onPick={setSupplier} full options={auto.kind === "app44" ? [["SUPPLIER_CONFIRMED", "A · Supplier confirms the application / code"], ["INPUT_MISTAKE", "B · Input mistake"]] : [["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]]}/>
       </div>}
+    {tmc && <TmcStrip tmc={tmc} row={row} canEdit={canEdit} onChanged={() => setRev((n) => n + 1)}/>}
     {rec && <div className={"jx-rec " + rec.state.toLowerCase()}><strong>{rec.state === "HOLD" ? "Needs your judgement" : "Recommended " + rec.state}</strong><span>{rec.reason}</span></div>}
     {error && <div className="jx-error" role="alert"><AlertTriangle size={13}/> {error}</div>}
     {canEdit ? <div className="jx-decide">

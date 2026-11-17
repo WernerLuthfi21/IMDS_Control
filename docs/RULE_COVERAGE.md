@@ -78,3 +78,7 @@ CAS → family mapping: `data/reference/gcats-v5110-cas-families.json` (713 CAS,
 | GADSL 190 PFAS (precedent-based, not in the PDF), Annex XVII non-EU path | Encoded, simplified; EU Annex XVII entry conditions → HOLD |
 | Benzidine/azo, glycols, HFC, nitrosamines, PFOA, PBDE, triorganotin, aziridinyl, BNST, benzene, DMF, MDA, perchlorate, pitch, PAH, TCEP, arsenic, Cl-paraffins | NOT encoded → HOLD with the PDF page |
 | Code meaning of destination/application codes (TSZ6000G / Manual 2) | Not available; Pb table unchanged |
+
+### TMC escalation (`judgement_escalations`)
+
+When an Appendix II flow ends in "Contact TMC/TMNA/TME/TDEM" (or "Report … to TMC first"), the case shows a TMC strip: NEED → SENT → CONFIRMED (answer OK/NG + note). The answer is stored per case key (part + error type + CAS + flow) and reused for identical cases by the single-case check, exact-match bulk and auto-judge (`4) TMC confirmation: …` is added to the procedure). Nothing is sent to TMC by the application; the reviewer records what TMC answered.

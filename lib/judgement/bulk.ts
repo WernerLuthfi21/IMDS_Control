@@ -5,6 +5,7 @@ import { extractRowFacts } from "@/lib/judgement/row-facts";
 import { familyOfKind, loadConfirmation } from "@/lib/intake/confirmations";
 import { normalizeCas } from "@/lib/reference-data";
 import type { PartMemory } from "@/lib/judgement/memory";
+import { escalationKey, needsTmc, tmcRecommendation, type Escalation } from "@/lib/judgement/escalation";
 
 export type BulkSourceItem = {
   id: string; source_record_key: string; error_type_label: string;
@@ -17,6 +18,8 @@ export type BulkCandidate = {
   recommendation: AutoOutput["recommendation"]; procedureText: string; signature: string;
   eligible: boolean; inPendingQueue: boolean; prohibited: boolean;
   prohibitedStatus: "CONNECTED" | "NEEDS_REVIEW" | "NOT_PROHIBITED"; reviewReason: string;
+  /** Set when the flow says "Contact TMC": the case key and what Toyota answered so far. */
+  tmc: { key: string; status: Escalation["status"]; answer: "OK" | "NG" | null } | null;
 };
 function stable(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
@@ -26,7 +29,7 @@ function stable(value: unknown): string {
   }
   return JSON.stringify(value) ?? "null";
 }
-export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem, memory?: PartMemory): Promise<BulkCandidate> {
+export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem, memory?: PartMemory, escalations?: Map<string, Escalation>): Promise<BulkCandidate> {
   const facts = extractRowFacts(item.raw_source);
   const kind = detectKind(item.error_type_label);
   const family = familyOfKind(kind);
@@ -39,6 +42,19 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
   const toleranceClass = facts.toleranceClass || (typeof answers.toleranceClass === "string" && /^M[A-F]$/.test(answers.toleranceClass) ? answers.toleranceClass : undefined);
   const destination = typeof answers.destination === "string" ? answers.destination : undefined;
   const auto = runAutoWorkflow({ errorType: item.error_type_label, facts, answers, supplierConfirmation, toleranceClass, destination });
+  // A flow that ends in "Contact TMC" uses Toyota's recorded answer for the identical case.
+  let tmc: BulkCandidate["tmc"] = null;
+  let tmcDecided = false;
+  if (needsTmc(auto.recommendation.reason)) {
+    const key = escalationKey({ partNo: item.delivery_part_no, errorType: item.error_type_label, cas: facts.cas, flowId: auto.flow?.flowId });
+    const esc = escalations?.get(key);
+    const rec = esc ? tmcRecommendation(esc) : null;
+    tmc = { key, status: esc?.status ?? "NEED", answer: esc?.answer ?? null };
+    if (rec) {
+      auto.recommendation = rec; tmcDecided = true;
+      auto.procedureText = [auto.procedureText, `4) TMC confirmation: ${rec.comment}`].filter(Boolean).join("\n");
+    }
+  }
   const flow = auto.flow ? {
     flowId: auto.flow.flowId, implemented: auto.flow.implemented,
     trail: auto.flow.trail, next: auto.flow.next, outcome: auto.flow.outcome
@@ -55,7 +71,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
   const signature = createHash("sha256").update(stable(keyPayload)).digest("hex");
   const hasOpenStep = auto.steps.some((step) => step.status === "MANUAL" || step.status === "NEEDS_INPUT");
   const needsInput = Object.values(auto.needs).some(Boolean);
-  const flowIsSafe = auto.kind !== "substance" ||
+  const flowIsSafe = tmcDecided || auto.kind !== "substance" ||
     Boolean(auto.flow?.implemented && !auto.flow.next && auto.flow.outcome && auto.flow.outcome.state === auto.recommendation.state);
   const eligible = (auto.recommendation.state === "OK" || auto.recommendation.state === "NG")
     && auto.kind !== "manual" && !hasOpenStep && !needsInput && flowIsSafe
@@ -75,7 +91,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     procedureText: auto.procedureText, signature, eligible,
     inPendingQueue: item.source_status === "WORKING" && !item.judge,
     prohibited, prohibitedStatus: !prohibited ? "NOT_PROHIBITED" : connected ? "CONNECTED" : "NEEDS_REVIEW",
-    reviewReason
+    reviewReason, tmc
   };
 }
 export function groupBulkCandidates(candidates: BulkCandidate[]) {
