@@ -6,18 +6,12 @@ import { enqueue, dispatch } from "@/lib/automation/outbox";
 import { evaluateBulkCandidate, groupBulkCandidates, type BulkSourceItem } from "@/lib/judgement/bulk";
 import { loadPartMemory, partKey } from "@/lib/judgement/memory";
 import { loadEscalations } from "@/lib/judgement/escalation";
+import { UUID, validIds } from "@/lib/judgement/ids";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 const EDIT_ROLES = ["admin", "preparer", "reviewer"];
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 10;
-function validIds(value: unknown): string[] | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 250) return null;
-  if (value.some((id) => typeof id !== "string" || !UUID.test(id))) return null;
-  const ids = [...new Set(value as string[])];
-  return ids.length === value.length ? ids : null;
-}
 async function inBatches<T, R>(items: T[], size: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = [];
   for (let i = 0; i < items.length; i += size) out.push(...await Promise.all(items.slice(i, i + size).map(fn)));

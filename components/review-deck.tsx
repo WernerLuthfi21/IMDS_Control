@@ -55,7 +55,7 @@ export function ReviewDeck({ rows, canEdit, onSaved, onOpenCase }: { rows: Row[]
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 
   const load = useCallback(async () => {
-    const ids = rows.map((r) => r.id);
+    const ids = [...new Set(rows.map((r) => r.id))];
     setLoading(true); setError(""); setProgress({ done: 0, total: ids.length });
     const all: Candidate[] = [];
     try {

@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import { UUID, validIds } from "@/lib/judgement/ids";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { enqueue, dispatch } from "@/lib/automation/outbox";
@@ -13,7 +14,6 @@ export const maxDuration = 60;
 type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>;
 const RUN_ROLES = ["admin", "preparer", "reviewer"];
 const CONFIG_ROLES = ["admin", "rule_approver"];
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TABLE_MISSING = /imds_tracker_settings|relation .* does not exist|schema cache|violates check constraint/i;
 const MIGRATION_HINT = "Run supabase/migrations/20261110000000_tracker_settings.sql and 20261118000000_judgement_memory_autojudge.sql in the Supabase SQL editor.";
 const BATCH = 10;
@@ -24,11 +24,6 @@ async function loadConfig(supabase: Db): Promise<{ config: AutoJudgeConfig; vers
   const { data, error } = await supabase.from("imds_tracker_settings").select("value,version").eq("key", "autojudge_config").maybeSingle();
   if (error) return { config: DEFAULT_AUTOJUDGE, version: 0, missing: TABLE_MISSING.test(error.message) };
   return { config: sanitizeAutoJudge(data?.value ?? DEFAULT_AUTOJUDGE), version: data?.version ?? 0, missing: false };
-}
-function validIds(value: unknown): string[] | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 250) return null;
-  if (value.some((id) => typeof id !== "string" || !UUID.test(id))) return null;
-  return [...new Set(value as string[])];
 }
 async function loadRows(supabase: Db, ids: string[]): Promise<Row[]> {
   const { data, error } = await supabase.from("gcat_error_items")

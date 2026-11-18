@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { uniqueById } from "@/lib/judgement/ids";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/session";
 import { JudgementWorkspace } from "@/components/judgement-workspace";
@@ -39,13 +40,15 @@ export default async function JudgementPage({ searchParams }: { searchParams: Pr
         .eq("source_year", String(year))
         .order("source_month", { ascending: false })
         .order("last_change_date", { ascending: false, nullsFirst: true })
+        // Unique tiebreaker: without it offset pages can repeat or skip rows with equal sort keys.
+        .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (result.error) { queryError = result.error.message; break; }
       const batch = (result.data || []) as Array<Record<string, unknown>>;
       rows.push(...batch);
       if (batch.length < pageSize) break;
     }
-    rows = rows.map(({ raw_source, ...rest }) => {
+    rows = uniqueById(rows).map(({ raw_source, ...rest }) => {
       // Only display fields go to the browser; source evidence stays on the server.
       const f = extractRowFacts(raw_source as Record<string, unknown> | null);
       return { ...rest, cas: f.cas, substance_name: f.substanceName };
