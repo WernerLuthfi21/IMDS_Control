@@ -12,7 +12,7 @@ export type AutoStep = { id: string; title: string; status: StepStatus; detail: 
 export type AutoRecommendation = { state: "OK" | "NG" | "HOLD"; comment: string; reason: string };
 export type AutoInput = { errorType: string; facts: RowFacts; supplierCode?: string | null; destination?: string; toleranceClass?: string; supplierConfirmation?: string; answers?: Record<string, string> };
 export type AutoOutput = {
-  kind: "mass" | "sms" | "app44" | "pb" | "elv" | "substance" | "warp" | "manual";
+  kind: "mass" | "sms" | "app44" | "pb" | "elv" | "other" | "substance" | "warp" | "manual";
   steps: AutoStep[];
   procedureText: string;
   recommendation: AutoRecommendation;
@@ -33,6 +33,7 @@ export function detectKind(errorType: string): AutoOutput["kind"] {
   if (/application\s*44\s*error/.test(t) || /^24$/.test(t.trim())) return "app44";
   if (/elv\s*\(pb\)/.test(t)) return "pb";
   if (/elv\s*\(\s*(cd|hg|cr)/.test(t)) return "elv";
+  if (/mass deviation|not specifi|supplied is not sms/.test(t) || /^(?:no\.?\s*)?(8|9|20)$/.test(t.trim())) return "other";
   if (/prohibited|restricted|regulated substance/.test(t)) return "substance";
   if (/^(?:(?:error\s*type|no\.?)\s*)?1[4-8](?:\.0)?(?:\b|$)/.test(t.trim())) return "substance";
   return "manual";
@@ -159,7 +160,7 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     return { kind, steps: [{ id: "supplier", title: "Supplier confirmation", status: input.supplierConfirmation ? "DONE" : "NEEDS_INPUT", detail: kind === "app44" ? "A = supplier confirms the application / code · B = input mistake." : "A = actual or calculated mass · B = input mistake." }], procedureText: input.supplierConfirmation ? `Supplier confirmation: ${input.supplierConfirmation === "INPUT_MISTAKE" ? "B input mistake" : kind === "app44" ? "A supplier confirms" : "A actual/calculated mass"}.` : "", recommendation: toRecommendation(result), needs, massBands: null, engineInput, engine: pick(result) };
   }
 
-  if (kind === "elv") {
+  if (kind === "elv" || kind === "other") {
     const answers = { ...(input.answers || {}), ...(input.destination ? { destination: input.destination } : {}) };
     const fr = elvRun(input.errorType, facts, answers);
     const engineInput: JudgementInput = { errorType: input.errorType, applicationId: facts.applicationId || undefined, destination: input.destination || undefined };

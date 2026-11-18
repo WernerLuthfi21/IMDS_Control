@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Judge tab tidy-up, Century Gothic, no manual pile (2026-11-18)
+
+- **Fixed:** an unterminated CSS comment in `app/globals.css` swallowed ~150 lines (flashcard facts, answer buttons, statistics ring) — the cards looked unstyled in production.
+- **Judge tab redesign:** stacks are a wrapping grid (no sideways scroll) with a small 3D orb per Error Type; one toolbar (filters · Confirm N · refresh); the flashcard has navigation in its header, the part number with a supplier chip (the long source key is a tooltip), facts as a compact two-column list, and the decision panel with a 3D OK/NG badge, the reason in one line, the comment window and Confirm (Enter). Side preview cards removed. Phone: stacks collapse to compact tiles.
+- **Font:** Century Gothic for the app (Questrial / URW Gothic as fallbacks where Century Gothic is not installed).
+- **No manual judgement pile:** substances without a dedicated chart use the general supplier step (draft, never auto-final); No.8 Mass deviation, No.9 Not specified substances and No.20 Supplied is not SMS are encoded (auto-judge family `other`); TMC-only/unknown types, Error Type 19 and undated Pb cells go to the TMC pile.
+
 ## Unreleased — One Judge tab, G-CATS Detail for TMA, flow charts, tabbed Settings (2026-11-18)
 
 - **Judge tab** (Overview and flashcards together): a statistics bar (% judged, biggest issue, decided by rules / your answer / waiting on others / awaiting KM), colour-coded **stacks per Error Type** with their own counts and a "Full auto" mark when the rules decide every card (e.g. WARP part number), and a **horizontal flashcard carousel** (previous · current · next). On each card the decision is the biggest element; decided cards in a stack can be confirmed together. Answer/confirm logic is unchanged.

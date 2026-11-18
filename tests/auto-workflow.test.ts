@@ -103,9 +103,12 @@ describe("substance flows (Appendix II)", () => {
     const r = run2({ errorType: "Prohibited substance", facts: row("1336-36-3") });
     expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.next?.id).toBe("intent");
   });
-  it("unencoded family stays HOLD with PDF page", () => {
+  it("unencoded family uses the general supplier step (never auto-final), page kept", () => {
     const r = run2({ errorType: "Prohibited substance", facts: row("1303-28-2") });
-    expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.implemented).toBe(false); expect(r.flow?.page).toBe(55);
+    expect(r.recommendation.state).toBe("HOLD"); expect(r.flow?.implemented).toBe(true); expect(r.flow?.draft).toBe(true); expect(r.flow?.page).toBe(55);
+    expect(r.flow?.next?.id).toBe("supplier");
+    expect(run2({ errorType: "Prohibited substance", facts: row("1303-28-2"), answers: { supplier: "A" } }).recommendation.state).toBe("NG");
+    expect(run2({ errorType: "Prohibited substance", facts: row("1303-28-2"), answers: { supplier: "B" } }).recommendation.reason).toMatch(/TMC/);
   });
   it("Error Type 19 is always HOLD", () => {
     const r = run2({ errorType: "19", facts: row("872-50-4"), destination: "KR" });

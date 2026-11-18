@@ -129,3 +129,30 @@ describe("Mass tolerance raw material branch (Ver.7 No.7, p.3)", () => {
     expect(normal.recommendation.state).toBe("HOLD");
   });
 });
+
+describe("No.8 / No.9 / No.20 and no manual pile", () => {
+  const f = (extra: Record<string, unknown> = {}) => extractRowFacts({ "Substance Content(%) [col 31]": "3", ...extra });
+  it("Supplied is not SMS (No.20) → Purchasing pile; Y → OK, N → NG with the component name", () => {
+    const a = runAutoWorkflow({ errorType: "Supplied is not SMS", facts: f() });
+    expect(a.kind).toBe("other");
+    expect(classifyCase(a, { eligible: false, tmcOpen: false, facts: {} }).need).toBe("purchasing");
+    expect(runAutoWorkflow({ errorType: "Supplied is not SMS", facts: f(), answers: { purchasingSms: "Y" } }).recommendation.comment).toBe("Confirmed by Purchasing Div./Supplier");
+    expect(runAutoWorkflow({ errorType: "Supplied is not SMS", facts: f({ "Component Part Name [col 22]": "BOLT" }), answers: { purchasingSms: "N" } }).recommendation.comment).toBe("Toyota Supplied Part No is incorrect.[BOLT]");
+  });
+  it("Not specified substances (No.9): TOYOTA material → OK; >10% single substance → multi material question", () => {
+    expect(runAutoWorkflow({ errorType: "Not specified substances", facts: f({ "Material Name [col 26]": "TOYOTA SUPPLIED" }) }).recommendation.comment).toBe("Component is ‘TOYOTA supplied part’");
+    const r = runAutoWorkflow({ errorType: "Not specified substances", facts: f({ "Substance Content(%) [col 31]": "15" }), answers: { toyotaPart: "N", imdsCommittee: "N" } });
+    expect(r.flow?.next?.id).toBe("multiMaterial");
+    expect(runAutoWorkflow({ errorType: "Not specified substances", facts: f({ "Substance Content(%) [col 31]": "15" }), answers: { toyotaPart: "N", imdsCommittee: "N", multiMaterial: "N" } }).recommendation.state).toBe("NG");
+  });
+  it("Mass deviation (No.8) → reviewer check; >±1% → NG", () => {
+    const a = runAutoWorkflow({ errorType: "Mass deviation", facts: f() });
+    expect(classifyCase(a, { eligible: false, tmcOpen: false, facts: {} }).need).toBe("check");
+    expect(runAutoWorkflow({ errorType: "Mass deviation", facts: f(), answers: { massDev1: "Y" } }).recommendation.state).toBe("NG");
+  });
+  it("DMAC (no dedicated chart) gets the general supplier step, not manual", () => {
+    const a = runAutoWorkflow({ errorType: "Prohibited substance", facts: extractRowFacts({ "CAS No. [col 29]": "127-19-5", "Substance Content(%) [col 31]": "0.5" }) });
+    expect(a.flow?.implemented).toBe(true);
+    expect(classifyCase(a, { eligible: false, tmcOpen: false, facts: {} }).need).not.toBe("manual");
+  });
+});

@@ -86,7 +86,10 @@ Primary source since 2026-11-18: **G-CATS Manual Flow Ver.7** (TMC-MED(KM); its 
 | No.10 Pb Application Code 71 p.18, Pb TOYOTA Policy Table pp.10–17 | Encoded | Table checked row by row: ID 62 → standard pattern, ID 75 → NG EU/TW only, ID 76 → OK everywhere. IDs 68, 79, 86 (bare "2026~") stay HOLD. |
 | No.7 Mass tolerance raw-material branch p.3 | Encoded (engine branch now fed from the row) | Outside the buffer + Delivery Part name "Raw Material": heavier than the drawing → OK "Confirmed with Drawing.", else NG. |
 | Methanol (Ver.5.1.10 p.49), 0.1wt% "T1" charts, GADSL 190 PFAS precedent | Encoded (Ver.5.1.10 / precedent) | Not in Ver.7. |
-| Glycols, nitrosamines, PBDE, aziridinyl, BNST, benzene, DMF, MDA, pitch, PAH, TCEP, arsenic (No.15), No.9 Not specified substances | NOT encoded → HOLD with the page | — |
+| No.8 Mass deviation (Appendix I), No.9 Not specified substances (Ver.7 p.4), No.20 Supplied is not SMS (Appendix I) | Encoded, kind `other` | New. No.8: reviewer reads both masses (>±1% → NG with the Appendix I comment; within → TMC). No.9: TOYOTA material / IMDS Committee / ≤10% / multi material, from the row where possible. No.20: Purchasing/supplier Y → OK, N → NG "Toyota Supplied Part No is incorrect.[component]". |
+| Substances without a dedicated chart (glycols, nitrosamines, PBDE, aziridinyl, BNST, benzene, DMF/DMAC, MDA, pitch, PAH, TCEP, arsenic No.15, groups with "Refer to TSZ0001G") | **General step** (draft, never auto-final) | The step every Ver.7 chart shares: supplier input mistake → NG "Supplier input mistake."; it contains → report the P/N to TMC. The Ver.5.1.10 page is kept on the card. |
+
+There is no "Manual judgement" pile any more: unknown or TMC-only error types (22/23), Error Type 19 and Pb policy cells with an unconfirmed date go to the **TMC** pile with the reason; data gaps (no CAS, no drawing mass) go to **Missing data**.
 
 Question piles: vehicle questions (destination, North America, U.S. carpet, non-EU requirement) → "Vehicle destination"; appendix / TSZ / IMDS-data questions → "Reviewer check"; supplier questions → "Supplier answer".
 

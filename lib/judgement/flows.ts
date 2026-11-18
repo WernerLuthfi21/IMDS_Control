@@ -201,7 +201,7 @@ const DEFS: Record<string, Def> = {
     const ac = c.textYes("airCon", 'Is the Component Part name or Delivery Part name an "AIR CONDITIONER"?', c.parts, /air ?con/i); if (!ac) return;
     if (ac === "N") return supplierStep(c, () => contactTmc(c, "Supplier confirms HFC is contained outside an air conditioner."));
     const ref = c.textYes("refrigerant", 'Is the Component Part "REFRIGERANT"?', c.f.componentPartName, /refrigerant/i); if (!ref) return;
-    return ref === "Y" ? ok(c, NOT_PROHIBIT) : c.out("HOLD", "", "Air conditioner part, but the component is not the refrigerant: the Ver.7 chart has no branch for this. Judge manually.");
+    return ref === "Y" ? ok(c, NOT_PROHIBIT) : contactTmc(c, "Air conditioner part, but the component is not the refrigerant (no branch for this in the Ver.7 chart).");
   } },
   pfoa: { id: "pfoa", title: "No.14 Prohibited substance: PFOA", page: 28, source: SRC7, run: (c) => {
     const s = c.ask("supplier", "Confirm to supplier", SUPPLIER_AB); if (!s) return;
@@ -356,6 +356,37 @@ for (const f of (t1 as { flows: T1Flow[] }).flows) {
   for (const cas of f.cas) if (!T1_CAS.has(cas)) T1_CAS.set(cas, f.id);
 }
 
+// ---------- Other G-CATS error types (Appendix I / Manual Flow Ver.7) ----------
+const SRC5_I = "G-CATS judgment Ver.5.1.10, Appendix I";
+DEFS.massDev = { id: "massDev", title: "No.8 Mass deviation", page: null, source: `${SRC5_I} No.8`, run: (c) => {
+  const q = c.ask("massDev1", "Does [component part mass] − [total material mass] differ by more than ±1%? (read both masses in the IMDS data)"); if (!q) return;
+  return q === "Y" ? ng(c, "[component part mass] - [total material mass] > +/- 1%") : contactTmc(c, "G-CATS flagged a mass deviation, but it is within ±1%.");
+} };
+DEFS.notSpec = { id: "notSpec", title: "No.9 Not specified substances", page: 4, source: `${SRC7}, No.9 (p.4)`, run: (c) => {
+  const t = c.textYes("toyotaPart", "Is the (material) name TOYOTA?", c.f.materialName, /toyota/i); if (!t) return;
+  if (t === "Y") return ok(c, "Component is ‘TOYOTA supplied part’");
+  const m = c.ask("imdsCommittee", 'Is the material "IMDS-Committee", "Stahl und Eisen Liste" or "ILI-Metals"?'); if (!m) return;
+  if (m === "Y") return ok(c, "Material is IMDS Committee data");
+  const n = Number(String(c.f.substanceContentPct).replace(",", "."));
+  const total = Number.isFinite(n) && n > 10 ? c.auto('Total "Not specified substances" is 10% or less?', `${c.f.substanceContentPct}% from the row → No`, "N") : c.ask("ns10", 'Is the total of "Not specified substances" 10% or less?');
+  if (!total) return;
+  if (total === "Y") return ok(c, "‘Not specified substances’ is 10% or less");
+  const multi = c.ask("multiMaterial", 'Is the material a "Multi material"?'); if (!multi) return;
+  if (multi === "N") return ng(c, "More than 10% not specified substances.");
+  const base = c.ask("ns10base", 'Are "Not specified substances" 10% or less of the "base material"?'); if (!base) return;
+  return base === "Y" ? ok(c, "‘Not specified substances’ is 10% or less") : ng(c, "More than 10% not specified substances.");
+} };
+DEFS.notSms = { id: "notSms", title: "No.20 Supplied is not SMS", page: null, source: `${SRC5_I} No.20`, run: (c) => {
+  const q = c.ask("purchasingSms", "Do Purchasing Div. / the supplier confirm the Toyota supplied part number?", [["Y", "Yes · confirmed"], ["N", "No · part number incorrect"]]); if (!q) return;
+  return q === "Y" ? ok(c, "Confirmed by Purchasing Div./Supplier") : ng(c, `Toyota Supplied Part No is incorrect.${c.f.componentPartName ? "[" + c.f.componentPartName + "]" : ""}`);
+} };
+/** Substances without a dedicated chart: the step every Ver.7 chart shares (supplier → NG or report to TMC). Never auto-final. */
+function generalDef(title: string, page: number | null): Def {
+  return { id: "general", title, page, source: `${SRC7}, general supplier step${page ? ` · Ver.5.1.10 chart p.${page} not encoded` : ""}`, draft: true,
+    caution: "No dedicated chart: general step — input mistake → NG, it contains → report to TMC. A person confirms.",
+    run: (c) => supplierStep(c, () => reportTmc(c, "Supplier confirms the substance is contained; there is no dedicated chart for it."), "Confirm to supplier immediately: is it an input mistake?") };
+}
+
 const fam = families as { families: Record<string, { label: string; page: number }>; cas: Record<string, string> };
 /** CAS family (Ver.5.1.10 pp.76–86) → flow id when the flow has another name. */
 const FAMILY_FLOW: Record<string, string> = { "benzidine-azo": "benzidineAzo", "cl-paraffins": "sccp" };
@@ -365,7 +396,10 @@ const pick = (id: string): Sel => ({ def: DEFS[id], id, title: DEFS[id].title, p
 
 /** Which flow chart applies to this row. */
 export function selectFlow(errorType: string, cas: string, hasTszGroup: boolean, tszNumber: string, tszFlow: string, hasGadsl190: boolean): Sel {
-  const t = errorType.toLowerCase();
+  const t = errorType.toLowerCase().trim();
+  if (/mass deviation/.test(t) || /^(?:no\.?\s*)?8$/.test(t)) return pick("massDev");
+  if (/not specifi/.test(t) || /^(?:no\.?\s*)?9$/.test(t)) return pick("notSpec");
+  if (/supplied is not sms/.test(t) || /^(?:no\.?\s*)?20$/.test(t)) return pick("notSms");
   if (/elv\s*\(\s*cd\s*\)/.test(t)) return pick("elvCd");
   if (/elv\s*\(\s*hg\s*\)/.test(t)) return pick("elvHg");
   if (/elv\s*\(\s*cr/.test(t)) return pick("elvCr");
@@ -373,7 +407,7 @@ export function selectFlow(errorType: string, cas: string, hasTszGroup: boolean,
   if (/\(dot\)/.test(t)) return pick("dot");
   if (/\(dbt\)/.test(t)) return pick("dbt");
   if (/\(sccp\)|cl paraffin/.test(t) || fam.cas[cas] === "cl-paraffins" || cas === "85422-92-0") return pick("sccp");
-  if (/arsenic/.test(t)) return { def: null, id: "arsenic", title: "No.15 Prohibited substance (Arsenic)", page: 55 };
+  if (/arsenic|\(as\)/.test(t)) return { def: generalDef("No.15 Prohibited substance (Arsenic) · general step", 55), id: "arsenic", title: "No.15 Prohibited substance (Arsenic) · general step", page: 55 };
   const t1id = T1_CAS.get(cas);
   if (t1id) return pick(t1id);
   const f = fam.cas[cas];
@@ -382,12 +416,12 @@ export function selectFlow(errorType: string, cas: string, hasTszGroup: boolean,
   const flow = tszFlow.toLowerCase();
   if (/hydrofluorocarbon/.test(flow)) return pick("hfc");
   if (/perchlorate/.test(flow)) return pick("perchlorate");
-  if (f) return { def: null, id: f, title: "No.14 " + fam.families[f].label, page: fam.families[f].page };
+  if (f) { const title = "No.14 " + fam.families[f].label + " · general step"; return { def: generalDef(title, fam.families[f].page), id: f, title, page: fam.families[f].page }; }
   if (hasGadsl190 && !hasTszGroup) return pick("pfas190");
   if (tszNumber && /annex xvii\b/.test(flow)) return pick("annex17");
   if (tszNumber && /annex xiv\b/.test(flow)) return pick("annex14");
   if (tszNumber && /^pops/.test(flow)) return pick("pops");
-  return { def: null, id: "none", title: "No dedicated flow found", page: null };
+  return { def: generalDef("No.14 Prohibited substance · general step", null), id: "general", title: "No.14 Prohibited substance · general step", page: null };
 }
 
 export function runFlow(sel: Sel, facts: RowFacts, answers: Record<string, string>, tszNumber: string, tszName = ""): FlowRun {
