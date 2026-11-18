@@ -579,6 +579,7 @@ html[data-theme="dark"] .aj-mode.shadow{background:#3a2f18;color:#f1d08b;border-
 .aj-error,.aj-note,.aj-agree{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.5}
 .aj-error{background:var(--red-bg);color:var(--red);border:1px solid rgba(180,35,54,.25)}
 .aj-note{background:var(--amber-bg);color:var(--aj-hold);border:1px solid rgba(152,98,10,.25)}
+.aj-note{flex-wrap:wrap}.aj-reapprove{margin-left:auto;min-height:32px;padding:0 12px;border-radius:9px;border:1px solid currentColor;background:var(--surface);color:inherit;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .aj-agree{background:var(--green-bg);color:var(--glass-ink);border:1px solid var(--glass-line)}
 .aj-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .aj-stats>div{border-radius:14px;padding:12px 14px;background:var(--glass-bg);border:1px solid var(--glass-line);box-shadow:0 1px 0 var(--glass-edge) inset;display:grid;gap:2px}
@@ -813,6 +814,9 @@ html[data-theme="dark"] .source-actions .btn{background:#17251d;border-color:#35
 .n-tmc{--rd-bg:var(--k-violet-bg);--rd-ink:#6b3fd6}
 html[data-theme="dark"] .n-tmc{--rd-ink:#c4b5fd}
 .n-missing,.n-manual{--rd-bg:var(--k-red-bg);--rd-ink:var(--aj-ng)}
+.n-check{--rd-bg:#e2f4f3;--rd-ink:#0f766e}
+html[data-theme="dark"] .n-check{--rd-bg:#102a29;--rd-ink:#5eead4}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]) .n-check{--rd-bg:#102a29;--rd-ink:#5eead4}}
 .rd-refresh{flex:0 0 auto;align-self:center}
 .rd-card{position:relative;max-width:720px;width:100%;margin:0 auto;border-radius:22px;padding:18px 20px 16px;background:var(--surface);border:1px solid var(--glass-line);box-shadow:0 18px 40px -22px rgba(0,0,0,.35),0 0 0 6px var(--rd-bg);display:grid;gap:14px;touch-action:pan-y}
 .rd-card-head{display:flex;justify-content:space-between;align-items:center}
@@ -851,4 +855,18 @@ html[data-theme="dark"] .n-tmc{--rd-ink:#c4b5fd}
 .rd-open{border:1.5px solid var(--line-strong);background:var(--surface);color:var(--glass-ink)}
 .rd-all{justify-self:center;min-height:40px;padding:0 16px;border-radius:12px;border:1.5px dashed var(--aj-ok);background:none;color:var(--aj-ok);font-weight:750;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .rd-keys{margin:0;text-align:center;font-size:11px;color:var(--glass-muted)}
+.rd-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;max-width:720px;width:100%;margin:0 auto;padding:10px 14px;border-radius:14px;background:var(--k-green-bg);border:1px solid var(--glass-line)}
+.rd-bar span{font-size:13px;color:var(--glass-ink)}.rd-bar b{font-size:15px}
+.rd-bar .rd-all{background:var(--surface);border-style:solid}
+.rd-progress,.rd-notice{max-width:720px;width:100%;margin:0 auto;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 8px;padding:9px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--glass-line);font-size:13px;color:var(--glass-ink)}
+.rd-progress .aj-bar{grid-column:1/-1}
+.rd-notice{color:var(--aj-ok);font-weight:650}
+.rd-draft{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;background:var(--k-amber-bg);color:var(--aj-hold);font-size:12.5px;font-weight:650}
+.rd-same{display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:9px 12px;border-radius:12px;background:var(--rd-bg,var(--surface-2));font-size:13px;color:var(--glass-ink);cursor:pointer;line-height:1.4}
+.rd-same input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--rd-ink,var(--accent));flex:0 0 auto}
+.rd-pile em{font-style:normal;color:var(--glass-muted)}
+.rd-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 14px}
+.rd-link{border:0;background:none;padding:4px 2px;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:650;color:var(--glass-muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.rd-link:hover{color:var(--glass-ink)}
+@media (max-width:560px){.rd-foot .rd-keys{display:none}.rd-bar{padding:10px 12px}.rd-bar .rd-all{width:100%;justify-content:center}}
 @media(max-width:600px){.rd-card{padding:14px;border-radius:18px}.rd-id strong{font-size:19px}.rd-opts{grid-template-columns:1fr}.rd-keys{display:none}}

@@ -1,4 +1,5 @@
-import { selectFlow, runFlow, pb71Run, FLOW_SOURCE, type FlowRun } from "@/lib/judgement/flows";
+import Decimal from "decimal.js";
+import { selectFlow, runFlow, pb71Run, elvRun, type FlowRun } from "@/lib/judgement/flows";
 import { evaluateJudgement, type JudgementInput } from "@/lib/judgement/engine";
 import { isValidCas, lookupSubstance, lookupSubstanceByName, normalizeCas } from "@/lib/reference-data";
 import { lookupPbPolicy, PB_SOURCE } from "@/lib/judgement/pb-policy";
@@ -11,7 +12,7 @@ export type AutoStep = { id: string; title: string; status: StepStatus; detail: 
 export type AutoRecommendation = { state: "OK" | "NG" | "HOLD"; comment: string; reason: string };
 export type AutoInput = { errorType: string; facts: RowFacts; supplierCode?: string | null; destination?: string; toleranceClass?: string; supplierConfirmation?: string; answers?: Record<string, string> };
 export type AutoOutput = {
-  kind: "mass" | "sms" | "app44" | "pb" | "substance" | "warp" | "manual";
+  kind: "mass" | "sms" | "app44" | "pb" | "elv" | "substance" | "warp" | "manual";
   steps: AutoStep[];
   procedureText: string;
   recommendation: AutoRecommendation;
@@ -31,6 +32,7 @@ export function detectKind(errorType: string): AutoOutput["kind"] {
   if (/^(sms mass|6)$/.test(t.trim())) return "sms";
   if (/application\s*44\s*error/.test(t) || /^24$/.test(t.trim())) return "app44";
   if (/elv\s*\(pb\)/.test(t)) return "pb";
+  if (/elv\s*\(\s*(cd|hg|cr)/.test(t)) return "elv";
   if (/prohibited|restricted|regulated substance/.test(t)) return "substance";
   if (/^(?:(?:error\s*type|no\.?)\s*)?1[4-8](?:\.0)?(?:\b|$)/.test(t.trim())) return "substance";
   return "manual";
@@ -126,7 +128,13 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
 
   if (kind === "mass") {
     const cls = (input.toleranceClass || facts.toleranceClass || "").toUpperCase();
-    const engineInput: JudgementInput = { errorType: input.errorType, imdsMass: facts.imdsMass || undefined, drawingMass: facts.drawingMass || undefined, toleranceClass: cls || undefined, supplierConfirmation: input.supplierConfirmation as JudgementInput["supplierConfirmation"] };
+    // Manual Flow Ver.7 No.7: outside the tolerance and the Delivery Part name says "Raw Material"
+    // (blank formed shape, forging or casting) → OK when the part is heavier than the drawing mass, else NG.
+    const raw = /raw\s*material/i.test(facts.deliveryPartName);
+    let heavier: boolean | undefined;
+    try { if (raw && facts.imdsMass && facts.drawingMass) heavier = new Decimal(String(facts.imdsMass).replace(",", ".")).greaterThan(new Decimal(String(facts.drawingMass).replace(",", "."))); } catch { heavier = undefined; }
+    const engineInput: JudgementInput = { errorType: input.errorType, imdsMass: facts.imdsMass || undefined, drawingMass: facts.drawingMass || undefined, toleranceClass: cls || undefined, supplierConfirmation: input.supplierConfirmation as JudgementInput["supplierConfirmation"],
+      ...(raw ? { isRawMaterial: true, drawingHeavierThanReference: heavier } : {}) };
     const result = evaluateJudgement(engineInput);
     const trace = result.evaluations?.[0]?.inputValue;
     const bands = trace && typeof trace === "object" && "min" in (trace as object) ? (trace as Record<string, unknown>) : null;
@@ -136,9 +144,11 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       { id: "imds", title: "IMDS mass", status: facts.imdsMass ? "DONE" : "MANUAL", detail: facts.imdsMass ? `${facts.imdsMass} g (from the G-CATS row)` : "Missing in the source row." },
       { id: "drawing", title: "Drawing mass", status: facts.drawingMass ? "DONE" : "MANUAL", detail: facts.drawingMass ? `${facts.drawingMass} g (from the G-CATS row${facts.drawingRefs.length ? " · " + facts.drawingRefs.join(" / ") : ""})` : "Not in the source row. Read it from the drawing." },
       { id: "class", title: "Mass tolerance class", status: cls ? "DONE" : "NEEDS_INPUT", detail: cls ? `Class ${cls}${bands ? ` · ±${bands.tolerance} g (TSZ2900G Rev.9 row ${bands.tableRow})` : ""}` : "Read the class from the drawing and pick it (MA–MF). Everything else is automatic." },
-      ...(bands ? [{ id: "bands", title: "TSZ2900 range", status: "DONE" as const, detail: `${bands.min}–${bands.max} g · with ±10% buffer ${bands.bufferMin}–${bands.bufferMax} g · band: ${String(bands.band).replaceAll("_", " ").toLowerCase()}` }] : [])
+      ...(bands ? [{ id: "bands", title: "TSZ2900 range", status: "DONE" as const, detail: `${bands.min}–${bands.max} g · with ±10% buffer ${bands.bufferMin}–${bands.bufferMax} g · band: ${String(bands.band).replaceAll("_", " ").toLowerCase()}` }] : []),
+      ...(raw && result.evaluations?.[0]?.nodeId === "MASS-7-RAW" ? [{ id: "raw", title: "Raw material (Manual Flow Ver.7 No.7)", status: heavier === undefined ? "MANUAL" as const : "DONE" as const, detail: heavier === undefined ? "Delivery Part name says Raw Material; compare the IMDS mass with the drawing mass." : `Delivery Part name says Raw Material · IMDS mass ${facts.imdsMass} g is ${heavier ? "heavier" : "not heavier"} than the drawing mass ${facts.drawingMass} g.` }] : [])
     ];
-    const proc = bands ? `Mass tolerance (TSZ2900G Rev.9): drawing ${bands.drawingMass} g, class ${bands.toleranceClass} ±${bands.tolerance} g → ${bands.min}–${bands.max} g (buffer ${bands.bufferMin}–${bands.bufferMax} g); IMDS mass ${bands.imdsMass} g is ${String(bands.band).replaceAll("_", " ").toLowerCase()}.` : "";
+    const rawProc = raw && result.evaluations?.[0]?.nodeId === "MASS-7-RAW" && heavier !== undefined ? `Mass tolerance (G-CATS Manual Flow Ver.7 No.7): outside the drawing tolerance; Delivery Part name says Raw Material; IMDS mass ${facts.imdsMass} g is ${heavier ? "heavier" : "not heavier"} than the drawing mass ${facts.drawingMass} g.` : "";
+    const proc = rawProc ? rawProc : bands ? `Mass tolerance (TSZ2900G Rev.9): drawing ${bands.drawingMass} g, class ${bands.toleranceClass} ±${bands.tolerance} g → ${bands.min}–${bands.max} g (buffer ${bands.bufferMin}–${bands.bufferMax} g); IMDS mass ${bands.imdsMass} g is ${String(bands.band).replaceAll("_", " ").toLowerCase()}.` : "";
     return { kind, steps, procedureText: proc, recommendation: toRecommendation(result), needs, massBands: bands, engineInput, engine: pick(result) };
   }
 
@@ -147,6 +157,20 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     const engineInput: JudgementInput = { errorType: input.errorType, supplierConfirmation: input.supplierConfirmation as JudgementInput["supplierConfirmation"] };
     const result = evaluateJudgement(engineInput);
     return { kind, steps: [{ id: "supplier", title: "Supplier confirmation", status: input.supplierConfirmation ? "DONE" : "NEEDS_INPUT", detail: kind === "app44" ? "A = supplier confirms the application / code · B = input mistake." : "A = actual or calculated mass · B = input mistake." }], procedureText: input.supplierConfirmation ? `Supplier confirmation: ${input.supplierConfirmation === "INPUT_MISTAKE" ? "B input mistake" : kind === "app44" ? "A supplier confirms" : "A actual/calculated mass"}.` : "", recommendation: toRecommendation(result), needs, massBands: null, engineInput, engine: pick(result) };
+  }
+
+  if (kind === "elv") {
+    const answers = { ...(input.answers || {}), ...(input.destination ? { destination: input.destination } : {}) };
+    const fr = elvRun(input.errorType, facts, answers);
+    const engineInput: JudgementInput = { errorType: input.errorType, applicationId: facts.applicationId || undefined, destination: input.destination || undefined };
+    const result = evaluateJudgement(engineInput);
+    const steps: AutoStep[] = [materialStep(facts)];
+    for (const t of fr.trail) steps.push({ id: "q" + steps.length, title: t.question, status: "DONE", detail: t.answer + (t.auto ? " (auto)" : "") });
+    if (fr.next) steps.push({ id: "next", title: fr.next.text, status: "NEEDS_INPUT", detail: "Pick an answer to continue the flow." });
+    needs.destination = fr.next?.id === "destination";
+    const recommendation: AutoRecommendation = fr.outcome ? { state: fr.outcome.state, comment: fr.outcome.comment, reason: fr.outcome.reason } : { state: "HOLD", comment: "", reason: "Answer the next flow question to get a recommendation." };
+    const procedureText = fr.outcome ? `${fr.title} (${fr.source}, p.${fr.page}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")} → ${fr.outcome.state}.` : "";
+    return { kind, steps, flow: fr, procedureText, recommendation, needs, massBands: null, engineInput, engine: pick(result) };
   }
 
   if (kind === "pb" || kind === "substance") {
@@ -166,7 +190,7 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       needs.destination = fr.next?.id === "destination";
       if (fr.next) steps.push({ id: "next", title: fr.next.text, status: "NEEDS_INPUT", detail: "Pick an answer to continue the flow." });
       recommendation = fr.outcome ? { state: fr.outcome.state, comment: fr.outcome.comment, reason: fr.outcome.reason } : { state: "HOLD", comment: "", reason: "Answer the next flow question to get a recommendation." };
-      extra.push(`3) ${fr.title} (${FLOW_SOURCE}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")}${fr.outcome ? ` → ${fr.outcome.state}` : ""}.`);
+      extra.push(`3) ${fr.title} (${fr.source}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")}${fr.outcome ? ` → ${fr.outcome.state}` : ""}.`);
     } else if (kind === "pb") {
       const pb = lookupPbPolicy(facts.applicationId, input.destination || "");
       if (pb.found) {
@@ -186,11 +210,12 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       const tszNo = String(sub.lookup?.tszGroups[0]?.values?.[1] ?? "").trim();
       const sel = selectFlow(input.errorType, normalizeCas(facts.cas || ""), Boolean(sub.lookup?.tszGroups[0]), tszNo, sub.flowName, has190);
       const answers = { ...(input.answers || {}), ...(input.destination ? { destination: input.destination } : {}) };
-      const fr = runFlow(sel, facts, answers, tszNo);
+      const tszName = firstLine(sub.lookup?.tszGroups[0]?.values?.[2]);
+      const fr = runFlow(sel, facts, answers, tszNo, tszName);
       flow = fr;
       const isType19 = /^\s*19\b/.test(input.errorType);
       if (!fr.implemented) {
-        steps.push({ id: "flow2", title: `Dedicated flow: ${fr.title}`, status: "MANUAL", detail: fr.page ? `Not encoded yet. Follow ${FLOW_SOURCE}, PDF page ${fr.page}.` : "No dedicated flow found for this CAS/group. Judge manually." });
+        steps.push({ id: "flow2", title: `Dedicated flow: ${fr.title}`, status: "MANUAL", detail: fr.page ? `Not encoded yet. Follow ${fr.source}, PDF page ${fr.page}.` : "No dedicated flow found for this CAS/group. Judge manually." });
         needs.destination = false;
         recommendation = { state: "HOLD", comment: "", reason: `Steps 1–4 were done automatically. This flow (${fr.title}) is not encoded yet — judge OK/NG manually${fr.page ? ` using PDF page ${fr.page}` : ""}.` };
       } else {
@@ -198,7 +223,7 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
         needs.destination = fr.next?.id === "destination";
         if (fr.next) steps.push({ id: "next", title: fr.next.text, status: "NEEDS_INPUT", detail: "Pick an answer to continue the flow." });
         recommendation = fr.outcome ? { state: fr.outcome.state, comment: fr.outcome.comment, reason: fr.outcome.reason } : { state: "HOLD", comment: "", reason: "Answer the next flow question to get a recommendation." };
-        extra.push(`3) ${fr.title} (${FLOW_SOURCE}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")}${fr.outcome ? ` → ${fr.outcome.state}` : ""}.`);
+        extra.push(`3) ${fr.title} (${fr.source}): ${fr.trail.map((t) => `${t.question} ${t.answer}`).join("; ")}${fr.outcome ? ` → ${fr.outcome.state}` : ""}.`);
       }
       if (isType19) recommendation = { state: "HOLD", comment: "", reason: "Numerical Error Type 19 is always HOLD pending process-owner reconciliation (Version 6 Section II / Appendix I conflict)." };
     }
@@ -222,7 +247,7 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "NEEDS_INPUT", detail: "Ask Purchasing whether the supplier code / WARP registration is correct." });
       recommendation = { state: "HOLD", comment: "", reason: "Purchasing Div. must confirm the supplier code (Appendix I No.21)." };
     }
-    const flow: FlowRun = { flowId: "warp21", title: "No.21 WARP Part number", page: null, implemented: true,
+    const flow: FlowRun = { flowId: "warp21", title: "No.21 WARP Part number", page: null, implemented: true, source: "G-CATS judgment Ver.5.1.10, Appendix I No.21", draft: false,
       trail: [{ question: "Supplier code in Purchasing master?", answer: w.found ? (w.nameMatches === false ? "Yes, name differs" : "Yes") : "No", auto: true }],
       next: recommendation.state === "HOLD" ? { id: "purchasingWarp", text: "Does Purchasing Div. confirm the supplier code / WARP registration?", options: [["Y", "Yes · confirmed"], ["N", "No · code incorrect"]] } : null,
       outcome: recommendation.state === "HOLD" ? null : { state: recommendation.state, comment: recommendation.comment, reason: recommendation.reason } };

@@ -4,9 +4,9 @@ import { AlertTriangle, Bot, LoaderCircle, Play, Power, Scale, Settings2, Shield
 import type { CatMood } from "@/components/cat-mascot";
 import { CatStage } from "@/components/cat-stage";
 
-type Kind = "mass" | "sms" | "app44" | "pb" | "substance" | "warp";
-type Config = { enabled: boolean; shadow: boolean; kinds: Record<Kind, boolean>; approvedBy: string | null; approvedAt: string | null };
-type Info = { config: Config; version: number; missing: boolean; migrationHint: string | null; canRun: boolean; canConfigure: boolean; systemActor: string };
+type Kind = "mass" | "sms" | "app44" | "pb" | "elv" | "substance" | "warp";
+type Config = { enabled: boolean; shadow: boolean; kinds: Record<Kind, boolean>; approvedBy: string | null; approvedAt: string | null; ruleSet?: string | null };
+type Info = { config: Config; version: number; missing: boolean; migrationHint: string | null; canRun: boolean; canConfigure: boolean; systemActor: string; ruleSet?: string; ruleSetLabel?: string };
 type RunResult = { id: string; kind: string; action: "FINAL" | "WOULD_FINAL" | "SKIP"; decision: "OK" | "NG" | null; reason: string };
 type Compare = { id: string; kind: string; human: string; engine: string | null; agree: boolean | null };
 
@@ -15,7 +15,8 @@ const KIND_LABEL: Record<Kind, string> = {
   sms: "SMS mass (Type 6)",
   app44: "Application 44",
   pb: "ELV Pb",
-  substance: "Prohibited substances (No.14–18)",
+  elv: "ELV Cd / Hg / Cr6+ (No.11–13)",
+  substance: "Prohibited substances (No.14–19)",
   warp: "WARP part number (No.21)"
 };
 const CHUNK = 100;
@@ -124,6 +125,7 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal }: {
 
     {(busy === "run" || busy === "compare") && <div className="aj-progress" role="status"><div className="aj-bar"><i style={{ width: pct + "%" }}/></div><span>{progress.done.toLocaleString("en-US")} / {progress.total.toLocaleString("en-US")}</span></div>}
     {error && <div className="aj-error" role="alert"><AlertTriangle size={14}/><span>{error}</span></div>}
+    {info && cfg && cfg.enabled && info.ruleSet && cfg.ruleSet !== info.ruleSet && <div className="aj-note"><AlertTriangle size={14}/><span>The rules were updated to {info.ruleSetLabel}. Nothing is finalised automatically until an admin reviews the rule families and re-approves.{info.canConfigure ? " " : ""}</span>{info.canConfigure && <button type="button" className="aj-reapprove" disabled={busy === "save"} onClick={() => void save({ ...cfg })}><ShieldCheck size={13}/> Re-approve for {info.ruleSetLabel}</button>}</div>}
     {info?.missing && <div className="aj-note"><AlertTriangle size={14}/><span>Auto-judge settings are not stored yet, so it stays in preview. {info.migrationHint}</span></div>}
 
     {summary && <div className="aj-stats">
@@ -144,7 +146,7 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal }: {
       <fieldset className="aj-kinds"><legend>Rule families that may be finalised automatically</legend>
         {(Object.keys(KIND_LABEL) as Kind[]).map((k) => <label key={k}><input type="checkbox" checked={cfg.kinds[k]} disabled={busy === "save" || info?.missing} onChange={(e) => void save({ ...cfg, kinds: { ...cfg.kinds, [k]: e.target.checked } })}/> {KIND_LABEL[k]}</label>)}
       </fieldset>
-      <p className="aj-fine">Error Type 19, HOLD, missing evidence and flows that are not encoded are never finalised. {cfg.approvedBy ? `Last approved by ${cfg.approvedBy} on ${String(cfg.approvedAt || "").slice(0, 10)}.` : "Not approved yet."}</p>
+      <p className="aj-fine">Error Type 19, HOLD, missing evidence and flows that are not encoded are never finalised. {cfg.approvedBy ? `Last approved by ${cfg.approvedBy} on ${String(cfg.approvedAt || "").slice(0, 10)}${cfg.ruleSet && info?.ruleSet && cfg.ruleSet === info.ruleSet ? ` for ${info.ruleSetLabel}` : " (older rule set)"}.` : "Not approved yet."} Flows marked draft in their source (MCCP) are never finalised.</p>
     </div>}
   </section>;
 }

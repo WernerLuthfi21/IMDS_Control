@@ -5,7 +5,7 @@ import { enqueue, dispatch } from "@/lib/automation/outbox";
 import { evaluateBulkCandidate, type BulkSourceItem } from "@/lib/judgement/bulk";
 import { loadPartMemory, partKey } from "@/lib/judgement/memory";
 import { loadEscalations } from "@/lib/judgement/escalation";
-import { AUTO_KINDS, DEFAULT_AUTOJUDGE, SYSTEM_ACTOR, decideAuto, sanitizeAutoJudge, type AutoJudgeConfig } from "@/lib/judgement/autojudge";
+import { AUTO_KINDS, DEFAULT_AUTOJUDGE, RULESET, RULESET_LABEL, SYSTEM_ACTOR, decideAuto, sanitizeAutoJudge, type AutoJudgeConfig } from "@/lib/judgement/autojudge";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -52,7 +52,7 @@ export async function GET() {
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   const { config, version, missing } = await loadConfig(supabase);
   return NextResponse.json({ config, version, missing, migrationHint: missing ? MIGRATION_HINT : null, kinds: AUTO_KINDS,
-    canRun: RUN_ROLES.includes(auth.role), canConfigure: CONFIG_ROLES.includes(auth.role), systemActor: SYSTEM_ACTOR }, { headers: { "Cache-Control": "no-store" } });
+    canRun: RUN_ROLES.includes(auth.role), canConfigure: CONFIG_ROLES.includes(auth.role), systemActor: SYSTEM_ACTOR, ruleSet: RULESET, ruleSetLabel: RULESET_LABEL }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function PUT(request: NextRequest) {
@@ -67,7 +67,10 @@ export async function PUT(request: NextRequest) {
   if (current.missing) return NextResponse.json({ error: "The settings table is missing. " + MIGRATION_HINT }, { status: 503 });
   if (typeof body?.baseVersion === "number" && body.baseVersion !== current.version) return NextResponse.json({ error: "Someone else changed these settings. Reload and try again.", conflict: true }, { status: 409 });
   const turnedOn = next.enabled && !next.shadow && AUTO_KINDS.some((k) => next.kinds[k] && !(current.config.enabled && !current.config.shadow && current.config.kinds[k]));
-  if (turnedOn || (next.enabled && !current.config.enabled)) { next.approvedBy = auth.displayName || auth.email || auth.userId; next.approvedAt = new Date().toISOString(); }
+  // Saving the panel is the approval for the current rule set.
+  next.ruleSet = RULESET;
+  const ruleSetChanged = current.config.ruleSet !== RULESET && next.enabled && AUTO_KINDS.some((k) => next.kinds[k]);
+  if (turnedOn || ruleSetChanged || (next.enabled && !current.config.enabled)) { next.approvedBy = auth.displayName || auth.email || auth.userId; next.approvedAt = new Date().toISOString(); }
   else { next.approvedBy = current.config.approvedBy; next.approvedAt = current.config.approvedAt; }
   const version = current.version + 1;
   const { error } = current.version

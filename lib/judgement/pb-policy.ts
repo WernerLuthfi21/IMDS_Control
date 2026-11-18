@@ -1,12 +1,14 @@
 /**
- * Pb TOYOTA Policy Table (G-CATS judgment Ver.5.1.x, Appendix II No.10 ELV (Pb)).
+ * Pb TOYOTA Policy Table (G-CATS Manual Flow Ver.7, No.10 ELV (Pb); checked row by row against Ver.5.1.10).
+ * Ver.7 changes: ID 62 → standard pattern (all dates passed), ID 75 → EU/TW NG (2022 OCT~ / 2026 JAN~ passed), ID 76 → OK everywhere.
+ * Cells whose qualifier gives only a year that has not fully passed ("2026~" for 68, 79, 86) stay HOLD.
  * Destination columns: EU (Europe, Israel, Turkey), KR, CN, TW, IN, JP, OTH.
  * Entries whose cell carries a flip-date qualifier such as "2026~NG" or that need a separate flow
  * (Application ID 71) are HOLD: the app never guesses which side of the date applies.
  */
 export const PB_DESTINATIONS = ["EU", "KR", "CN", "TW", "IN", "JP", "OTH"] as const;
 export type PbDestination = (typeof PB_DESTINATIONS)[number];
-export const PB_SOURCE = "G-CATS judgment Ver.5.1.10, Appendix II No.10 ELV (Pb), Pb TOYOTA Policy Table";
+export const PB_SOURCE = "G-CATS Manual Flow Ver.7, No.10 ELV (Pb), Pb TOYOTA Policy Table (pp.10–17)";
 
 type Cell = "OK" | "NG" | "HOLD";
 const all = (v: Cell): Cell[] => PB_DESTINATIONS.map(() => v);
@@ -22,11 +24,12 @@ const TABLE: Record<string, { cells: Cell[]; note?: string }> = {
   "53": { cells: std }, "54": { cells: std }, "55": { cells: std }, "56": { cells: std }, "57": { cells: all("OK") },
   "67": { cells: std },
   "68": { cells: all("HOLD"), note: "Entry 8(f)(ii) carries a 2026~NG qualifier; confirm the effective date." },
-  "75": { cells: all("HOLD"), note: "Entry 8(g)(i) carries 2022 OCT~ / 2026 JAN~NG qualifiers; confirm the effective date." },
-  "76": { cells: all("HOLD"), note: "Entry 8(g)(ii-i) carries a 2026 JAN~NG qualifier; confirm the effective date." },
+  "75": { cells: ["NG", "OK", "OK", "NG", "OK", "OK", "OK"] }, // Ver.7: EU NG 2022 OCT~, TW NG 2026 JAN~ (both passed), others OK
+  "76": { cells: all("OK") }, // Ver.7 p.13: OK for every destination
   "77": { cells: all("OK") }, "78": { cells: all("OK") },
   "60": { cells: std }, "61": { cells: std },
-  "62": { cells: all("HOLD"), note: "Entry 8(j) carries a 2022~NG qualifier; confirm the effective date." },
+  "62": { cells: std }, // Ver.7: EU 2020~, KR 2020~, TW 2022~ NG — all in the past
+
   "43": { cells: all("NG") },
   "79": { cells: all("HOLD"), note: "Entry 8(k) carries 2024~ / 2026~NG qualifiers; confirm the effective date." },
   "15": { cells: all("NG") }, "63": { cells: all("OK") }, "64": { cells: all("OK") },

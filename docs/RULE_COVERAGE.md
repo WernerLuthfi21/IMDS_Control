@@ -68,16 +68,34 @@ Toyota-owned answers (vehicle destination, mass tolerance class from the drawing
 
 Automatic results are recommendations. Final OK/NG is always a human save.
 
-## Substance flows (G-CATS judgment Ver.5.1.10, Appendix II) — `lib/judgement/flows.ts`
+## Substance and ELV flows (G-CATS Manual Flow Ver.7, updated 2026-11-18) — `lib/judgement/flows.ts`
 
-CAS → family mapping: `data/reference/gcats-v5110-cas-families.json` (713 CAS, PDF pp.76–86). Results are recommendations only; a human saves OK/NG. Numerical Error Type 19 stays HOLD.
+Primary source since 2026-11-18: **G-CATS Manual Flow Ver.7** (TMC-MED(KM); its appendices are "updated July 2026"). Charts Ver.7 does not repeat keep the **G-CATS judgment Ver.5.1.10 Appendix II** chart. Every run stores its source in `flow.source` and in the procedure text. CAS → family mapping is still `data/reference/gcats-v5110-cas-families.json` (713 CAS, Ver.5.1.10 pp.76–86); group routing uses the Appendix 3 "Substance Judge flow" column. Numerical Error Type 19 stays HOLD (non-negotiable) — note that Ver.7 numbers MCCP as No.19; the process owner has to reconcile this with the Version 6 Section II / Appendix I conflict.
 
-| Flow | Status |
-|---|---|
-| Pyrrolidones (p.53), DOT (p.57), DBT (p.56), HCB (p.36), PCB (p.42), Phthalates (p.40), Methanol (p.49) | Encoded (tests in `tests/auto-workflow.test.ts`) |
-| GADSL 190 PFAS (precedent-based, not in the PDF), Annex XVII non-EU path | Encoded, simplified; EU Annex XVII entry conditions → HOLD |
-| Benzidine/azo, glycols, HFC, nitrosamines, PFOA, PBDE, triorganotin, aziridinyl, BNST, benzene, DMF, MDA, perchlorate, pitch, PAH, TCEP, arsenic, Cl-paraffins | NOT encoded → HOLD with the PDF page |
-| Code meaning of destination/application codes (TSZ6000G / Manual 2) | Not available; Pb table unchanged |
+| Flow (Ver.7 page) | Status | Change vs. Ver.5.1.10 |
+|---|---|---|
+| No.11 ELV (Cd) p.19, No.12 ELV (Hg) p.20, No.13 ELV (Cr6+) p.21 | Encoded, new kind `elv` (`tests/manual-flow-v7.test.ts`) | New (was manual). Application ID 20 / threshold / supplier from the row; Hg asks JP/North America (destination "Other" asks `naDest`) and Application ID 46. |
+| No.14 POPs generic p.22 | Encoded | New. Destination → Appendix 4 check (A/B/C, the TSZ row and the destination column are shown in the question) → supplier / TMC. |
+| No.14 EU REACH Annex XVII p.23 | Encoded | EU path no longer HOLD: Appendix 5 check (A/B/C) with the entry shown. |
+| No.14 EU REACH Annex XIV p.24 | Encoded | New. Sunset-date question shows the Appendix 6 sunset date. |
+| No.14 Benzidine / Azodyes p.25, HFC p.27, PFOA p.28, Perchlorate p.31 | Encoded | New (were HOLD). Group names, part names and material names answered from the row when they match. |
+| No.14 HCB p.26 | Encoded | **Changed**: Ver.7 has no EU 0.001wt% branch — intent → supplier in Japan? |
+| No.14 Phthalate p.29, PCB p.30, Pyrrolidones p.32, No.16 DBT p.33, No.17 DOT p.34 | Encoded | Same logic. |
+| No.18 SCCP p.36 | Encoded | **Changed**: supplier first (contains / input mistake → NG), then EU? (non-EU → report to TMC), then <0.15% (OK) / NG + report. Paraffin oil 85422-92-0 keeps the Ver.5.1.10 p.58 pre-question. |
+| No.19 MCCP p.37 — error type `Prohibited(MCCP)` | Encoded, **draft** | Regulatory countries EU, JP come from the draft MCCP deck (RI CM 2026-02, "as of 2026 May"); Appendix 4 has no MCCP row. A person may confirm; auto-judge never finalises it (`draftFlow` → SKIP). Takes precedence over SCCP when the error type says MCCP. "Potentially MCCP containing substances" (TSZ ver29 #11) are not routed. |
+| No.10 Pb Application Code 71 p.18, Pb TOYOTA Policy Table pp.10–17 | Encoded | Table checked row by row: ID 62 → standard pattern, ID 75 → NG EU/TW only, ID 76 → OK everywhere. IDs 68, 79, 86 (bare "2026~") stay HOLD. |
+| No.7 Mass tolerance raw-material branch p.3 | Encoded (engine branch now fed from the row) | Outside the buffer + Delivery Part name "Raw Material": heavier than the drawing → OK "Confirmed with Drawing.", else NG. |
+| Methanol (Ver.5.1.10 p.49), 0.1wt% "T1" charts, GADSL 190 PFAS precedent | Encoded (Ver.5.1.10 / precedent) | Not in Ver.7. |
+| Glycols, nitrosamines, PBDE, aziridinyl, BNST, benzene, DMF, MDA, pitch, PAH, TCEP, arsenic (No.15), No.9 Not specified substances | NOT encoded → HOLD with the page | — |
+
+Question piles: vehicle questions (destination, North America, U.S. carpet, non-EU requirement) → "Vehicle destination"; appendix / TSZ / IMDS-data questions → "Reviewer check"; supplier questions → "Supplier answer".
+
+**Re-approval:** auto-judge approvals are tied to the rule set (`RULESET = gcats-manual-flow-ver7`). An approval saved for an older rule set no longer finalises anything (WOULD_FINAL with the reason) until an admin saves the Rules panel again ("Re-approve for G-CATS Manual Flow Ver.7").
+
+### Review cards: one answer for the same question (`lib/judgement/deck.ts`)
+
+Pending cases are sorted into piles by what they still need (`lib/judgement/review.ts`). An answer given on one card is applied (checkbox on, can be switched off) to every other undecided card with the same question:
+vehicle destination, drawing tolerance class and Toyota-owned flow answers → same delivery part; supplier / Purchasing answers → same supplier code + delivery part + CAS + error type + question. Cards without a part number or supplier code never share. Each card is re-checked by the same `/api/judgement/auto` rules; cards that become decided can be confirmed one by one (Enter) or together ("Confirm all N", with the OK/NG split shown). Every save keeps its own trace. Tests: `tests/deck-answers.test.ts`.
 
 ### TMC escalation (`judgement_escalations`)
 

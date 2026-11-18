@@ -18,6 +18,9 @@ export type BulkCandidate = {
   supplierCode: string | null; cas: string; substanceName: string; kind: AutoOutput["kind"];
   recommendation: AutoOutput["recommendation"]; procedureText: string; signature: string;
   eligible: boolean; inPendingQueue: boolean; prohibited: boolean;
+  /** The flow that decided this case is marked draft in its source: a person may confirm it, the system never finalises it. */
+  draftFlow: boolean;
+  caution?: string;
   prohibitedStatus: "CONNECTED" | "NEEDS_REVIEW" | "NOT_PROHIBITED"; reviewReason: string;
   /** Set when the flow says "Contact TMC": the case key and what Toyota answered so far. */
   tmc: { key: string; status: Escalation["status"]; answer: "OK" | "NG" | null } | null;
@@ -91,7 +94,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     id: item.id, sourceRecordKey: item.source_record_key, errorType: item.error_type_label,
     partNo: item.delivery_part_no, supplierCode: item.supplier_code, cas: facts.cas,
     substanceName: facts.substanceName, kind, recommendation: auto.recommendation,
-    procedureText: auto.procedureText, signature, eligible,
+    procedureText: auto.procedureText, signature, eligible, draftFlow: Boolean(auto.flow?.draft) && !tmcDecided, ...(auto.flow?.caution ? { caution: auto.flow.caution } : {}),
     inPendingQueue: item.source_status === "WORKING" && !item.judge,
     prohibited, prohibitedStatus: !prohibited ? "NOT_PROHIBITED" : connected ? "CONNECTED" : "NEEDS_REVIEW",
     reviewReason, tmc,
