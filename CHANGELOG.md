@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased: stable keys for rows without a TMA code (2026-11-19)
+
+- **The `code` column is filled only after TMA judges a case.** Rows without a code used to get the key `fallback:<file hash>:<sheet>:<row>`, which changed with every export. Judgements on those rows were lost after the next import, and the Excel flow never found them.
+- **New import key:** uncoded rows are keyed `code:` + Download Date (YYYYMMDD) + No. padded to 3 digits. All 4,841 coded rows in the Master Data follow this rule, so the key is the same one TMA's code gives later. Logic: `lib/judgement/source-key.ts` (tests: `tests/source-key.test.ts`). The original `code` stays empty in `source_code`, so "TMA has not coded it yet" is still visible.
+- **Migration `20261119000000_rekey_uncoded_gcat_rows.sql`** (apply manually, **before the next import**) moves the existing fallback records to the new key once:
+  - Idempotent; tested on Postgres 16 with fixtures.
+  - When several old keys point to the same row, the one with an internal judgement wins.
+  - Rows whose key already exists, or whose date or No. cannot be read, are skipped. Nothing is deleted.
+- **The import preview warns** when records with the old key still exist, and reports how many rows were keyed by derivation.
+
 ## Unreleased: Fieldbook overhaul, case history, rule path, command palette, safety fixes (2026-11-18)
 
 - **Audit first:** UX/accessibility, domain/history and performance audits are in `docs/audit/`. `docs/UX-AUDIT.md` shows what was fixed and what is still open. Tokens and rules are in `docs/DESIGN-SYSTEM.md`.
