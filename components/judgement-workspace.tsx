@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronDown, CircleCheck, CircleDashed, CircleHelp, CircleX, Clock3, Layers3, LoaderCircle, Mail, ScanSearch, Search, ShieldCheck, Sparkles, Undo2, UserRound } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCheck, CircleCheck, CircleDashed, CircleHelp, CircleX, Layers3, LoaderCircle, Mail, Search, ShieldCheck, Sparkles, Undo2, UserRound } from "lucide-react";
 import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
 import { AutoJudgeCard } from "@/components/autojudge-card";
@@ -310,10 +310,34 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }
 
   const updated = sourceDate ? new Date(sourceDate).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : null;
+  const autoCount = useMemo(() => rows.filter((r) => r.judge && r.assigned_person === SYSTEM_ACTOR).length, [rows]);
+  const openRow = openId ? rows.find((r) => r.id === openId) || null : null;
+  const pendingInView = visible.filter((row) => row.source_status === "WORKING" && !row.judge).length;
+  // After a save, go straight to the next case in the list instead of closing the panel.
+  const saveAndNext = useCallback((id: string, patch: Partial<Item>) => {
+    const idx = visible.findIndex((r) => r.id === id);
+    const next = visible.slice(idx + 1).find((r) => r.id !== id) || null;
+    onSaved(id, patch);
+    setOpenId(next ? next.id : null);
+  }, [visible, onSaved]);
+  useEffect(() => {
+    if (!openId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpenId(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openId]);
+  const kpis: Array<{ key: string; label: string; n: number; on: boolean; tone: string; act: () => void; hint: string }> = [
+    { key: "pending", label: "To judge", n: counts.pending, on: tab === "pending" && !substanceOnly, tone: "amber", act: () => { setTab("pending"); setSubstanceOnly(false); }, hint: "WORKING cases without a judgement" },
+    { key: "judged", label: "Judged", n: counts.judged, on: tab === "judged", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved" },
+    { key: "km", label: "Awaiting KM", n: counts.km, on: tab === "km", tone: "blue", act: () => { setTab("km"); setSubstanceOnly(false); }, hint: "Judged, KM judge still empty" },
+    { key: "sub", label: "Prohibited substances", n: prohibitedPending, on: substanceOnly, tone: "red", act: () => { setTab("pending"); setSubstanceOnly((v) => !v); setErrorType("All Error Types"); }, hint: `${prohibitedMissingCas} without CAS` },
+    { key: "auto", label: "Judged by Miko", n: autoCount, on: false, tone: "violet", act: () => { setTab("judged"); setSearch(""); }, hint: "Automatic decisions (reopenable)" }
+  ];
 
-  return <div className="jx">
-    <header className="jx-head">
-      <div><h1>Judgement</h1><p>{year} · WORKING records{updated ? " · snapshot " + updated : ""} · <span title="Other users' judgements appear here as they are saved">{live ? "● live" : "○ not live"}</span></p></div>
+  return <div className="jw">
+    <header className="jw-head">
+      <div><span className="jw-kicker">WORK / JUDGEMENT</span><h1>Judgement</h1>
+        <p>{year} · WORKING records{updated ? " · snapshot " + updated : ""} · <span className={live ? "jw-live on" : "jw-live"} title="Other users' judgements appear here as they are saved">{live ? "live" : "not live"}</span></p></div>
       <a className="jx-back" href="/workspace"><ArrowLeft size={14}/> Menu</a>
     </header>
     {queryError && <div className="jx-error"><AlertTriangle size={14}/> {queryError}</div>}
@@ -324,73 +348,63 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       judgedIds={rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR).map((r) => r.id)}
       onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>
 
-    <section className="jx-command">
-      <div className="jx-command-head">
-        <div><span className="jx-command-kicker"><Sparkles size={13}/> SMART JUDGEMENT</span>
-          <h2>Review identical cases together</h2>
-          <p>For cases auto-judge leaves to you: find exact-match groups (same facts, same rule trace) and judge each group once.</p>
-        </div>
-        <button type="button" className="jx-analyze" onClick={() => void analyzeVisibleQueue()} disabled={bulkBusy || !canEdit}>
-          {bulkBusy ? <LoaderCircle size={15} className="spin"/> : <ScanSearch size={15}/>} Analyse pending cases
-        </button>
-      </div>
-      <div className="jx-command-metrics">
-        <div><span>Pending in filter</span><strong>{visible.filter((row) => row.source_status === "WORKING" && !row.judge).length.toLocaleString("en-US")}</strong></div>
-        <div><span>Exact-match groups</span><strong>{bulkGroups.length.toLocaleString("en-US")}</strong></div>
-        <div><span>Prohibited cases</span><strong>{prohibitedRows.length.toLocaleString("en-US")}</strong><small>{prohibitedPending} pending · {prohibitedMissingCas} without CAS</small></div>
-        <div><span>Queue connection</span><strong>{live ? "Live" : "Sync pending"}</strong><small>{rows.length.toLocaleString("en-US")} source records loaded</small></div>
-      </div>
-      {bulkError && <div className="jx-bulk-error" role="alert"><AlertTriangle size={14}/>{bulkError}</div>}
-      {bulkNotice && <div className="jx-bulk-notice"><CheckCheck size={14}/>{bulkNotice}</div>}
-      {bulkAnalyzed && <div className="jx-coverage">
-        <div><strong>Prohibited substance coverage</strong><span>{bulkCoverage?.connected || 0} connected · {bulkCoverage?.needsReview || 0} need review · {bulkCoverage?.missingCas || 0} missing CAS</span></div>
-        <div className="jx-coverage-meta">{bulkEvaluated} analysed{bulkNotFound ? ` · ${bulkNotFound} no longer available` : ""}</div>
-      </div>}
-      {undoItems.length > 0 && <div className="jx-undo-row"><span><strong>{undoItems.length} cases</strong> changed in the last bulk action</span><button type="button" onClick={() => void undoBulk()} disabled={bulkBusy}><Undo2 size={14}/> Undo bulk action</button></div>}
-    </section>
+    <div className="jw-kpis" role="group" aria-label="Queue">
+      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on ? " on" : "")} aria-pressed={k.on} onClick={k.act} title={k.hint}>
+        <span>{k.label}</span><b>{k.n.toLocaleString("en-US")}</b><small>{k.hint}</small></button>)}
+    </div>
+
+    <div className="jw-tools">
+      <label className="jx-search"><Search size={14}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Part no., supplier, CAS, substance…" aria-label="Search"/></label>
+      <select value={errorType} onChange={(e) => { setErrorType(e.target.value); setSubstanceOnly(false); }} aria-label="Error type">
+        <option value="All Error Types">All error types</option>
+        {types.map(([name, n]) => <option key={name} value={name}>{name} ({n})</option>)}
+      </select>
+      <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"><option value="All">All months</option>{months.map((m) => <option key={m} value={m}>{monthNames[m] || m}</option>)}</select>
+      <button type="button" className="jw-group-btn" onClick={() => void analyzeVisibleQueue()} disabled={bulkBusy || !canEdit || !pendingInView} title="Find cases with identical facts and rule results, and judge each group once">
+        {bulkBusy ? <LoaderCircle size={14} className="spin"/> : <Layers3 size={14}/>} Group identical ({pendingInView.toLocaleString("en-US")})
+      </button>
+    </div>
+    {bulkError && <div className="jx-bulk-error" role="alert"><AlertTriangle size={14}/>{bulkError}</div>}
+    {bulkNotice && <div className="jx-bulk-notice"><CheckCheck size={14}/>{bulkNotice}</div>}
+    {undoItems.length > 0 && <div className="jx-undo-row"><span><strong>{undoItems.length} cases</strong> changed in the last group action</span><button type="button" onClick={() => void undoBulk()} disabled={bulkBusy}><Undo2 size={14}/> Undo</button></div>}
 
     {bulkAnalyzed && <section className="jx-groups">
-      <div className="jx-groups-heading"><div><span className="jx-command-kicker"><Layers3 size={13}/> MATCHED GROUPS</span><h2>Bulk judgement review</h2></div><span>{bulkGroups.length} group(s)</span></div>
+      <div className="jx-groups-heading"><div><span className="jx-command-kicker"><Layers3 size={13}/> IDENTICAL CASES</span><h2>Judge each group once</h2></div><span>{bulkGroups.length} group(s) · {bulkEvaluated} checked{bulkCoverage ? ` · ${bulkCoverage.needsReview} substance case(s) need review` : ""}{bulkNotFound ? ` · ${bulkNotFound} gone` : ""}</span></div>
       {bulkGroups.length ? bulkGroups.map((group) => <article className="jx-group" key={group.signature}>
         <div className="jx-group-top"><div><span className="jx-group-count">{group.count} identical cases</span><h3>{group.items[0]?.errorType || "Matched rule cases"}</h3></div><span className={"jx-pill " + group.decision.toLowerCase()}>Recommended {group.decision}</span></div>
         <p className="jx-group-reason">{group.reason}</p>
-        {group.comment && <div className="jx-group-comment"><strong>Recommended judgement comment</strong><span>{group.comment}</span></div>}
-        <details className="jx-group-details"><summary>Review all {group.count} cases and source identifiers</summary><div className="jx-group-case-list">{group.items.map((item) => <div key={item.id}><strong>{item.partNo || "Part number missing"}</strong><span>{item.supplierCode || "Supplier —"} · {item.cas || "CAS unavailable"} · {item.substanceName || item.sourceRecordKey}</span></div>)}</div></details>
-        <div className="jx-group-actions"><span><ShieldCheck size={13}/> Exact facts + rule trace match · human confirmation required</span><button type="button" onClick={() => void applyBulkGroup(group)} disabled={bulkBusy || !canEdit}>{bulkBusy ? <LoaderCircle size={14} className="spin"/> : <CheckCheck size={14}/>} Apply {group.decision} to all {group.count}</button></div>
-      </article>) : <div className="jx-no-groups"><Layers3 size={18}/><strong>No safe exact-match groups found</strong><span>Cases with missing evidence, different material facts or HOLD recommendations remain in individual review. Nothing was judged automatically.</span></div>}
+        {group.comment && <div className="jx-group-comment"><strong>Comment</strong><span>{group.comment}</span></div>}
+        <details className="jx-group-details"><summary>Show all {group.count} cases</summary><div className="jx-group-case-list">{group.items.map((item) => <div key={item.id}><strong>{item.partNo || "Part number missing"}</strong><span>{item.supplierCode || "Supplier —"} · {item.cas || "CAS unavailable"} · {item.substanceName || item.sourceRecordKey}</span></div>)}</div></details>
+        <div className="jx-group-actions"><span><ShieldCheck size={13}/> Same facts and rule trace</span><button type="button" onClick={() => void applyBulkGroup(group)} disabled={bulkBusy || !canEdit}>{bulkBusy ? <LoaderCircle size={14} className="spin"/> : <CheckCheck size={14}/>} Apply {group.decision} to all {group.count}</button></div>
+      </article>) : <div className="jx-no-groups"><Layers3 size={18}/><strong>No identical groups in this view</strong><span>Cases with different facts, missing evidence or HOLD stay in the list below.</span></div>}
     </section>}
 
-    <nav className="jx-tabs" aria-label="Queue">
-      {([["pending", "To judge", counts.pending], ["judged", "Judged", counts.judged], ["km", "Awaiting KM", counts.km]] as const).map(([k, label, n]) =>
-        <button type="button" key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{label}<b>{n.toLocaleString("en-US")}</b></button>)}
-    </nav>
-
-    <div className="jx-filters">
-      <label className="jx-search"><Search size={14}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Part no., supplier, CAS, substance…" aria-label="Search"/></label>
-      <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"><option value="All">All months</option>{months.map((m) => <option key={m} value={m}>{monthNames[m] || m}</option>)}</select>
+    <div className={"jw-split" + (openRow ? " open" : "")}>
+      <div className="jw-table" role="region" aria-label="Cases">
+        <table>
+          <thead><tr><th scope="col">Part no.</th><th scope="col">Supplier</th><th scope="col">Error type</th><th scope="col" className="jw-hide-open">CAS / substance</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            {visible.slice(0, limit).map((r) => <tr key={r.id} className={openId === r.id ? "sel" : ""} onClick={() => setOpenId(openId === r.id ? null : r.id)}>
+              <td><button type="button" className="jw-rowbtn" aria-expanded={openId === r.id} onClick={(e) => { e.stopPropagation(); setOpenId(openId === r.id ? null : r.id); }}><strong>{r.delivery_part_no || "Part number missing"}</strong></button><small>{r.source_record_key}</small></td>
+              <td>{r.supplier_code || "—"}</td>
+              <td><span className="jw-type">{r.error_type_label}</span></td>
+              <td className="jw-hide-open">{r.cas ? <code>{r.cas}</code> : null}<small>{r.substance_name || (r.cas ? "" : "—")}</small></td>
+              <td><span className={"jx-pill " + (r.judge ? r.judge.toLowerCase() : "pending")}>{r.judge ? (r.assigned_person === SYSTEM_ACTOR ? "Auto " + r.judge : r.judge) : "To judge"}</span></td>
+            </tr>)}
+            {!visible.length && <tr><td colSpan={5}><div className="jx-empty"><CircleHelp size={18}/><strong>No matching cases</strong><span>Change the filters or the search.</span></div></td></tr>}
+          </tbody>
+        </table>
+        {visible.length > limit && <button type="button" className="jx-more" onClick={() => setLimit((n) => n + PAGE)}>Show {Math.min(PAGE, visible.length - limit)} more · {visible.length - limit} left</button>}
+      </div>
+      {openRow && <aside className="jw-drawer" aria-label={"Case " + (openRow.delivery_part_no || openRow.source_record_key)}>
+        <div className="jw-drawer-head">
+          <div><strong>{openRow.delivery_part_no || "Part number missing"}</strong><span>{openRow.error_type_label} · {openRow.supplier_code || "Supplier —"} · {openRow.source_record_key}</span>
+            {openRow.cas && <span><code>{openRow.cas}</code> {openRow.substance_name}</span>}</div>
+          <button type="button" className="jw-close" onClick={() => setOpenId(null)} aria-label="Close case"><CircleX size={18}/></button>
+        </div>
+        <JudgePanel key={openRow.id} row={openRow} canEdit={canEdit} actorName={actorName} onSaved={saveAndNext}/>
+      </aside>}
     </div>
-    <div className="jx-types" role="group" aria-label="Error type">
-      <button type="button" className={!substanceOnly && errorType === "All Error Types" ? "on" : ""} onClick={() => { setErrorType("All Error Types"); setSubstanceOnly(false); }}>All</button><button type="button" className={"jx-prohibited-filter " + (substanceOnly ? "on" : "")} onClick={() => { setSubstanceOnly((value) => !value); setErrorType("All Error Types"); }}>Prohibited substances <b>{prohibitedPending}</b></button>
-      {types.map(([name, n]) => <button type="button" key={name} className={errorType === name ? "on" : ""} onClick={() => setErrorType(errorType === name ? "All Error Types" : name)}><span>{name}</span><b>{n}</b></button>)}
-    </div>
-
-    <ul className="jx-list">
-      {visible.slice(0, limit).map((r) => {
-        const open = openId === r.id;
-        return <li key={r.id} className={"jx-row " + (open ? "open" : "")}>
-          <button type="button" className="jx-row-head" aria-expanded={open} onClick={() => setOpenId(open ? null : r.id)}>
-            <span className={"jx-state " + (r.judge ? "done" : "pending")}>{r.judge ? <Check size={13}/> : <Clock3 size={13}/>}</span>
-            <span className="jx-main"><strong>{r.delivery_part_no || "Part number missing"}</strong><small>{r.error_type_label} · {r.supplier_code || "Supplier —"} · {r.source_record_key}</small></span>
-            <span className="jx-sub">{r.cas ? <><code>{r.cas}</code><small>{r.substance_name}</small></> : <small>{r.substance_name || "—"}</small>}</span>
-            <span className={"jx-pill " + (r.judge ? r.judge.toLowerCase() : "pending")}>{r.judge ? (r.assigned_person === SYSTEM_ACTOR ? "Auto " + r.judge : r.judge) : "Pending"}</span>
-            <ChevronDown size={16} className="jx-chev"/>
-          </button>
-          {open && <JudgePanel row={r} canEdit={canEdit} actorName={actorName} onSaved={onSaved}/>}
-        </li>;
-      })}
-      {!visible.length && <li className="jx-empty"><CircleHelp size={18}/><strong>No matching records</strong><span>Change the filters.</span></li>}
-    </ul>
-    {visible.length > limit && <button type="button" className="jx-more" onClick={() => setLimit((n) => n + PAGE)}>Show {Math.min(PAGE, visible.length - limit)} more · {visible.length - limit} left</button>}
-    <p className="jx-gov"><ShieldCheck size={13}/> The engine recommends every case. Only rule families an admin switched on in Auto-judge are saved by the system; everything else is your decision. Every save is written with the evaluation trace and audit log, and automatic decisions can be reopened.</p>
+    <p className="jx-gov"><ShieldCheck size={13}/> Every case is checked by the rules. Miko saves only the rule families an admin switched on; everything else is your decision. Saves are written with the evaluation trace and audit log; automatic decisions can be reopened.</p>
   </div>;
 }
