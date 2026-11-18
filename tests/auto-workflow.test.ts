@@ -115,13 +115,18 @@ describe("substance flows (Appendix II)", () => {
 
 describe("more Appendix II flows", () => {
   const row = (cas: string, extra: Record<string, unknown> = {}) => facts2({ "CAS No. [col 29]": cas, "Substance Content(%) [col 31]": "1", ...extra });
-  it("Cl paraffins: 1% is above 0.15% → NG", () => {
-    const r = run2({ errorType: "Prohibited substance(SCCP)", facts: row("85681-73-8") });
-    expect(r.recommendation.state).toBe("NG"); expect(r.flow?.flowId).toBe("clparaffins");
+  // Manual Flow Ver.7 No.18 (SCCP) replaces the Ver.5.1.10 p.58 chart: supplier first, then destination, then 0.15%.
+  it("SCCP (Ver.7): supplier first; contains + EU + 1% → NG with TMC report", () => {
+    expect(run2({ errorType: "Prohibited substance(SCCP)", facts: row("85681-73-8") }).flow?.next?.id).toBe("supplier");
+    const r = run2({ errorType: "Prohibited substance(SCCP)", facts: row("85681-73-8"), destination: "EU", answers: { supplier: "A" } });
+    expect(r.recommendation.state).toBe("NG"); expect(r.flow?.flowId).toBe("sccp"); expect(r.recommendation.reason).toMatch(/TMC/);
   });
-  it("Cl paraffins: 0.15% itself is NG, 0.1% is OK", () => {
-    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8", { "Substance Content(%) [col 31]": "0.15" }) }).recommendation.state).toBe("NG");
-    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8", { "Substance Content(%) [col 31]": "0.1" }) }).recommendation.state).toBe("OK");
+  it("SCCP (Ver.7): 0.15% itself is NG, 0.1% is OK (EU); non-EU → report to TMC; input mistake → NG", () => {
+    const a = { supplier: "A" };
+    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8", { "Substance Content(%) [col 31]": "0.15" }), destination: "EU", answers: a }).recommendation.state).toBe("NG");
+    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8", { "Substance Content(%) [col 31]": "0.1" }), destination: "EU", answers: a }).recommendation.state).toBe("OK");
+    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8"), destination: "KR", answers: a }).recommendation.state).toBe("HOLD");
+    expect(run2({ errorType: "Prohibited substance", facts: row("85681-73-8"), answers: { supplier: "B" } }).recommendation.state).toBe("NG");
   });
   it("paraffin oil 85422-92-0 asks the supplier", () => {
     const r = run2({ errorType: "Prohibited substance", facts: row("85422-92-0") });

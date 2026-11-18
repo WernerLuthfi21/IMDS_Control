@@ -6,7 +6,7 @@ function candidate(id: string, signature: string, eligible = true): BulkCandidat
     id, sourceRecordKey: id, errorType: "Prohibited substance", partNo: "PART-01", supplierCode: "SUP-01",
     cas: "71-55-6", substanceName: "Test substance", kind: "substance",
     recommendation: { state: "NG", comment: "Input mistake", reason: "Exact source rule" },
-    procedureText: "GADSL + TSZ trace", signature, eligible, inPendingQueue: true,
+    procedureText: "GADSL + TSZ trace", signature, eligible, draftFlow: false, inPendingQueue: true,
     prohibited: true, prohibitedStatus: "CONNECTED", reviewReason: "Exact source rule", tmc: null, card: { need: "ready", reason: "", question: null, facts: [] }
   };
 }

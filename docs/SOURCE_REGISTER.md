@@ -52,3 +52,16 @@ The repository owner allowed system-final OK/NG for complete cases in rule famil
 `data/reference/purchasing-supplier-code-master.json` — 222 supplier codes from `Supplier_Code.xlsx` ("Supplier Code master (Purchasing)", sha256 8499377a…), extracted 2026-11-14 in Jasmine's G-CATS Auto-Judgement and confirmed **PROTECTED** by the repository owner on 2026-11-18. Used only by the No.21 WARP Part number rule (`lib/judgement/warp.ts`). Replace the file when Purchasing issues a new master and record the new version here.
 
 TMMIN destination codes → rule regions (`lib/judgement/destinations.ts`) come from the same application's code (A–Z codes, V split Israel/other, X split Russia/India).
+
+## MCCP judge flow and Appendix 3–6 re-check (added 2026-11-18)
+
+- `G-CATS Manual Judgment Flow - MCCP.pdf` and `3. MCCP judgeflow - RI CM 202602 en.pdf` (same 9-slide deck, G-CATS Chemistry Manager Function (Regulatory Information), 7 Jan 2026; slide 8 marked PROTECTED and "Reference: MCCP judge flow (draft)"). Encoded as the draft flow `mccp` in `lib/judgement/flows.ts` (`MCCP_SOURCE`, `MCCP_REGULATED` = EU, JP "as of 2026 May"). Because the source calls it a draft, the system never finalises it. Replace `MCCP_REGULATED` when Appendix 4 lists more regulatory countries for MCCP.
+- `Appendix 3 - 6 MCCP judgeflow.xlsx` (two identical copies), Appendix 3, 4, 5, 6 workbooks uploaded 2026-11-18: compared cell by cell with the packaged JSON (`appendix3…`, `appendix4-pops.json`, `appendix5…`, `appendix6…`) — no differences apart from `_x000D_` line-break encoding. Appendix 4 header: "First release: 2026MAR05". Packaged data unchanged.
+- The "TSZ0001 Update" sheet lists TSZ0001G numbering for ver 27 / 28 / 29 (e.g. MCCP is #52 in ver 27/28 and #8 in ver 29; "Potentially MCCP containing substances" is new #11 in ver 29). Appendix 3 still uses ver 27 numbers, so the application keeps showing ver 27 numbers. Not reconciled — process owner to confirm when Appendix 3 moves to ver 29.
+- Workbooks and PDFs themselves are not committed.
+
+## G-CATS Manual Flow Ver.7 (added 2026-11-18)
+
+- `3.G-CATS_Manual_Flow_Ver_7.pdf` (38 pages, every page PROTECTED 関係者外秘, TMC-MED(KM)). Becomes the primary source for the flows it contains (No.6, 7, 9, 10–14, 16–19); see `docs/RULE_COVERAGE.md` for each change against Ver.5.1.10. Its remarks say the appendices were updated in **July 2026** and it numbers them differently (Ver.7 "Appendix 2" = group list, "Appendix 3" = POPs list, "Appendix 4" = Annex XVII, "Appendix 5" = Annex XIV). The packaged appendices are the "First release 2026MAR05" files (our Appendix 3–6). **Request the July 2026 appendices** from the process owner and replace the packaged JSON when they arrive.
+- Ver.7 numbers MCCP as **No.19**. The CLAUDE.md rule "Numerical Error Type 19 is always HOLD" is unchanged; the process owner must decide whether Ver.7 resolves the Version 6 Section II / Appendix I conflict.
+- Also uploaded 2026-11-18 and read for context only (not encoded): `1.G-CATS_judgment_Ver_5.1.10.pdf` (already the previous source), `2.G-CATS_Manual_Flow.pdf`, `1.G-CATS_Manual_Operation.pdf`, `7.G-CATS_operation_-_How_to.pdf`, `5.How_to_find_Mass_tolerance_in_drawing.pdf`. None of them were committed.

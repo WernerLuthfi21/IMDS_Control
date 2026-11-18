@@ -1,16 +1,17 @@
 import type { AutoOutput } from "@/lib/judgement/auto";
-import { TOYOTA_OWNED, DESTINATION_OPTIONS } from "@/lib/judgement/constants";
+import { TOYOTA_OWNED, DESTINATION_OPTIONS, REVIEWER_CHECK } from "@/lib/judgement/constants";
 
 /**
  * Review deck: every pending case the engine cannot finish is sorted by WHAT it still needs,
  * so a person handles one kind of question at a time (flashcards), with the answer buttons
  * already on the card.
  */
-export type ReviewNeed = "ready" | "destination" | "drawing" | "supplier" | "purchasing" | "tmc" | "missing" | "manual";
-export const NEED_ORDER: ReviewNeed[] = ["ready", "destination", "drawing", "supplier", "purchasing", "tmc", "missing", "manual"];
+export type ReviewNeed = "ready" | "destination" | "check" | "drawing" | "supplier" | "purchasing" | "tmc" | "missing" | "manual";
+export const NEED_ORDER: ReviewNeed[] = ["ready", "destination", "check", "drawing", "supplier", "purchasing", "tmc", "missing", "manual"];
 export const NEED_LABEL: Record<ReviewNeed, { title: string; hint: string }> = {
   ready: { title: "Ready to confirm", hint: "The rules reached OK or NG. Check and confirm." },
   destination: { title: "Vehicle destination", hint: "Pick where the vehicle goes. Remembered for the part." },
+  check: { title: "Reviewer check", hint: "Read it in the appendix, TSZ0001G or the IMDS data and pick the answer." },
   drawing: { title: "Drawing class", hint: "Read the mass tolerance class (MA–MF) from the drawing." },
   supplier: { title: "Supplier answer", hint: "Record what the supplier confirmed." },
   purchasing: { title: "Purchasing answer", hint: "Record what Purchasing confirmed." },
@@ -51,7 +52,7 @@ export function classifyCase(auto: AutoOutput, opts: { eligible: boolean; tmcOpe
   }
   const next = auto.flow?.next;
   if (next) {
-    const need: ReviewNeed = next.id === "purchasingWarp" ? "purchasing" : TOYOTA_OWNED.has(next.id) ? "destination" : "supplier";
+    const need: ReviewNeed = next.id === "purchasingWarp" ? "purchasing" : TOYOTA_OWNED.has(next.id) ? "destination" : REVIEWER_CHECK.has(next.id) ? "check" : "supplier";
     return card(need, r.reason, { id: next.id, text: next.text, options: next.options, field: "answer" });
   }
   if (auto.steps.some((s) => s.status === "MANUAL")) return card("missing", auto.steps.find((s) => s.status === "MANUAL")?.detail || r.reason);
