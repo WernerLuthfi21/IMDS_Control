@@ -16,7 +16,12 @@ export function validIds(value: unknown, max = MAX_IDS_PER_REQUEST): string[] | 
 }
 
 /** Keep the first row per id, order unchanged. */
-export function uniqueById<T extends { id: unknown }>(rows: T[]): T[] {
+export function uniqueById<T>(rows: T[]): T[] {
   const seen = new Set<unknown>();
-  return rows.filter((row) => (seen.has(row.id) ? false : (seen.add(row.id), true)));
+  return rows.filter((row) => {
+    const id = (row as { id?: unknown }).id;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
