@@ -2983,14 +2983,14 @@ function bindStatic(){
   dz.addEventListener("click",e=>{if(e.target!==fi){e.preventDefault();fi.click()}});
   dz.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
   ["dragenter","dragover"].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect="copy";dz.classList.add("drag")}));
-  dz.addEventListener("dragleave",e=>{e.preventDefault();dz.classList.remove("drag")});
+  dz.addEventListener("dragleave",e=>{e.preventDefault();if(!dz.contains(e.relatedTarget))dz.classList.remove("drag")});
   dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("drag");const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(f)handleChosenFile(f)});
   fi.addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(f)handleChosenFile(f);e.target.value=""});
   const dd=$("#dir-drop"),df=$("#dir-file-input");
   dd.addEventListener("click",e=>{if(e.target!==df){e.preventDefault();df.click()}});
   dd.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();df.click()}});
-  ["dragenter","dragover"].forEach(t=>dd.addEventListener(t,e=>{e.preventDefault();dd.classList.add("drag")}));
-  dd.addEventListener("dragleave",e=>{e.preventDefault();dd.classList.remove("drag")});
+  ["dragenter","dragover"].forEach(t=>dd.addEventListener(t,e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect="copy";dd.classList.add("drag")}));
+  dd.addEventListener("dragleave",e=>{e.preventDefault();if(!dd.contains(e.relatedTarget))dd.classList.remove("drag")});
   dd.addEventListener("drop",e=>{e.preventDefault();dd.classList.remove("drag");const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])];if(fs.length)importDirFiles(fs)});
   df.addEventListener("change",e=>{const fs=[...e.target.files];e.target.value="";if(fs.length)importDirFiles(fs)});
   $("#dir-restore-input").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(f)restoreDirBackup(f)});

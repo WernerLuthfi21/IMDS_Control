@@ -11,6 +11,8 @@ import { JudgeStats } from "@/components/judgement-overview";
 import { GcatsDetailView } from "@/components/gcats-detail-view";
 import { buildCommentHistory } from "@/lib/judgement/comment-history";
 import { summarizeRegister, type NeedCounts } from "@/lib/judgement/overview";
+import { pileCounts, pileOf } from "@/lib/judgement/piles";
+import { Piles } from "@/components/miko-table";
 import type { ReviewNeed } from "@/lib/judgement/review";
 
 const SYSTEM_ACTOR = "Auto-judgement (System)";
@@ -27,7 +29,7 @@ type Item = {
   /** G-CATS "Comment(last time)" from the source row. */
   comment_last_time?: string;
 };
-type Tab = "pending" | "judged" | "km";
+type Tab = "pending" | "judged" | "km" | "kmdone";
 type BulkItem = { id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null; cas: string; substanceName: string; recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string } };
 type BulkGroup = { signature: string; decision: "OK" | "NG"; comment: string; reason: string; procedureText: string; count: number; items: BulkItem[] };
 type BulkUndoItem = { id: string; decision: "OK" | "NG"; lastChangeDate: string; before: { assigned_person: string | null; starting_date: string | null; judgement_procedure: string | null; judge: null; ok_comment: string | null; imds_reject_comment: string | null } };
@@ -226,11 +228,9 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const prohibitedPending = prohibitedRows.filter((row) => row.source_status === "WORKING" && !row.judge).length;
   const prohibitedMissingCas = prohibitedRows.filter((row) => !row.cas?.trim()).length;
 
-  const counts = useMemo(() => ({
-    pending: rows.filter((r) => r.source_status === "WORKING" && !r.judge).length,
-    judged: rows.filter((r) => !!r.judge).length,
-    km: rows.filter((r) => !!r.judge && !r.km_judge).length
-  }), [rows]);
+  // One definition for every count on the page (lib/judgement/piles.ts): Waiting TMA is judged, never remaining.
+  const piles = useMemo(() => pileCounts(rows), [rows]);
+  const counts = useMemo(() => ({ pending: piles.toJudge, judged: piles.judgedTotal, km: piles.waitingTma }), [piles]);
   const types = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of rows) if (r.source_status === "WORKING" && !r.judge) m.set(r.error_type_label, (m.get(r.error_type_label) || 0) + 1);
@@ -239,14 +239,15 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }, [rows]);
   const summary = useMemo(() => summarizeRegister(rows, 6, 6), [rows]);
   const history = useMemo(() => buildCommentHistory(rows), [rows]);
-  const pendingRows = useMemo(() => rows.filter((r) => r.source_status === "WORKING" && !r.judge), [rows]);
+  const pendingRows = useMemo(() => rows.filter((r) => pileOf(r) === "toJudge"), [rows]);
   const months = useMemo(() => [...new Set(rows.map((r) => String(r.source_month || "")).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [rows]);
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (tab === "pending" && (r.source_status !== "WORKING" || r.judge)) return false;
       if (tab === "judged" && !r.judge) return false;
-      if (tab === "km" && (!r.judge || r.km_judge)) return false;
+      if (tab === "km" && pileOf(r) !== "waitingTma") return false;
+      if (tab === "kmdone" && pileOf(r) !== "judged") return false;
       if (substanceOnly && !isProhibitedLabel(r.error_type_label)) return false;
       if (errorType !== "All Error Types" && r.error_type_label !== errorType) return false;
       if (month !== "All" && String(r.source_month || "") !== month) return false;
@@ -339,7 +340,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }, [openId]);
   const kpis: Array<{ key: string; label: string; n: number; on: boolean; tone: string; act: () => void; hint: string }> = [
     { key: "pending", label: "To judge", n: counts.pending, on: tab === "pending" && !substanceOnly, tone: "amber", act: () => { setTab("pending"); setSubstanceOnly(false); }, hint: "WORKING cases without a judgement" },
-    { key: "judged", label: "Judged", n: counts.judged, on: tab === "judged", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved" },
+    { key: "judged", label: "Judged", n: counts.judged, on: tab === "judged" || tab === "kmdone", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved" },
     { key: "km", label: "Awaiting KM", n: counts.km, on: tab === "km", tone: "blue", act: () => { setTab("km"); setSubstanceOnly(false); }, hint: "Judged, KM judge still empty" },
     { key: "sub", label: "Prohibited substances", n: prohibitedPending, on: substanceOnly, tone: "red", act: () => { setTab("pending"); setSubstanceOnly((v) => !v); setErrorType("All Error Types"); }, hint: `${prohibitedMissingCas} without CAS` },
     { key: "auto", label: "Judged by Miko", n: autoCount, on: view === "auto", tone: "violet", act: () => { setTab("judged"); setSearch(""); }, hint: "Automatic decisions (reopenable)" }
@@ -373,15 +374,17 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       onKm={() => { setTab("km"); setSubstanceOnly(false); setView("list"); }}/>}
     {view === "detail" && <GcatsDetailView rows={rows} initialPart={detailPart}/>}
 
-    {view === "auto" && <div className="jw-auto">
+    {view === "auto" && <section className="mt mt-auto" aria-label="Miko's auto-judge table">
+      <Piles piles={piles} onPile={(k) => { if (k === "toJudge") setView("judge"); else { setTab(k === "judged" ? "kmdone" : "km"); setSubstanceOnly(false); setView("list"); } }}/>
       <AutoJudgeCard openSettings={openAutoJudgeSettings}
-      pendingIds={rows.filter((r) => r.source_status === "WORKING" && !r.judge).map((r) => r.id)}
+      pendingIds={pendingRows.map((r) => r.id)}
       judgedIds={rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR).map((r) => r.id)}
       onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>
-    </div>}
+    </section>}
 
     {/* Stays mounted on every view: its pile counts feed the overview and a pile opens instantly. */}
-    <div hidden={view !== "judge"}><ReviewDeck rows={pendingRows} canEdit={canEdit} active={view === "judge"} history={history} onNeeds={onNeeds} jump={jump}
+    <div hidden={view !== "judge"}><ReviewDeck rows={pendingRows} piles={piles}
+      onPile={(k) => { setTab(k === "judged" ? "kmdone" : "km"); setSubstanceOnly(false); setView("list"); }} canEdit={canEdit} active={view === "judge"} history={history} onNeeds={onNeeds} jump={jump}
       onDetail={(part) => { setDetailPart(part); setView("detail"); }}
       onOpenCase={(id) => { setView("list"); setTab("pending"); setOpenId(id); }}
       onSaved={(sv) => setRows((old) => old.map((r) => r.id === sv.id ? { ...r, judge: sv.judge, ok_comment: sv.judge === "OK" ? sv.comment : null, imds_reject_comment: sv.judge === "NG" ? sv.comment : null, judgement_procedure: sv.procedure, assigned_person: r.assigned_person || actorName, starting_date: r.starting_date || today() } : r))}/></div>

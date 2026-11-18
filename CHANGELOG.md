@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Miko's judgement table, real workflow piles, drag-and-drop fixed (2026-11-18)
+
+- **Workflow piles** (`lib/judgement/piles.ts`, 11 tests): To Judge = WORKING without an internal judgement (the only remaining work); Waiting TMA = judgement saved, KM/TMA judge empty (already judged, never dealt again); Judged = judgement and KM filled; Other = not WORKING and not judged. Every count on the Judgement page uses these definitions (KPI tiles, statistics, Auto-judge). Duplicate ids count once. New list filter "TMA/KM done".
+- **Miko's table (Judge):** emerald felt, Miko as dealer with a status line, the three piles as physical card stacks with real counts (click Waiting TMA / Judged to review their records read-only), rule-family chips and the case as a physical card. The card is dealt from the To Judge pile; after the server confirms the save it is stamped "JUDGED · OK/NG" and flies to the pile its real status belongs to (Waiting TMA), the counts update and the next card is dealt. A failed save keeps the card, the input and shows the error. Reduced motion: no flights.
+- **Auto-judge** uses the same table with the three piles; its behaviour is unchanged.
+- **Drag and drop:** the Daily G-CATS import and the Supplier pre-check boxes said "Drop … here" but had no drop handler (the browser opened the file instead). New `DropZone` used by Daily update, Supplier pre-check and Evidence: drag highlight, extension and size check before anything starts, file name and size, remove button, keyboard (Enter/Space). A file dropped elsewhere on a page no longer makes the browser leave the app. Self-check and Tracker drop boxes no longer flicker; the Tracker overlay clears when a drag leaves the window and a drop next to a box is refused instead of opening the file.
+
 ## Unreleased — Judge tab tidy-up, Century Gothic, no manual pile (2026-11-18)
 
 - **Fixed:** an unterminated CSS comment in `app/globals.css` swallowed ~150 lines (flashcard facts, answer buttons, statistics ring) — the cards looked unstyled in production.

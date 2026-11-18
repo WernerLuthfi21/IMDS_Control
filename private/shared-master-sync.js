@@ -356,14 +356,29 @@
       document.body.appendChild(veil); return veil;
     }
     function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
-    // These areas already handle their own files (Directory import, the local-file fallback).
-    function foreign(t) { return t && t.closest && t.closest("#dir-import,#dir-drop,#dropzone,section[aria-labelledby='h-source']"); }
-    document.addEventListener("dragenter", function (e) { if (!hasFiles(e) || foreign(e.target)) return; e.preventDefault(); depth++; ensure().classList.add("on"); });
-    document.addEventListener("dragover", function (e) { if (!hasFiles(e) || foreign(e.target)) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"; });
+    // The two boxes that handle their own files (Directory import, the local-file fallback).
+    function own(t) { return t && t.closest && t.closest("#dir-drop,#dropzone"); }
+    // Around those boxes a drop must neither open the file in the browser nor import it: drop on the box.
+    function near(t) { return t && t.closest && t.closest("#dir-import,section[aria-labelledby='h-source']"); }
+    var idle = 0;
+    function clearZones() { Array.prototype.forEach.call(document.querySelectorAll("[data-kind].drag"), function (x) { x.classList.remove("drag"); }); }
+    function hideSoon() { clearTimeout(idle); idle = setTimeout(function () { depth = 0; if (veil) veil.classList.remove("on"); clearZones(); }, 450); }
+    document.addEventListener("dragenter", function (e) { if (!hasFiles(e) || own(e.target) || near(e.target)) return; e.preventDefault(); depth++; ensure().classList.add("on"); hideSoon(); });
+    document.addEventListener("dragover", function (e) {
+      if (!hasFiles(e) || own(e.target)) return;
+      e.preventDefault();
+      if (near(e.target)) { if (e.dataTransfer) e.dataTransfer.dropEffect = "none"; if (veil) veil.classList.remove("on"); return; }
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"; ensure().classList.add("on"); hideSoon();
+      var z = e.target.closest && e.target.closest("[data-kind]");
+      Array.prototype.forEach.call(document.querySelectorAll("[data-kind].drag"), function (x) { if (x !== z) x.classList.remove("drag"); });
+      if (z) z.classList.add("drag");
+    });
     document.addEventListener("dragleave", function (e) { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth && veil) veil.classList.remove("on"); });
+    document.addEventListener("dragend", function () { depth = 0; if (veil) veil.classList.remove("on"); });
     document.addEventListener("drop", async function (e) {
-      if (!hasFiles(e) || foreign(e.target)) return;
-      e.preventDefault(); depth = 0; if (veil) veil.classList.remove("on");
+      if (!hasFiles(e) || own(e.target)) return;
+      e.preventDefault(); depth = 0; if (veil) veil.classList.remove("on"); clearZones();
+      if (near(e.target)) { report("err", "Drop the file on the box itself."); return; }
       var files = Array.prototype.slice.call(e.dataTransfer.files || []);
       var zone = e.target.closest && e.target.closest("[data-kind]"), forced = zone ? zone.getAttribute("data-kind") : null;
       var jobs = [];
