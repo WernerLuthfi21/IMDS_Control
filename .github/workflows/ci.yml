@@ -43,3 +43,30 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  e2e:
+    name: E2E + contrast audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+
+      - name: Pin npm
+        run: npm install --global npm@11.21.1
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright (pages without a database, light + dark contrast audit)
+        run: npm run test:e2e
+        env:
+          CI: "true"

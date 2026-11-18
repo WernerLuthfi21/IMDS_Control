@@ -21,7 +21,9 @@ const KIND_LABEL: Record<Kind, string> = {
 };
 const CHUNK = 100;
 
-export function AutoJudgeCard({ pendingIds, judgedIds, onFinal }: {
+export function AutoJudgeCard({ pendingIds, judgedIds, onFinal, openSettings = false }: {
+  /** Open the rule-family settings on load (Settings → Judgement links here). */
+  openSettings?: boolean;
   pendingIds: string[]; judgedIds: string[];
   onFinal: (items: Array<{ id: string; decision: "OK" | "NG" }>, actor: string) => void;
 }) {
@@ -31,7 +33,7 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal }: {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [results, setResults] = useState<RunResult[] | null>(null);
   const [compare, setCompare] = useState<Compare[] | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(openSettings);
 
   useEffect(() => {
     fetch("/api/judgement/autorun", { cache: "no-store" }).then(async (r) => {
