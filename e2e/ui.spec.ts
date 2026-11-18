@@ -1,6 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditContrast } from "./contrast";
 
+/** Dev mode shows server HTML before React is interactive: repeat the action until it takes effect. */
+async function untilItWorks(act: () => Promise<void>, check: () => Promise<void>) {
+  await expect(async () => { await act(); await check(); }).toPass({ timeout: 30_000, intervals: [500, 1000, 2000] });
+}
+
 // Pages that render without a database (the CI server runs with no Supabase env in dev mode).
 // Judgement, Tracker and the register need a signed-in Supabase session and are not covered here.
 const PAGES: Array<{ path: string; ready: (p: Page) => Promise<void> }> = [
@@ -32,9 +37,10 @@ for (const theme of ["light", "dark"] as const) {
 test("rules: every flow has a chart; picking one draws its end results", async ({ page }) => {
   await page.goto("/rules");
   expect(await page.locator(".fl-item").count()).toBeGreaterThan(10);
-  await page.getByLabel("Find a flow").fill("MCCP");
-  await page.locator(".fl-item").first().click();
-  await expect(page.getByRole("heading", { name: /MCCP/ })).toBeVisible();
+  await untilItWorks(async () => {
+    await page.getByLabel("Find a flow").fill("MCCP");
+    await page.locator(".fl-item").first().click();
+  }, async () => { await expect(page.getByRole("heading", { name: /MCCP/ })).toBeVisible({ timeout: 1500 }); });
   await expect(page.locator(".fl-out.ok").first()).toBeVisible();
   await expect(page.locator(".fl-caution").first()).toContainText(/draft/i);
   await page.getByRole("tab", { name: "Error types & sources" }).click();
@@ -51,8 +57,7 @@ test("rules page fits a 1920×1080 laptop screen without page scrolling", async 
 
 test("settings tabs switch and keep the section in the URL", async ({ page }) => {
   await page.goto("/settings");
-  await page.getByRole("tab", { name: /IMDS Tracker/ }).click();
-  await expect(page).toHaveURL(/#tracker$/);
+  await untilItWorks(() => page.getByRole("tab", { name: /IMDS Tracker/ }).click(), async () => { await expect(page).toHaveURL(/#tracker$/, { timeout: 1500 }); });
   await expect(page.getByRole("link", { name: /Tracker data source/ })).toHaveAttribute("href", "/imds-tracker#settings");
   await page.getByRole("tab", { name: /Judgement/ }).click();
   await expect(page.getByRole("link", { name: /Auto-judge rule families/ })).toHaveAttribute("href", "/judgement?autojudge=settings");
@@ -60,6 +65,6 @@ test("settings tabs switch and keep the section in the URL", async ({ page }) =>
 
 test("supplier pre-check shows one tool at a time", async ({ page }) => {
   await page.goto("/supplier-precheck");
-  await page.getByRole("tab", { name: /One part by hand/ }).click();
-  await expect(page.getByText(/Supplier pre-check workspace|Submit a pre-check/)).toBeVisible();
+  await untilItWorks(() => page.getByRole("tab", { name: /One part by hand/ }).click(),
+    async () => { await expect(page.getByText(/Supplier pre-check workspace|Submit a pre-check/)).toBeVisible({ timeout: 1500 }); });
 });
