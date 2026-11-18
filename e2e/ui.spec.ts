@@ -3,8 +3,19 @@ import { auditContrast } from "./contrast";
 
 /** Dev mode shows server HTML before React is interactive: repeat the action until it takes effect. */
 async function untilItWorks(act: () => Promise<void>, check: () => Promise<void>) {
-  await expect(async () => { await act(); await check(); }).toPass({ timeout: 30_000, intervals: [500, 1000, 2000] });
+  await expect(async () => { await act(); await check(); }).toPass({ timeout: 20_000, intervals: [500, 1000, 2000] });
 }
+
+// Browser errors are attached to every failure so a page that never becomes interactive says why.
+const browserErrors: string[] = [];
+test.beforeEach(async ({ page }) => {
+  browserErrors.length = 0;
+  page.on("pageerror", (e) => browserErrors.push("pageerror: " + e.message));
+  page.on("console", (m) => { if (m.type() === "error") browserErrors.push("console: " + m.text().slice(0, 300)); });
+});
+test.afterEach(async ({}, info) => {
+  if (info.status !== info.expectedStatus && browserErrors.length) console.log("BROWSER ERRORS for " + info.title + "\n" + browserErrors.slice(0, 12).join("\n"));
+});
 
 // Pages that render without a database (the CI server runs with no Supabase env in dev mode).
 // Judgement, Tracker and the register need a signed-in Supabase session and are not covered here.
