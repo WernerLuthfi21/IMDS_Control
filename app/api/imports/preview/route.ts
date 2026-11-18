@@ -1,3 +1,4 @@
+import { recordKey, sourceDate } from "@/lib/judgement/source-key";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
@@ -116,9 +117,10 @@ export async function POST(request: NextRequest) {
     if (raw instanceof Date) return raw.toISOString().slice(0, 10);
     const value = plain(raw as ExcelJS.CellValue);
     if (typeof value === "number" && value > 20000 && value < 80000) return new Date(Date.UTC(1899, 11, 30) + value * 86400000).toISOString().slice(0, 10);
-    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-    return null;
+    return sourceDate(value);
   };
+  const seenKeys = new Set<string>();
+  let derivedKeys = 0, fallbackKeys = 0, codeMismatch = 0, duplicateDerived = 0;
   for (let r = headerRow + 1; r <= lastRow; r++) {
     const row = sheet.getRow(r);
     const values: Record<string, unknown> = {};
@@ -138,7 +140,16 @@ export async function POST(request: NextRequest) {
     const sourceKmJudgeLabel = cols.kmJudge ? String(plain(row.getCell(cols.kmJudge).value) ?? "").replace(/\u00a0/g, " ").trim() : "";
     const validJudge = ["OK", "NG"].includes(sourceJudgeLabel.toUpperCase()) ? sourceJudgeLabel.toUpperCase() : null;
     const validKmJudge = ["OK", "NG"].includes(sourceKmJudgeLabel.toUpperCase()) ? sourceKmJudgeLabel.toUpperCase() : null;
-    const sourceCaseCode = sourceCode ? `code:${sourceCode}` : `fallback:${hash.slice(0, 16)}:${sheet.name}:${r}`;
+    // Blank code = not judged by TMA yet. Use the key TMA's code will have (Download Date + No.), so the
+    // record survives every daily export and matches the Excel register (lib/judgement/source-key.ts).
+    const fallbackKey = `fallback:${hash.slice(0, 16)}:${sheet.name}:${r}`;
+    const keyed = recordKey(sourceCode, cols.downloadDate ? plain(row.getCell(cols.downloadDate).value) : null, cols.sequenceNo ? plain(row.getCell(cols.sequenceNo).value) : null, fallbackKey);
+    let sourceCaseCode = keyed.key, keyOrigin = keyed.origin;
+    const derived = keyed.derived;
+    if (keyOrigin === "tma" && derived && derived !== sourceCode) codeMismatch++;
+    if (keyOrigin === "derived" && seenKeys.has(sourceCaseCode)) { duplicateDerived++; sourceCaseCode = fallbackKey; keyOrigin = "fallback"; }
+    if (keyOrigin === "derived") derivedKeys++; else if (keyOrigin === "fallback") fallbackKeys++;
+    seenKeys.add(sourceCaseCode);
     counts[type || "(blank)"] = (counts[type || "(blank)"] || 0) + 1;
     caseCodes.add(sourceCaseCode);
     const messages: string[] = [];
@@ -151,7 +162,7 @@ export async function POST(request: NextRequest) {
       source_case_code: sourceCaseCode,
       row_data: values,
       normalized: {
-        sourceRecordKey: sourceCaseCode, sourceCode: sourceCode || null,
+        sourceRecordKey: sourceCaseCode, sourceCode: sourceCode || null, keyOrigin, tmaCoded: Boolean(sourceCode),
         sequenceNo: cols.sequenceNo ? plain(row.getCell(cols.sequenceNo).value) : null,
         year: cols.year ? plain(row.getCell(cols.year).value) : null,
         month: cols.month ? plain(row.getCell(cols.month).value) : null,
@@ -178,6 +189,10 @@ export async function POST(request: NextRequest) {
   }
   if (sheet.rowCount > lastRow) warnings.push(`Only the first ${MAX_ROWS.toLocaleString()} data rows were staged; the workbook contains more rows.`);
   if (headers.filter(h => h === "Delivery Part No").length > 1) warnings.push("Duplicate Delivery Part No headers were detected and kept distinct by source column index.");
+  if (derivedKeys) warnings.push(`${derivedKeys.toLocaleString()} row(s) have no code yet (not judged by TMA). They are keyed as Download Date + No., the same code TMA gives later, so judgements carry over.`);
+  if (fallbackKeys) warnings.push(`${fallbackKeys.toLocaleString()} row(s) have neither a code nor a usable Download Date + No.; they get a temporary key that changes with each export.`);
+  if (duplicateDerived) warnings.push(`${duplicateDerived.toLocaleString()} row(s) repeat a Download Date + No. pair; only the first uses it.`);
+  if (codeMismatch) warnings.push(`${codeMismatch.toLocaleString()} coded row(s) do not follow Download Date + No.; their own code is kept.`);
   if (!cols.sourceCode) warnings.push("No stable `code` column was found. Fallback source identity uses sheet and row number; row reordering can create a new record rather than risk false merging.");
   if (cols.sequenceNo && cols.sourceCode) warnings.push("The repeating `No.` sequence is retained separately and is NOT used as a record key. The `code` column is the source identity.");
   const judgementFieldsDetected = [cols.assignedPerson, cols.startingDate, cols.judgementProcedure, cols.judge, cols.okComment, cols.rejectComment, cols.kmJudge, cols.kmComment, cols.lastChangeDate].filter(Boolean).length;
@@ -193,6 +208,11 @@ export async function POST(request: NextRequest) {
     const { data: existingRows, error: existingError } = await supabase.from("gcat_error_items").select("source_record_key,source_hash").in("source_record_key", chunk);
     if (existingError) return NextResponse.json({ error: `Could not compare with the current register: ${existingError.message}` }, { status: 500 });
     for (const existing of existingRows || []) existingByKey.set(existing.source_record_key, existing.source_hash ?? null);
+  }
+  // Records still on the old per-file key: their judgements only carry over after migration 20261119000000.
+  if (derivedKeys) {
+    const { count: oldKeys } = await supabase.from("gcat_error_items").select("id", { count: "exact", head: true }).like("source_record_key", "fallback:%");
+    if (oldKeys) warnings.unshift(`${oldKeys.toLocaleString()} existing record(s) still use the old temporary key. Ask the admin to apply migration 20261119000000 (re-key rows without a code) BEFORE committing, otherwise their judgements will not carry over.`);
   }
   const newRecords = sourceKeys.filter(key => !existingByKey.has(key)).length;
   const sameSnapshotRows = sourceKeys.filter(key => existingByKey.get(key) === hash).length;
