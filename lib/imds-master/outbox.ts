@@ -4,7 +4,9 @@ import { mapMdStatusToImds } from "./md-current";
 
 type MasterRecord = Record<string, unknown>;
 
-const BATCH_SIZE = 25;
+/** Rows per request to the Tracker flow. 25 suits a per-row loop; with the UpsertRows Office Script set
+ * POWER_AUTOMATE_TRACKER_BATCH=200 (one Excel call per request, far fewer runs). Capped at 500. */
+const BATCH_SIZE = Math.min(500, Math.max(1, Number(process.env.POWER_AUTOMATE_TRACKER_BATCH) || 25));
 const MAX_ATTEMPTS = 5;
 
 function value(row: MasterRecord, key: string): string {

@@ -84,6 +84,12 @@ Excel Online (Business) → **Update a row**
   KM Judge, KM Comment, Last Change Date. Ambil masing-masing dari Parse JSON.
 - **Kosongkan** kolom lain (Judgement state, Supplier reminder, dan seterusnya). Kolom kosong di aksi tidak menimpa nilai yang ada.
 
+### 2.3b Lebih cepat dan tahan beda akun: Office Script
+Alternatif untuk 2.3 + 2.4 adalah satu aksi **Run script from SharePoint library**, memakai script `UpsertRows`
+(`docs/power-automate/UpsertRows.ts`; cara pasang ada di `PANDUAN_SETUP_LENGKAP_ID.md` bagian 5b) dengan
+`tableName` = `JudgementRegister`, `keyColumn` = `code`, `rowsJson` = `string(triggerBody())`.
+Baris yang ada diperbarui dan baris baru ditambahkan. Kolom rumus seperti *Judgement state* tidak tertimpa.
+
 ### 2.4 Kalau barisnya belum ada
 Tambahkan **Add a row into a table** (file dan tabel sama) dengan isi yang sama ditambah `code`, `Error Type`,
 `Delivery Part No` dan `Supplier Code`. Lalu **Configure run after** = *Update a row* **has failed**.
@@ -103,7 +109,7 @@ Concurrency control **On**, Degree of parallelism **1**.
 3. Cek rahasia seperti 2.2.
 4. **Select** (lampiran): From `body('Parse_JSON')?['attachments']`. Map `Name` → `item()?['name']`, `ContentBytes` → `item()?['contentBytes']`.
 5. Office 365 Outlook → **Send an email (V2)**:
-   - To `to`, CC `cc`, Subject `subject`, Body `body`
+   - To `to`, CC `cc`, Subject `subject`, Body `bodyHtml` (HTML aman, baris baru sudah `<br>`)
    - Attachments: *switch to input entire array* → `body('Select')`
    - From (Send as) `from`: isi hanya jika akun pemilik flow punya izin **Send As** di mailbox itu
 6. Settings pemicu: Concurrency **1**.

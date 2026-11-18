@@ -88,6 +88,9 @@ Tambahkan **When an HTTP request is received** dan tempel skema ini. Skema ini d
     "body": {
       "type": "string"
     },
+    "bodyHtml": {
+      "type": "string"
+    },
     "attachments": {
       "type": "array",
       "items": {
@@ -147,8 +150,7 @@ Tambahkan **Select** (Data Operations):
 Tambahkan **Condition**: `empty(triggerBody()?['from'])` sama dengan `true`.
 
 **Jika ya** (pengirim bawaan, yaitu akun pemilik flow): Office 365 Outlook → **Send an email (V2)**
-- To = `to`, CC = `cc`, Subject = `subject`, Body = `body`
-- Is HTML = `No` (isi email teks biasa)
+- To = `to`, CC = `cc`, Subject = `subject`, Body = `bodyHtml` (HTML aman, baris baru sudah `<br>`; untuk flow lama `body` tetap ada)
 - Attachments: klik ikon "switch to input entire array", isi `body('Select')`
 
 **Jika tidak** (pengirim dipilih di website): **Send an email (V2)** yang sama, ditambah *Show advanced options* → **From (Send As)** = `from`.

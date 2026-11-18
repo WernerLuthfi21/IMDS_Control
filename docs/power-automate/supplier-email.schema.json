@@ -40,6 +40,9 @@
     "body": {
       "type": "string"
     },
+    "bodyHtml": {
+      "type": "string"
+    },
     "attachments": {
       "type": "array",
       "items": {
