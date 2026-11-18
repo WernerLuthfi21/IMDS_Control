@@ -20,8 +20,8 @@ describe("review piles", () => {
     const a = runAutoWorkflow({ errorType: "SMS Mass", facts, supplierConfirmation: "INPUT_MISTAKE" });
     expect(cls(a, true).need).toBe("ready");
   });
-  it("unknown error types go to manual, missing CAS to missing data", () => {
-    expect(cls(runAutoWorkflow({ errorType: "Something new", facts })).need).toBe("manual");
+  it("unknown error types go to TMC (no manual pile), missing CAS to missing data", () => {
+    expect(cls(runAutoWorkflow({ errorType: "Something new", facts })).need).toBe("tmc");
     expect(cls(runAutoWorkflow({ errorType: "Prohibited substance", facts })).need).toBe("missing");
   });
   it("WARP without a registered code goes to the Purchasing pile", () => {

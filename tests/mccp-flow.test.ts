@@ -57,7 +57,7 @@ describe("MCCP judge flow (draft, No.14)", () => {
     expect(runAutoWorkflow({ errorType: "19 Prohibited(MCCP)", facts: row(), destination: "KR" }).recommendation.state).toBe("HOLD");
   });
   it("is never finalised by the system, even with every family switched on", () => {
-    const cfg = { ...DEFAULT_AUTOJUDGE, enabled: true, shadow: false, kinds: { mass: true, sms: true, app44: true, pb: true, elv: true, substance: true, warp: true }, ruleSet: RULESET };
+    const cfg = { ...DEFAULT_AUTOJUDGE, enabled: true, shadow: false, kinds: { mass: true, sms: true, app44: true, pb: true, elv: true, other: true, substance: true, warp: true }, ruleSet: RULESET };
     const d = decideAuto({ kind: "substance", eligible: true, inPendingQueue: true, errorType: ET, reviewReason: "",
       recommendation: { state: "OK", comment: "Only non-Regulated destination.", reason: "Flow result" }, draftFlow: true }, cfg);
     expect(d.action).toBe("SKIP");

@@ -30,15 +30,15 @@ export function JudgeStats({ summary, needs, needsLoading, onPile, onKm }: {
     <div className="js-main">
       <span className="js-eyebrow">{summary.judged.toLocaleString("en-US")} of {summary.total.toLocaleString("en-US")} judged · {summary.pending.toLocaleString("en-US")} to judge</span>
       {loadingNeeds ? <strong className="js-issue"><LoaderCircle size={16} className="spin"/> Sorting every pending case…</strong>
-        : top ? <button type="button" className="js-issue" onClick={() => (top.tab === "km" ? onKm() : top.need && onPile(top.need))}><span>Biggest issue:</span> {top.headline} <ArrowRight size={16}/></button>
+        : top ? <button type="button" className="js-issue" onClick={() => (top.tab === "km" ? onKm() : top.need && onPile(top.need))}><em>Biggest issue</em><span>{top.headline}</span><ArrowRight size={16}/></button>
         : <strong className="js-issue">Nothing is blocked</strong>}
       <div className="ov-prog" aria-hidden="true">{summary.band.filter((b) => b.n).map((b) => <i key={b.key} className={"b-" + b.key} style={{ width: (b.n / Math.max(1, summary.total)) * 100 + "%" }}/>)}</div>
     </div>
     <dl className="js-nums">
-      <div className="d"><dt>Decided by rules</dt><dd>{num(decided)}</dd><span>confirm only</span></div>
-      <div className="y"><dt>Your answer</dt><dd>{num(yours)}</dd><span>one click each</span></div>
-      <div className="w"><dt>Waiting on others</dt><dd>{num(waiting)}</dd><span>supplier · TMC · data</span></div>
-      <div className="k"><dt>Awaiting KM</dt><dd>{summary.km.toLocaleString("en-US")}</dd><span>judged, KM empty</span></div>
+      <div className="d" title="The rules decided these: confirm only"><dt>Ready</dt><dd>{num(decided)}</dd></div>
+      <div className="y" title="One answer from you each"><dt>Your answer</dt><dd>{num(yours)}</dd></div>
+      <div className="w" title="Supplier, Purchasing, TMC or missing data"><dt>Waiting</dt><dd>{num(waiting)}</dd></div>
+      <div className="k" title="Judged, KM judge still empty"><dt>Awaiting KM</dt><dd>{summary.km.toLocaleString("en-US")}</dd></div>
     </dl>
   </section>;
 }

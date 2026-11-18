@@ -34,9 +34,13 @@ export function classifyCase(auto: AutoOutput, opts: { eligible: boolean; tmcOpe
   const card = (need: ReviewNeed, reason: string, question: CardQuestion | null = null): ReviewCard => ({ need, reason, question, facts });
   if (opts.eligible && (r.state === "OK" || r.state === "NG")) return card("ready", r.reason);
   if (opts.tmcOpen) return card("tmc", r.reason);
+  if (/Error Type 19 is always HOLD/i.test(r.reason)) return card("tmc", r.reason);
   const lookupGap = auto.steps.find((s) => s.status === "MANUAL" && (s.id === "gadsl" || s.id === "imds" || s.id === "drawing"));
   if (lookupGap) return card("missing", lookupGap.detail);
-  if (auto.kind === "manual") return card("manual", r.reason || "No encoded rule for this error type.");
+  // No rule in the G-CATS manual for this error type (e.g. TMC-only types 22/23): TMC answers it.
+  if (auto.kind === "manual") return card("tmc", "No rule for this error type in the G-CATS manual (TMC only). Ask TMC and record the answer.");
+  const pbDate = auto.steps.find((s) => s.id === "dest" && s.status === "MANUAL");
+  if (pbDate) return card("tmc", `${pbDate.detail} Confirm the date with TMC (Manual Flow Ver.7 No.10 remark).`);
   if (auto.flow && !auto.flow.implemented) return card("manual", r.reason);
   if (auto.needs.destination || auto.flow?.next?.id === "destination") {
     return card("destination", "Destination decides which rule applies.", { id: "destination", text: "Vehicle destination", options: DESTINATION_OPTIONS, field: "destination" });
@@ -52,7 +56,7 @@ export function classifyCase(auto: AutoOutput, opts: { eligible: boolean; tmcOpe
   }
   const next = auto.flow?.next;
   if (next) {
-    const need: ReviewNeed = next.id === "purchasingWarp" ? "purchasing" : TOYOTA_OWNED.has(next.id) ? "destination" : REVIEWER_CHECK.has(next.id) ? "check" : "supplier";
+    const need: ReviewNeed = next.id === "purchasingWarp" || next.id === "purchasingSms" ? "purchasing" : TOYOTA_OWNED.has(next.id) ? "destination" : REVIEWER_CHECK.has(next.id) ? "check" : "supplier";
     return card(need, r.reason, { id: next.id, text: next.text, options: next.options, field: "answer" });
   }
   if (auto.steps.some((s) => s.status === "MANUAL")) return card("missing", auto.steps.find((s) => s.status === "MANUAL")?.detail || r.reason);

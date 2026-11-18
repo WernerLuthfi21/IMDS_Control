@@ -4,4 +4,5 @@ export const DESTINATION_OPTIONS: Array<[string, string]> = [["EU", "EU"], ["KR"
 export const TOYOTA_OWNED = new Set(["destination", "usCarpet", "nonEuReq", "naDest"]);
 /** Questions the reviewer answers from the appendix, TSZ0001G or the IMDS data (not the supplier, not the vehicle). */
 export const REVIEWER_CHECK = new Set(["appendixLegal", "sunset3m", "pfoaTotal", "airCon", "refrigerant", "purPvc", "perchlorateUse", "benzidine",
-  "app20", "app46", "matlClass", "lacquer", "aluminium", "methanolCase1", "wwf", "total", "thr", "textileSkin"]);
+  "app20", "app46", "matlClass", "lacquer", "aluminium", "methanolCase1", "wwf", "total", "thr", "textileSkin",
+  "massDev1", "toyotaPart", "imdsCommittee", "ns10", "multiMaterial", "ns10base"]);

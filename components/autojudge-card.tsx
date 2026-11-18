@@ -4,7 +4,7 @@ import { AlertTriangle, Bot, LoaderCircle, Play, Power, Scale, Settings2, Shield
 import type { CatMood } from "@/components/cat-mascot";
 import { CatStage } from "@/components/cat-stage";
 
-type Kind = "mass" | "sms" | "app44" | "pb" | "elv" | "substance" | "warp";
+type Kind = "mass" | "sms" | "app44" | "pb" | "elv" | "other" | "substance" | "warp";
 type Config = { enabled: boolean; shadow: boolean; kinds: Record<Kind, boolean>; approvedBy: string | null; approvedAt: string | null; ruleSet?: string | null };
 type Info = { config: Config; version: number; missing: boolean; migrationHint: string | null; canRun: boolean; canConfigure: boolean; systemActor: string; ruleSet?: string; ruleSetLabel?: string };
 type RunResult = { id: string; kind: string; action: "FINAL" | "WOULD_FINAL" | "SKIP"; decision: "OK" | "NG" | null; reason: string };
@@ -16,6 +16,7 @@ const KIND_LABEL: Record<Kind, string> = {
   app44: "Application 44",
   pb: "ELV Pb",
   elv: "ELV Cd / Hg / Cr6+ (No.11–13)",
+  other: "Mass deviation · Not specified · Not SMS (No.8, 9, 20)",
   substance: "Prohibited substances (No.14–19)",
   warp: "WARP part number (No.21)"
 };

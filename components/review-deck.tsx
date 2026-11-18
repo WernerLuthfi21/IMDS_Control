@@ -242,18 +242,17 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
 
   const okN = decidedHere.filter((c) => views.get(c.id)?.rec.state === "OK").length;
   const sel = stacks.find((s) => s.errorType === stack) || null;
-  const prev = pos > 0 ? deck[pos - 1] : null;
-  const next = pos + 1 < deck.length ? deck[pos + 1] : null;
 
   return <section className="jb">
     <div className="jb-stacks" role="tablist" aria-label="Stacks by error type">
-      {stacks.map((s) => <button type="button" role="tab" key={s.errorType} aria-selected={s.errorType === stack} className={"jb-stack t-" + s.tone + (s.errorType === stack ? " on" : "")} onClick={() => openStack(s.errorType)}>
-        <span className="jb-stack-top"><b>{s.total.toLocaleString("en-US")}</b>{s.fullAuto && <em title="Every card in this stack is decided by the rules"><Sparkles size={12}/> Full auto</em>}</span>
-        <span className="jb-stack-name">{s.errorType}</span>
+      {stacks.map((s) => <button type="button" role="tab" key={s.errorType} aria-selected={s.errorType === stack} title={s.errorType}
+        className={"jb-stack t-" + s.tone + (s.errorType === stack ? " on" : "")} onClick={() => openStack(s.errorType)}>
+        <span className="jb-orb" aria-hidden="true">{s.fullAuto ? <Sparkles size={13}/> : null}</span>
+        <b className="jb-stack-n">{s.total.toLocaleString("en-US")}</b>
+        <span className="jb-stack-name">{shortType(s.errorType)}</span>
         <span className="jb-stack-bar" aria-hidden="true"><i className="d" style={{ width: (s.decided / s.total) * 100 + "%" }}/><i className="y" style={{ width: (s.yours / s.total) * 100 + "%" }}/><i className="w" style={{ width: (s.waiting / s.total) * 100 + "%" }}/></span>
-        <span className="jb-stack-stats"><span className="d">{s.decided} decided</span><span className="y">{s.yours} yours</span><span className="w">{s.waiting} waiting</span></span>
+        <span className="jb-stack-stats"><span className="d">{s.decided} ready</span><span className="y">{s.yours} you</span><span className="w">{s.waiting} wait</span></span>
       </button>)}
-      <button type="button" className="rd-refresh" onClick={() => void load()} disabled={loading || Boolean(bulk)} title="Check all pending cases again" aria-label="Check all pending cases again">{loading ? <LoaderCircle size={14} className="spin"/> : <RefreshCw size={14}/>}</button>
     </div>
 
     {sel && <div className={"jb-tools t-" + sel.tone}>
@@ -261,18 +260,18 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
         <button type="button" className={needFilter === "all" ? "on" : ""} aria-pressed={needFilter === "all"} onClick={() => pickNeed("all")}>All <b>{sel.total}</b></button>
         {NEED_ORDER.filter((n) => stackNeeds.get(n)).map((n) => <button type="button" key={n} className={(needFilter === n ? "on " : "") + "n-" + n} aria-pressed={needFilter === n} onClick={() => pickNeed(n)}>{NEED_LABEL[n].title} <b>{stackNeeds.get(n)}</b></button>)}
       </div>
-      {decidedHere.length > 0 && canEdit && <button type="button" className="jb-confirm-all" disabled={Boolean(bulk)} onClick={() => void confirmDecided()}>
-        <CheckCheck size={15}/> Confirm {decidedHere.length} decided ({okN} OK · {decidedHere.length - okN} NG)</button>}
+      <div className="jb-tools-right">
+        {decidedHere.length > 0 && canEdit && <button type="button" className="jb-confirm-all" disabled={Boolean(bulk)} onClick={() => void confirmDecided()}>
+          <CheckCheck size={15}/> Confirm {decidedHere.length} <small>{okN} OK · {decidedHere.length - okN} NG</small></button>}
+        <button type="button" className="jb-icon" onClick={() => void load()} disabled={loading || Boolean(bulk)} title="Check all pending cases again" aria-label="Check all pending cases again">{loading ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}</button>
+      </div>
     </div>}
-    {sel?.fullAuto && <div className="jb-auto-hint"><Sparkles size={14}/> The rules decide every card in <b>{sel.errorType}</b>. An admin can let Miko finalise this family automatically in the Auto-judge tab; until then, confirm them here in one go.</div>}
     {bulk && <div className="rd-progress" role="status"><LoaderCircle size={14} className="spin"/> {bulk.label} {bulk.done}/{bulk.total}<div className="aj-bar"><i style={{ width: (bulk.done / Math.max(1, bulk.total) * 100) + "%" }}/></div></div>}
     {notice && !bulk && <div className="rd-notice" role="status"><Check size={14}/> {notice}</div>}
 
     {!stacks.length && <div className="fc-empty done"><CatMascot mood="success" size={84}/><strong>Nothing to judge</strong><span>Every WORKING case has a judgement.</span></div>}
-    {sel && !current && <div className="fc-empty done"><CatMascot mood="success" size={84}/><strong>Stack cleared!</strong><span>Pick another stack above.</span></div>}
-    {sel && current && <div className="jb-carousel">
-      {prev ? <MiniCard c={prev} v={views.get(prev.id)!} side="prev" onClick={() => move(pos - 1, "prev")}/> : <div className="jb-mini-gap"/>}
-      <Flashcard key={current.id} active={active} c={current} v={views.get(current.id)!} pos={pos + 1} total={deck.length} left={deck.length - pos - 1} canEdit={canEdit}
+    {sel && !current && <div className="fc-empty done"><CatMascot mood="success" size={84}/><strong>Stack cleared</strong><span>Pick another stack.</span></div>}
+    {sel && current && <Flashcard key={current.id} active={active} c={current} v={views.get(current.id)!} pos={pos + 1} total={deck.length} left={deck.length - pos - 1} canEdit={canEdit}
         enter={enter} busy={working.has(current.id) || Boolean(bulk)} error={error} similar={similarTo(current).length} answered={live.has(current.id)} history={history}
         comment={comments.get(current.id) ?? views.get(current.id)!.rec.comment}
         onComment={(t) => setComments((m) => new Map(m).set(current.id, t))}
@@ -280,28 +279,18 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
         onConfirm={(j) => void confirmCurrent(j)} onReset={() => reset(current.id)}
         onPrev={() => move(Math.max(0, pos - 1), "prev")}
         onSkip={() => move(pos + 1 < deck.length ? pos + 1 : pos, "next")}
-        onOpen={() => onOpenCase(current.id)} onDetail={() => current.partNo && onDetail(current.partNo)}/>
-      {next ? <MiniCard c={next} v={views.get(next.id)!} side="next" onClick={() => move(pos + 1, "next")}/> : <div className="jb-mini-gap"/>}
-    </div>}
+        onOpen={() => onOpenCase(current.id)} onDetail={() => current.partNo && onDetail(current.partNo)}/>}
   </section>;
 }
 
-function MiniCard({ c, v, side, onClick }: { c: Candidate; v: View; side: "prev" | "next"; onClick: () => void }) {
-  const state = v.decided ? v.rec.state : null;
-  return <button type="button" className={"jb-mini t-" + toneOf(c.errorType) + " " + side} onClick={onClick} aria-label={(side === "prev" ? "Previous card: " : "Next card: ") + (c.partNo || c.sourceRecordKey)}>
-    <span className="jb-mini-need">{NEED_LABEL[v.card.need].title}</span>
-    <strong className="mono">{c.partNo || "—"}</strong>
-    <span>{c.supplierCode || "—"}</span>
-    {state ? <em className={state.toLowerCase()}>{state}</em> : <em className="q">?</em>}
-    {side === "prev" ? <ArrowLeft size={16}/> : <ArrowRight size={16}/>}
-  </button>;
-}
+/** "Prohibited substance(DBT)" → "Prohibited (DBT)": shorter stack names, same meaning. */
+function shortType(t: string) { return t.replace(/^Prohibited substance\s*\(?/i, (m) => (m.includes("(") ? "Prohibited (" : "Prohibited ")).replace(/\s+/g, " ").trim(); }
 
 const SWIPE = 90;
 
 /**
- * One flashcard, laid out horizontally: the case on the left, the decision (largest) and the
- * comment window on the right. Drag or swipe sideways to move through the stack.
+ * One flashcard: the case on the left (part, facts, why), the decision on the right.
+ * Navigation sits in the card header; drag or swipe sideways to move through the stack.
  */
 function Flashcard({ active, c, v, pos, total, left, canEdit, enter, busy, error, similar, answered, history, comment, onComment, onAnswer, onConfirm, onReset, onPrev, onSkip, onOpen, onDetail }: {
   active: boolean; c: Candidate; v: View; pos: number; total: number; left: number; canEdit: boolean; enter: "next" | "prev" | "up"; busy: boolean; error: string; similar: number; answered: boolean;
@@ -312,12 +301,15 @@ function Flashcard({ active, c, v, pos, total, left, canEdit, enter, busy, error
   const [drag, setDrag] = useState<{ x0: number; dx: number; id: number } | null>(null);
   const q = v.decided ? null : v.card.question;
   const tone = toneOf(c.errorType);
-  const state = v.rec.state;
-  const decision = v.decided ? state : null;
+  const decision = v.decided ? v.rec.state : null;
   const waiting = WAITING.has(v.card.need);
   const last = lastComment(history, c.partNo, c.errorType);
   const usual = decision ? (history.byType.get(typeKey(c.errorType, decision)) ?? []).slice(0, 3) : [];
   const fit = decision ? checkComment(history, c.errorType, decision, comment) : null;
+  const short = q ? q.options.every(([, l]) => l.length <= 8) : false;
+  // One line of "why", only when it says more than the pile name or the question.
+  const rawWhy = (decision ? v.rec.reason : v.card.reason || "").trim();
+  const why = rawWhy && rawWhy.length > 24 && rawWhy !== q?.text && rawWhy !== NEED_LABEL[v.card.need].hint ? rawWhy : "";
 
   useEffect(() => {
     if (!active) return;
@@ -337,60 +329,76 @@ function Flashcard({ active, c, v, pos, total, left, canEdit, enter, busy, error
   const interactive = (el: EventTarget | null) => el instanceof Element && Boolean(el.closest("button, a, input, textarea, select, label"));
   const dx = drag?.dx ?? 0;
 
-  return <div className="jb-center">
-    <div className={"fc-deck t-" + tone}>
-      {left > 1 && <div className="fc-ghost g2" aria-hidden="true"/>}
-      {left > 0 && <div className="fc-ghost g1" aria-hidden="true"/>}
-      <article className={"jb-card t-" + tone + " enter-" + enter + (drag ? " dragging" : "")} aria-live="polite" aria-busy={busy} aria-roledescription="flashcard"
-        style={dx ? { transform: `translateX(${dx}px) rotate(${dx / 30}deg)` } : undefined}
-        onPointerDown={(e) => { if (e.button !== 0 || interactive(e.target)) return; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setDrag({ x0: e.clientX, dx: 0, id: e.pointerId }); }}
-        onPointerMove={(e) => { if (drag && e.pointerId === drag.id) setDrag({ ...drag, dx: e.clientX - drag.x0 }); }}
-        onPointerUp={() => { if (!drag) return; const d = drag.dx; setDrag(null); if (d < -SWIPE) onSkip(); else if (d > SWIPE) onPrev(); }}
-        onPointerCancel={() => setDrag(null)}>
+  return <div className={"jc-wrap t-" + tone}>
+    {left > 1 && <div className="jc-ghost g2" aria-hidden="true"/>}
+    {left > 0 && <div className="jc-ghost g1" aria-hidden="true"/>}
+    <article className={"jc enter-" + enter + (drag ? " dragging" : "")} aria-live="polite" aria-busy={busy} aria-roledescription="flashcard"
+      style={dx ? { transform: `translateX(${dx}px) rotate(${dx / 40}deg)` } : undefined}
+      onPointerDown={(e) => { if (e.button !== 0 || interactive(e.target)) return; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setDrag({ x0: e.clientX, dx: 0, id: e.pointerId }); }}
+      onPointerMove={(e) => { if (drag && e.pointerId === drag.id) setDrag({ ...drag, dx: e.clientX - drag.x0 }); }}
+      onPointerUp={() => { if (!drag) return; const d = drag.dx; setDrag(null); if (d < -SWIPE) onSkip(); else if (d > SWIPE) onPrev(); }}
+      onPointerCancel={() => setDrag(null)}>
 
-        <section className="jb-info">
-          <header className="fc-head"><span className="jb-type">{c.errorType}</span><span className="fc-pos">{pos} / {total}</span></header>
-          <div className="fc-id"><strong>{c.partNo || "Part number missing"}</strong><span>Supplier {c.supplierCode || "—"} · {c.sourceRecordKey}</span></div>
-          {c.card.facts.length > 0 && <dl className="fc-facts">{c.card.facts.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val}</dd></div>)}</dl>}
-          {v.draft && <div className="rd-draft"><FileWarning size={14}/> {v.caution || "Draft flow in the source. A person confirms it — the system never finalises it."}</div>}
-          <p className="jb-reason"><b>Why:</b> {decision ? v.rec.reason : v.card.reason}</p>
-          <div className="jb-links">
-            <button type="button" className="rd-link" onClick={onDetail} disabled={!c.partNo}><FileText size={12}/> G-CATS detail of this part</button>
-            <button type="button" className="rd-link" onClick={onOpen}><ExternalLink size={12}/> Full case &amp; flow</button>
-            {answered && canEdit && <button type="button" className="rd-link" disabled={busy} onClick={onReset}><RotateCcw size={12}/> Change answers</button>}
+      <header className="jc-head">
+        <span className="jc-type">{c.errorType}</span>
+        <span className={"jc-need n-" + v.card.need}>{NEED_LABEL[v.card.need].title}</span>
+        <nav className="jc-nav" aria-label="Move through the stack" title="← → or swipe">
+          <button type="button" onClick={onPrev} aria-label="Previous card" disabled={pos <= 1}><ArrowLeft size={16}/></button>
+          <span><b>{pos}</b> / {total}</span>
+          <button type="button" onClick={onSkip} aria-label="Next card" disabled={left <= 0}><ArrowRight size={16}/></button>
+        </nav>
+      </header>
+
+      <div className="jc-body">
+        <section className="jc-case">
+          <div className="jc-id" title={c.sourceRecordKey}>
+            <strong>{c.partNo || "No part number"}</strong>
+            <span className="jc-chip">Supplier {c.supplierCode || "—"}</span>
+          </div>
+          {c.card.facts.length > 0 && <dl className="jc-facts">{c.card.facts.map(([k, val]) => <div key={k} className={val.length > 26 ? "wide" : ""}><dt>{k}</dt><dd>{val}</dd></div>)}</dl>}
+          <div className="jc-links">
+            <button type="button" onClick={onDetail} disabled={!c.partNo}><FileText size={13}/> G-CATS detail</button>
+            <button type="button" onClick={onOpen}><ExternalLink size={13}/> Full case &amp; flow</button>
+            {answered && canEdit && <button type="button" disabled={busy} onClick={onReset}><RotateCcw size={13}/> Change answers</button>}
           </div>
         </section>
 
-        <section className={"jb-decide " + (decision ? decision.toLowerCase() : waiting ? "wait" : "ask")}>
+        <section className={"jc-decide " + (decision ? decision.toLowerCase() : waiting ? "wait" : "ask")}>
           {decision ? <>
-            <div className="jb-verdict"><small>Decision</small><strong>{decision === "OK" ? <Check size={44} strokeWidth={3}/> : <CircleX size={44} strokeWidth={2.6}/>}{decision}</strong></div>
-            <div className="jb-comment">
-              <label htmlFor={"cm-" + c.id}>Comment for G-CATS {fit?.kind === "match" ? <em className="ok"><History size={12}/> same as {fit.count}× before</em> : fit?.kind === "new" ? <em className="new"><AlertTriangle size={12}/> new wording</em> : null}</label>
-              <textarea id={"cm-" + c.id} rows={2} value={comment} onChange={(e) => onComment(e.target.value)} disabled={!canEdit}/>
-              {last && <p className="jb-last"><b>Last time (G-CATS):</b> {last}</p>}
-              {usual.length > 0 && <div className="jb-usual"><span>Used before for {decision}:</span>{usual.map((u) => <button type="button" key={u.comment} className={u.comment.toLowerCase() === comment.trim().toLowerCase() ? "on" : ""} onClick={() => onComment(u.comment)} disabled={!canEdit} title="Use this comment">{u.comment} <i>{u.count}×</i></button>)}</div>}
+            <div className="jc-verdict">
+              <span className={"jc-badge " + decision.toLowerCase()} aria-hidden="true">{decision === "OK" ? <Check size={26} strokeWidth={3.2}/> : <CircleX size={26} strokeWidth={2.6}/>}</span>
+              <div><small>Decision</small><strong>{decision}</strong></div>
             </div>
-            {canEdit && <button type="button" className={"rd-confirm jb-go " + decision.toLowerCase()} disabled={busy || !comment.trim()} onClick={() => onConfirm(decision as "OK" | "NG")}>
-              {busy ? <LoaderCircle size={18} className="spin"/> : <Check size={18}/>} Confirm {decision}</button>}
+            {why && <p className="jc-why">{why}</p>}
+            <div className="jc-comment">
+              <label htmlFor={"cm-" + c.id}>Comment for G-CATS {fit?.kind === "match" ? <em className="ok"><History size={12}/> used {fit.count}×</em> : fit?.kind === "new" ? <em className="new"><AlertTriangle size={12}/> new wording</em> : null}</label>
+              <textarea id={"cm-" + c.id} rows={2} value={comment} onChange={(e) => onComment(e.target.value)} disabled={!canEdit}/>
+              {(last || usual.length > 0) && <div className="jc-usual">
+                {last && <span className="jc-last" title="Comment(last time) in G-CATS">Last: {last}</span>}
+                {usual.map((u) => <button type="button" key={u.comment} className={u.comment.toLowerCase() === comment.trim().toLowerCase() ? "on" : ""} onClick={() => onComment(u.comment)} disabled={!canEdit} title="Use this comment">{u.comment} <i>{u.count}×</i></button>)}
+              </div>}
+            </div>
+            {canEdit && <button type="button" className={"jc-go " + decision.toLowerCase()} disabled={busy || !comment.trim()} onClick={() => onConfirm(decision as "OK" | "NG")}>
+              {busy ? <LoaderCircle size={18} className="spin"/> : <Check size={18}/>} Confirm {decision}<kbd>Enter</kbd></button>}
           </> : q ? <>
-            <div className="jb-verdict ask"><small>Your decision</small><strong className="jb-q">{q.text}</strong></div>
-            <div className="fc-opts jb-opts">{q.options.map(([val, label], i) => <button type="button" key={val} disabled={busy || !canEdit} onClick={() => onAnswer(q.field, val, q.id, all)}><kbd>{i + 1}</kbd><span>{label}</span></button>)}</div>
-            {similar > 0 && canEdit && <label className="rd-same"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)}/> Same answer for <b>{similar}</b> more card{similar === 1 ? "" : "s"} ({TOYOTA_FIELDS.has(q.field === "answer" ? q.id : q.field) ? "same part" : "same supplier, part and CAS"})</label>}
-            {busy && <p className="jb-busy"><LoaderCircle size={14} className="spin"/> Checking the rules again…</p>}
+            <div className="jc-ask"><small>Answer</small><strong>{q.text}</strong></div>
+            <div className={"jc-opts" + (short ? " short" : "")}>{q.options.map(([val, label], i) => <button type="button" key={val} disabled={busy || !canEdit} onClick={() => onAnswer(q.field, val, q.id, all)}><kbd>{i + 1}</kbd><span>{label}</span></button>)}</div>
+            {similar > 0 && canEdit && <label className="jc-same"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)}/><span>Also answer <b>{similar}</b> more · {TOYOTA_FIELDS.has(q.field === "answer" ? q.id : q.field) ? "same part" : "same supplier, part, CAS"}</span></label>}
+            {busy && <p className="jc-busy"><LoaderCircle size={14} className="spin"/> Checking the rules…</p>}
           </> : <>
-            <div className="jb-verdict wait"><small>{waiting ? "Waiting" : "Your decision"}</small><strong>{NEED_LABEL[v.card.need].title}</strong></div>
-            <p className="jb-wait-text">{NEED_LABEL[v.card.need].hint}</p>
-            <button type="button" className="rd-open jb-go" onClick={onOpen}><ExternalLink size={16}/> Open full case</button>
+            <div className="jc-verdict">
+              <span className={"jc-badge " + (waiting ? "wait" : "ask")} aria-hidden="true"><AlertTriangle size={24} strokeWidth={2.4}/></span>
+              <div><small>{waiting ? "Waiting" : "Next step"}</small><strong className="sm">{NEED_LABEL[v.card.need].title}</strong></div>
+            </div>
+            {!why && <p className="jc-hint">{NEED_LABEL[v.card.need].hint}</p>}
+            <button type="button" className="jc-go ghost" onClick={onOpen}><ExternalLink size={16}/> Open full case</button>
           </>}
+          {why && !decision && <p className="jc-why">{why}</p>}
+          {v.draft && <p className="jc-caution"><FileWarning size={14}/> {v.caution || "Draft flow: a person confirms, the system never finalises it."}</p>}
           {error && <div className="jx-error" role="alert"><AlertTriangle size={13}/> {error}</div>}
         </section>
-      </article>
-    </div>
-    <div className="jb-nav">
-      <button type="button" className="rd-nav" onClick={onPrev} aria-label="Previous card" disabled={pos <= 1}><ArrowLeft size={18}/></button>
-      <div className="fc-meter" aria-hidden="true"><i style={{ width: (pos / Math.max(1, total)) * 100 + "%" }}/></div>
-      <button type="button" className="rd-nav" onClick={onSkip} aria-label="Next card" disabled={left <= 0}><ArrowRight size={18}/></button>
-    </div>
-    <p className="rd-keys">1–9 answer · Enter confirm · ← → move · swipe</p>
+      </div>
+      <div className="jc-meter" aria-hidden="true"><i style={{ width: (pos / Math.max(1, total)) * 100 + "%" }}/></div>
+    </article>
   </div>;
 }
