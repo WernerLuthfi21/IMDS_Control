@@ -9,7 +9,7 @@ export function resolution(r: AnalyzedRow): string {
     case "OK": return "No action needed.";
     case "NG": return r.comment ? `Likely rejected. Correct the data in IMDS and resubmit. Reason: ${r.comment}` : `Likely rejected. ${r.reason || "Correct the data in IMDS and resubmit."}`;
     case "ASK": return "Answer the question below. Your answer is saved for this part number so Toyota does not need to ask again.";
-    case "DEPENDS": return "The result depends on the vehicle destination. Toyota applies it; no action unless you know the destination.";
+    case "DEPENDS": return r.dependsOn === "class" ? "The result depends on the tolerance class on Toyota's drawing. Toyota applies it; nothing to do now." : "The result depends on the vehicle destination. Toyota applies it; no action unless you know the destination.";
     case "HOLD": return r.reason || "Toyota reviews this item; nothing to do now.";
     case "INVALID": return r.issues[0] || r.reason || "Fix the data in the preview, then check again.";
   }

@@ -11,7 +11,7 @@ import { JudgeStats } from "@/components/judgement-overview";
 import { GcatsDetailView } from "@/components/gcats-detail-view";
 import { buildCommentHistory } from "@/lib/judgement/comment-history";
 import { summarizeRegister, type NeedCounts } from "@/lib/judgement/overview";
-import { pileCounts, pileOf } from "@/lib/judgement/piles";
+import { isWorking, pileCounts, pileOf } from "@/lib/judgement/piles";
 import type { ReviewNeed } from "@/lib/judgement/review";
 
 const SYSTEM_ACTOR = "Auto-judgement (System)";
@@ -94,6 +94,8 @@ function TmcStrip({ tmc, row, canEdit, onChanged }: { tmc: Tmc; row: Item; canEd
 function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: boolean; actorName: string; onSaved: (id: string, patch: Partial<Item>) => void }) {
   const [destination, setDestination] = useState("");
   const [toleranceClass, setToleranceClass] = useState("");
+  /** Class the server derived from the drawing. Shown, but not fed back into the request (that re-ran the same check). */
+  const [derivedClass, setDerivedClass] = useState("");
   const [supplier, setSupplier] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [auto, setAuto] = useState<AutoOutput | null>(null);
@@ -116,7 +118,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       .then((result) => {
         if (!live) return;
         setAuto(result); setError("");
-        if (!toleranceClass && result.massBands && typeof result.massBands.toleranceClass === "string") setToleranceClass(result.massBands.toleranceClass);
+        if (!toleranceClass && result.massBands && typeof result.massBands.toleranceClass === "string") setDerivedClass(result.massBands.toleranceClass);
         if (!touched && result.recommendation.state !== "HOLD") { setJudge(result.recommendation.state); setComment(result.recommendation.comment); }
       })
       .catch((e) => { if (live) setError(e instanceof Error ? e.message : "Automatic check failed."); })
@@ -164,7 +166,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
       </select><small className="jx-hint">Remembered for this part next time.</small></div>}
     {auto?.flow?.next && auto.flow.next.id !== "destination" && <div className="jx-ask"><span>{auto.flow.next.text}</span><Chips full label={auto.flow.next.text} value="" onPick={(v) => { const id = auto.flow!.next!.id; setAnswers((a) => ({ ...a, [id]: v })); if (canEdit && (id === "usCarpet" || id === "nonEuReq")) remember(row, id, v); }} options={auto.flow.next.options}/></div>}
     {auto?.flow && Object.keys(answers).length > 0 && <div className="jx-ask"><button type="button" className="jx-link" onClick={() => setAnswers({})}>Reset flow answers</button></div>}
-    {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); if (canEdit) remember(row, "toleranceClass", v); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
+    {auto?.kind === "mass" && <div className="jx-ask"><span>Class (from drawing)</span><Chips label="Mass tolerance class" value={toleranceClass || derivedClass} onPick={(v) => { setToleranceClass(v); setSupplier(""); if (canEdit) remember(row, "toleranceClass", v); }} options={CLASSES.map((c) => [c, c] as [string, string])}/></div>}
     {auto?.needs.supplierConfirmation && <div className="jx-ask"><span>{auto.kind === "mass" ? "Outside ±10% — supplier says" : "Supplier says"}</span>
       <Chips label="Supplier confirmation" value={supplier} onPick={setSupplier} full options={auto.kind === "app44" ? [["SUPPLIER_CONFIRMED", "A · Supplier confirms the application / code"], ["INPUT_MISTAKE", "B · Input mistake"]] : [["ACTUAL_OR_CALCULATED_MASS", "A · Actual / calculated mass"], ["INPUT_MISTAKE", "B · Input mistake"]]}/>
       </div>}
@@ -226,7 +228,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [undoItems, setUndoItems] = useState<BulkUndoItem[]>([]);
   const canEdit = ["admin", "preparer", "reviewer"].includes(role);
   const prohibitedRows = rows.filter((row) => isProhibitedLabel(row.error_type_label));
-  const prohibitedPending = prohibitedRows.filter((row) => row.source_status === "WORKING" && !row.judge).length;
+  const prohibitedPending = prohibitedRows.filter((row) => isWorking(row.source_status) && !row.judge).length;
   const prohibitedMissingCas = prohibitedRows.filter((row) => !row.cas?.trim()).length;
 
   // One definition for every count on the page (lib/judgement/piles.ts): Waiting TMA is judged, never remaining.
@@ -243,7 +245,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }, [rows]);
   const types = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of rows) if (r.source_status === "WORKING" && !r.judge) m.set(r.error_type_label, (m.get(r.error_type_label) || 0) + 1);
+    for (const r of rows) if (isWorking(r.source_status) && !r.judge) m.set(r.error_type_label, (m.get(r.error_type_label) || 0) + 1);
     for (const r of rows) if (!m.has(r.error_type_label)) m.set(r.error_type_label, 0);
     return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [rows]);
@@ -270,7 +272,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
 
   const onSaved = useCallback((id: string, patch: Partial<Item>) => { setRows((old) => old.map((r) => r.id === id ? { ...r, ...patch } : r)); setOpenId(null); }, []);
   async function analyzeVisibleQueue() {
-    const pending = visible.filter((row) => row.source_status === "WORKING" && !row.judge);
+    const pending = visible.filter((row) => isWorking(row.source_status) && !row.judge);
     const selected = pending.slice(0, 250);
     if (!selected.length) { setBulkNotice("No pending records in the current filter."); setBulkGroups([]); setBulkCoverage(null); return; }
     setBulkBusy(true); setBulkError(""); setBulkNotice(""); setUndoItems([]);
@@ -291,7 +293,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   async function applyBulkGroup(group: BulkGroup) {
     const labels = group.items.slice(0, 5).map((item) => item.partNo || item.sourceRecordKey).join(", ");
     const extra = group.count > 5 ? ` and ${group.count - 5} more` : "";
-    if (!window.confirm(`Review confirmed: ${group.count} cases have identical source facts and rule results. Apply the recommended ${group.decision} judgement to all?\\n\\n${labels}${extra}\\n\\nReason: ${group.reason}`)) return;
+    if (!window.confirm(`Review confirmed: ${group.count} cases have identical source facts and rule results. Apply the recommended ${group.decision} judgement to all?\n\n${labels}${extra}\n\nReason: ${group.reason}`)) return;
     setBulkBusy(true); setBulkError(""); setBulkNotice("");
     try {
       const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "apply", ids: group.items.map((item) => item.id), signature: group.signature, decision: group.decision }) });
@@ -334,7 +336,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const updated = sourceDate ? new Date(sourceDate).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : null;
   const autoCount = useMemo(() => rows.filter((r) => r.judge && r.assigned_person === SYSTEM_ACTOR).length, [rows]);
   const openRow = openId ? rows.find((r) => r.id === openId) || null : null;
-  const pendingInView = visible.filter((row) => row.source_status === "WORKING" && !row.judge).length;
+  const pendingInView = visible.filter((row) => isWorking(row.source_status) && !row.judge).length;
   // After a save, go straight to the next case in the list instead of closing the panel.
   const saveAndNext = useCallback((id: string, patch: Partial<Item>) => {
     const idx = visible.findIndex((r) => r.id === id);
@@ -350,8 +352,8 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }, [openId]);
   const kpis: Array<{ key: string; label: string; n: number; on: boolean; tone: string; act: () => void; hint: string }> = [
     { key: "pending", label: "To judge", n: counts.pending, on: tab === "pending" && !substanceOnly, tone: "amber", act: () => { setTab("pending"); setSubstanceOnly(false); }, hint: "WORKING cases without a judgement" },
-    { key: "judged", label: "Judged", n: counts.judged, on: tab === "judged" || tab === "kmdone", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved" },
-    { key: "km", label: "Awaiting KM", n: counts.km, on: tab === "km", tone: "blue", act: () => { setTab("km"); setSubstanceOnly(false); }, hint: "Judged, KM judge still empty" },
+    { key: "judged", label: "All judged", n: counts.judged, on: tab === "judged" || tab === "kmdone", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved · Waiting TMA + Judged piles" },
+    { key: "km", label: "Waiting TMA", n: counts.km, on: tab === "km", tone: "blue", act: () => { setTab("km"); setSubstanceOnly(false); }, hint: "Judged, TMA/KM judge still empty" },
     { key: "sub", label: "Prohibited substances", n: prohibitedPending, on: substanceOnly, tone: "red", act: () => { setTab("pending"); setSubstanceOnly((v) => !v); setErrorType("All Error Types"); }, hint: `${prohibitedMissingCas} without CAS` },
     { key: "auto", label: "Judged by Miko", n: autoCount, on: false, tone: "violet", act: () => { setAutoOpen(true); }, hint: "Automatic decisions (reopenable)" }
   ];

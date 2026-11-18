@@ -38,7 +38,7 @@ export function JudgeStats({ summary, needs, needsLoading, onPile, onKm }: {
       <div className="d" title="The rules decided these: confirm only"><dt>Ready</dt><dd>{num(decided)}</dd></div>
       <div className="y" title="One answer from you each"><dt>Your answer</dt><dd>{num(yours)}</dd></div>
       <div className="w" title="Supplier, Purchasing, TMC or missing data"><dt>Waiting</dt><dd>{num(waiting)}</dd></div>
-      <div className="k" title="Judged, KM judge still empty"><dt>Awaiting KM</dt><dd>{summary.km.toLocaleString("en-US")}</dd></div>
+      <div className="k" title="Judged, TMA/KM judge still empty"><dt>Waiting TMA</dt><dd>{summary.km.toLocaleString("en-US")}</dd></div>
     </dl>
   </section>;
 }

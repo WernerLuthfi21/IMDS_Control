@@ -1,5 +1,9 @@
 # Power Automate: peta semua automasi (IMDS Tracker + Judgement)
 
+> **Tidak punya lisensi Premium, atau flow gagal di akun lain?** Pakai `POWER_AUTOMATE_STANDARD_ID.md`. Panduan itu
+> mengganti pemicu HTTP (Premium) dengan pemicu Teams webhook (standard), dan menambahkan flow pengingat supplier harian
+> yang hanya memakai Excel, Outlook dan Recurrence. Bagian di bawah tetap berlaku untuk payload dan aturan pengiriman.
+
 Dokumen ini adalah **satu-satunya daftar** flow yang perlu Anda buat. Detail langkah klik untuk flow Excel tetap ada di
 `POWER_AUTOMATE_SETUP.md` (Judgement) dan `POWER_AUTOMATE_IMDS_MASTER_SETUP.md` (Tracker). Yang berubah di sini adalah
 **email supplier**: Tracker dan Judgement sekarang memakai **satu flow dan satu bentuk payload (versi 2)**.

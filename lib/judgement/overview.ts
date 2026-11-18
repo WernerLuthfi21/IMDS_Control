@@ -1,3 +1,4 @@
+import { isWorking } from "@/lib/judgement/piles";
 import { NEED_LABEL, NEED_ORDER, type ReviewNeed } from "@/lib/judgement/review";
 
 /** Register fields the overview needs. Counts only; no judgement is derived here. */
@@ -26,7 +27,7 @@ export type RegisterSummary = {
   types: TypeLine[];
 };
 
-const isPending = (r: OverviewRow) => r.source_status === "WORKING" && !r.judge;
+const isPending = (r: OverviewRow) => isWorking(r.source_status) && !r.judge;
 
 /** Totals for the overview hero, KPI tiles, supplier table and error-type bars. */
 export function summarizeRegister(rows: OverviewRow[], topSuppliers = 8, topTypes = 8): RegisterSummary {

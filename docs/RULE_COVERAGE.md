@@ -107,3 +107,14 @@ When an Appendix II flow ends in "Contact TMC/TMNA/TME/TDEM" (or "Report … to 
 ### No.21 WARP Part number (`lib/judgement/warp.ts`)
 
 Supplier code found in the Purchasing supplier code master and the company name matches (or the record has no company name) → OK "Confirmed by Purchasing Div.". Code missing or name differs → the reviewer records Purchasing's answer (Y → OK "Confirmed by Purchasing Div.", N → NG "Supplier code is incorrect."). Auto-judge family `warp`.
+
+## Supplier self-check: predicted G-CATS checks (2026-11-18)
+
+| Check | Supplier is asked | Toyota keeps |
+|---|---|---|
+| WARP Part number (No.21): supplier code not in the Purchasing master | "Is supplier code X correct?" (Y/N, once per part). N → NG "Supplier code is incorrect." in the judgement; Y → Purchasing still confirms | Purchasing confirmation |
+| Mass tolerance (TSZ2900G) | A/B up front, when any class puts the mass outside the buffer | Tolerance class (drawing). A class a supplier typed earlier is no longer used by the judgement |
+| ELV Cd / Hg / Cr6+ / Pb, identified by CAS when the file has no Error Type | The flow's supplier questions (stored per CAS) | Destination, Pb policy date rows |
+| CAS on neither GADSL 2026 V1 nor TSZ0001G Appendix 3 | Nothing; shown as "no prohibited-substance error expected" | — |
+
+Confirmations are stored in `supplier_confirmations`. The new family `warp` needs migration `20261118030000_supplier_confirmations_warp.sql`. Tests are in `tests/intake.test.ts`.

@@ -13,9 +13,12 @@ export type PileCounts = { toJudge: number; judged: number; waitingTma: number; 
 
 const filled = (v: string | null | undefined) => Boolean(v && String(v).trim());
 
+/** G-CATS status "WORKING", tolerant of case and stray spaces. Every counter uses this one test. */
+export const isWorking = (status: string | null | undefined) => String(status || "").trim().toUpperCase() === "WORKING";
+
 export function pileOf(r: Pick<PileRow, "source_status" | "judge" | "km_judge">): Pile {
   if (filled(r.judge)) return filled(r.km_judge) ? "judged" : "waitingTma";
-  return String(r.source_status || "").trim().toUpperCase() === "WORKING" ? "toJudge" : "other";
+  return isWorking(r.source_status) ? "toJudge" : "other";
 }
 
 /** Counts per pile. Rows are counted once per id (a duplicated id never inflates a pile). */

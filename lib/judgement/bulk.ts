@@ -1,3 +1,4 @@
+import { isWorking } from "@/lib/judgement/piles";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAutoWorkflow, detectKind, type AutoOutput } from "@/lib/judgement/auto";
@@ -95,7 +96,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     partNo: item.delivery_part_no, supplierCode: item.supplier_code, cas: facts.cas,
     substanceName: facts.substanceName, kind, recommendation: auto.recommendation,
     procedureText: auto.procedureText, signature, eligible, draftFlow: Boolean(auto.flow?.draft) && !tmcDecided, ...(auto.flow?.caution ? { caution: auto.flow.caution } : {}),
-    inPendingQueue: item.source_status === "WORKING" && !item.judge,
+    inPendingQueue: isWorking(item.source_status) && !item.judge,
     prohibited, prohibitedStatus: !prohibited ? "NOT_PROHIBITED" : connected ? "CONNECTED" : "NEEDS_REVIEW",
     reviewReason, tmc,
     card: classifyCase(auto, { eligible, tmcOpen: Boolean(tmc && !tmcDecided), facts: {

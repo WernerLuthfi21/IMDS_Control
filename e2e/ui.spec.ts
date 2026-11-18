@@ -79,3 +79,44 @@ test("supplier pre-check shows one tool at a time", async ({ page }) => {
   await untilItWorks(() => page.getByRole("tab", { name: /One part by hand/ }).click(),
     async () => { await expect(page.getByText(/Supplier pre-check workspace|Submit a pre-check/)).toBeVisible({ timeout: 1500 }); });
 });
+
+test("command palette: Ctrl+K opens it, typing filters, Enter navigates, Esc closes", async ({ page }) => {
+  await page.goto("/settings");
+  await expect(page.getByRole("tab", { name: /Judgement/ })).toBeVisible();
+  await untilItWorks(() => page.keyboard.press("Control+k"), async () => { await expect(page.getByRole("dialog", { name: "Command palette" })).toBeVisible({ timeout: 1500 }); });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Command palette" })).toBeHidden();
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox").fill("judgement rules");
+  await expect(page.getByRole("option", { name: /Judgement Rules/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/rules/);
+});
+
+test("rules: a case path from the judgement table is highlighted on its flow chart", async ({ page }) => {
+  const trail = [["Confirm to supplier", "b · it contains"], ["Vehicle destination", "eu"], ["Is the total of PFOAs below 0.0000025wt% (25ppb) in the material?", "yes"]];
+  const enc = Buffer.from(JSON.stringify(trail), "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  await page.goto(`/rules?flow=pfoa&trail=${enc}&case=TEST-PART`);
+  await expect(page.getByRole("heading", { name: /PFOA/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Case path" })).toContainText(/3 steps matched, ends at Judge OK/);
+  await expect(page.locator(".fl-out.on-path")).toHaveCount(1);
+  await expect(page.locator(".fl-out.on-path")).toContainText("Judge OK");
+});
+
+test("rules: the canvas zooms, fits and shows step details", async ({ page }) => {
+  await page.goto("/rules");
+  await expect(page.getByRole("heading", { name: "Judgement Rules" })).toBeVisible();
+  const pct = page.locator(".fl-zoom b");
+  await untilItWorks(() => page.getByRole("button", { name: "Reset to 100%" }).click(), async () => { await expect(pct).toHaveText("100%", { timeout: 1500 }); });
+  await page.getByRole("button", { name: "Zoom in" }).click();
+  await expect(pct).toHaveText("120%");
+  await page.locator(".fl-q").first().click();
+  await expect(page.getByRole("complementary", { name: "Step details" })).toContainText(/QUESTION/);
+});
+
+test("unknown address shows a page-not-found screen with a way back", async ({ page }) => {
+  const r = await page.goto("/this-page-does-not-exist");
+  expect(r?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(page.locator(".state-page").getByRole("link", { name: "Judgement register" })).toBeVisible();
+});

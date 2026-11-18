@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Bot, Check, CheckCheck, CircleX, ExternalLink, FileText, FileWarning, History, LoaderCircle, RefreshCw, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Bot, Check, CheckCheck, CircleX, ExternalLink, FileText, FileWarning, History, LoaderCircle, RefreshCw, RotateCcw, X } from "lucide-react";
 import type { AutoOutput } from "@/lib/judgement/auto";
 import { classifyCase, NEED_LABEL, NEED_ORDER, type ReviewCard, type ReviewNeed } from "@/lib/judgement/review";
 import { rememberAnswer, runCheck, saveJudgement } from "@/lib/judgement/client-save";
 import { answerKey, mergeAnswer, type DeckAnswers } from "@/lib/judgement/deck";
 import { CatMascot, type CatMood } from "@/components/cat-mascot";
+import { CaseContext } from "@/components/case-context";
 import { Decks, Piles, PILE_LABEL, type PileKind, type PileTop } from "@/components/miko-table";
 import type { PileCounts } from "@/lib/judgement/piles";
 import type { NeedCounts } from "@/lib/judgement/overview";
@@ -73,6 +74,8 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [live, setLive] = useState<Map<string, Live>>(new Map());
+  const [help, setHelp] = useState(false);
+  const [bulkDone, setBulkDone] = useState(false);
   const [comments, setComments] = useState<Map<string, string>>(new Map());
   const [working, setWorking] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<{ label: string; done: number; total: number } | null>(null);
@@ -273,7 +276,7 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
       catch { failed.push(c.partNo || c.sourceRecordKey); }
       n++; setBulk((b) => b && { ...b, done: n });
     }
-    setBulk(null); setIndex(0); setCheer((x) => x + 1); window.setTimeout(() => setBump(null), 700);
+    setBulk(null); setIndex(0); setCheer((x) => x + 1); setBulkDone(true); setCheerOn(true); window.setTimeout(() => { setBump(null); }, 700); window.setTimeout(() => { setCheerOn(false); setBulkDone(false); }, 2200);
     if (failed.length) setError(`${failed.length} not saved (changed meanwhile or missing comment): ${failed.slice(0, 5).join(", ")}${failed.length > 5 ? "…" : ""}`);
     else setNotice(`${list.length} card${list.length === 1 ? "" : "s"} confirmed.`);
   }
@@ -281,7 +284,16 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   const okN = decidedHere.filter((c) => views.get(c.id)?.rec.state === "OK").length;
   const sel = stacks.find((s) => s.errorType === stack) || null;
   const toJudge = cands ? open.length : piles.toJudge;
-  const mood: CatMood = error && !cands ? "error" : loading || bulk || (current && working.has(current.id)) ? "thinking" : stamp || cheerOn ? "success" : cands && !open.length ? "success" : "idle";
+  const curView = current ? views.get(current.id) : undefined;
+  const mood: CatMood = error ? "error"
+    : loading ? "thinking"
+    : bulk || stamp || (current && working.has(current.id)) ? "working"
+    : cheerOn && bulkDone ? "celebrate"
+    : cheerOn ? "success"
+    : cands && !open.length ? "celebrate"
+    : curView && !curView.decided && WAITING.has(curView.card.need) ? "waiting"
+    : curView && curView.draft ? "alert"
+    : "idle";
   const say = !cands ? (loading ? [`Miko is sorting ${progress.total.toLocaleString("en-US")} cases…`, "Checking every unjudged case against the rules"] : error ? ["Miko could not deal the cards", error] : ["Nothing to deal", "Every WORKING case has a judgement."])
     : !open.length ? ["All unjudged cases have been processed", "Judged cards wait in Waiting TMA until TMA/KM is filled."]
     : stamp ? [`Judged ${stamp.decision} — saved`, "Moving the card to its pile…"]
@@ -290,7 +302,23 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
 
   return <section className="mt" aria-label="Miko's judgement table">
     <header className="mt-dealer">
-      <span className="mt-miko"><CatMascot mood={mood} size={62}/></span>
+      <span className="mt-miko"><button type="button" className="mt-miko-btn" onClick={() => setHelp((v) => !v)} aria-expanded={help} aria-controls="mt-help" aria-label={`Miko: ${say[0]}. Show status and shortcuts`}><CatMascot mood={mood} size={62}/></button></span>
+      {help && <div className="mt-help" id="mt-help" role="dialog" aria-label="Miko — status and shortcuts" onKeyDown={(e) => { if (e.key === "Escape") setHelp(false); }}>
+        <button type="button" className="mt-help-x" onClick={() => setHelp(false)} aria-label="Close"><X size={14}/></button>
+        <h3>{say[0]}</h3><p>{say[1]}</p>
+        <dl>
+          <dt>To judge</dt><dd>WORKING cases with no judgement yet.</dd>
+          <dt>Waiting TMA</dt><dd>Judged here; TMA/KM judge still empty. Not counted as remaining work.</dd>
+          <dt>Judged</dt><dd>Judged and TMA/KM done.</dd>
+        </dl>
+        <dl>
+          <dt><kbd>→</kbd> <kbd>←</kbd></dt><dd>Next / previous card</dd>
+          <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>Answer the card&apos;s question</dd>
+          <dt><kbd>Enter</kbd></dt><dd>Confirm a decided card (only while focus is on the table)</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Jump anywhere, search a part</dd>
+        </dl>
+        <p>A card is saved only after the server confirms; a failed save leaves it where it was.</p>
+      </div>}
       <div className="mt-say" aria-live="polite"><strong>{say[0]}</strong><span>{say[1]}</span>
         {loading && <div className="aj-bar"><i style={{ width: (progress.total ? progress.done / progress.total * 100 : 0) + "%" }}/></div>}</div>
       <Piles piles={piles} toJudge={toJudge} active="toJudge" bump={bump} refs={pileRefs}
@@ -329,6 +357,7 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
           onSkip={() => move(pos + 1 < deck.length ? pos + 1 : pos, "next")}
           onOpen={() => onOpenCase(current.id)} onDetail={() => current.partNo && onDetail(current.partNo)}/>}
       </div>
+      {sel && current && <CaseContext key={current.id} itemId={current.id} partNo={current.partNo} check={live.get(current.id)?.check ?? null}/>}
     </div>
   </section>;
 }
@@ -385,11 +414,18 @@ function Flashcard({ cardRef, dealFrom, stamp, active, c, v, pos, total, left, c
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Shortcuts only belong to the judgement table. Focus on a link, a tab, a switch, a dialog or anywhere
+      // else on the page (sidebar, search, settings) keeps its own keys — Enter on "Back to menu" navigates,
+      // it never saves a judgement.
+      const onBody = !t || t === document.body || t === document.documentElement;
+      if (!onBody && !t?.closest(".mt")) return;
+      if (t?.closest("a, [role='dialog'], [role='tab'], [role='switch'], [role='checkbox'], [contenteditable='true']")) return;
+      const onControl = Boolean(t?.closest("button, label, summary"));
       if (e.key === "ArrowRight") { e.preventDefault(); onSkip(); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); onPrev(); }
-      else if (e.key === "Enter" && decision && !busy && canEdit && t?.tagName !== "BUTTON") { e.preventDefault(); onConfirm(decision as "OK" | "NG"); }
+      else if (e.key === "Enter" && decision && !busy && canEdit && !onControl) { e.preventDefault(); onConfirm(decision as "OK" | "NG"); }
       else if (/^[1-9]$/.test(e.key) && q && !busy && canEdit) { const o = q.options[Number(e.key) - 1]; if (o) { e.preventDefault(); onAnswer(q.field, o[0], q.id, all); } }
     };
     window.addEventListener("keydown", onKey);

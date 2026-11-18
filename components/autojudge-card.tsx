@@ -35,6 +35,8 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal, openSettings = f
   const [results, setResults] = useState<RunResult[] | null>(null);
   const [compare, setCompare] = useState<Compare[] | null>(null);
   const [showSettings, setShowSettings] = useState(openSettings);
+  /** Switch changes are staged here and saved only after an explicit confirm (they change what is finalised). */
+  const [draft, setDraft] = useState<Config | null>(null);
 
   useEffect(() => {
     fetch("/api/judgement/autorun", { cache: "no-store" }).then(async (r) => {
@@ -100,6 +102,7 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal, openSettings = f
       const r = await fetch("/api/judgement/autorun", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ config: next, baseVersion: info.version }) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || "Could not save.");
       setInfo({ ...info, config: j.config, version: j.version });
+      setDraft(null);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); }
     finally { setBusy(""); }
   }
@@ -143,13 +146,35 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal, openSettings = f
       <ShieldCheck size={15}/><span>Accuracy check on {agreement.checked.toLocaleString("en-US")} judged case(s): the engine could decide {agreement.decided.toLocaleString("en-US")}; it agrees with people on <b>{agreement.agree}</b>{agreement.rate !== null ? ` (${agreement.rate}%)` : ""} and differs on <b>{agreement.disagree}</b>.</span>
     </div>}
 
-    {showSettings && cfg && <div className="aj-settings">
-      <label className="aj-switch"><input type="checkbox" checked={cfg.enabled} disabled={busy === "save" || info?.missing} onChange={(e) => void save({ ...cfg, enabled: e.target.checked })}/><span><Power size={14}/> Auto-judge {cfg.enabled ? "on" : "off"}</span><small>Master switch. Off = preview only.</small></label>
-      <label className="aj-switch"><input type="checkbox" checked={cfg.shadow} disabled={busy === "save" || info?.missing} onChange={(e) => void save({ ...cfg, shadow: e.target.checked })}/><span>Shadow mode</span><small>Decide but do not write. Use for a few days with the accuracy check before going live.</small></label>
-      <fieldset className="aj-kinds"><legend>Rule families that may be finalised automatically</legend>
-        {(Object.keys(KIND_LABEL) as Kind[]).map((k) => <label key={k}><input type="checkbox" checked={cfg.kinds[k]} disabled={busy === "save" || info?.missing} onChange={(e) => void save({ ...cfg, kinds: { ...cfg.kinds, [k]: e.target.checked } })}/> {KIND_LABEL[k]}</label>)}
-      </fieldset>
-      <p className="aj-fine">Error Type 19, HOLD, missing evidence and flows that are not encoded are never finalised. {cfg.approvedBy ? `Last approved by ${cfg.approvedBy} on ${String(cfg.approvedAt || "").slice(0, 10)}${cfg.ruleSet && info?.ruleSet && cfg.ruleSet === info.ruleSet ? ` for ${info.ruleSetLabel}` : " (older rule set)"}.` : "Not approved yet."} Flows marked draft in their source (MCCP) are never finalised.</p>
-    </div>}
+    {showSettings && cfg && info && !info.canConfigure && <div className="aj-note" role="note"><ShieldCheck size={14}/><span>Only an admin or rule approver can change auto-judge. Current setting: {mode}{cfg.approvedBy ? `, approved by ${cfg.approvedBy} on ${String(cfg.approvedAt || "").slice(0, 10)}` : ""}.</span></div>}
+    {showSettings && cfg && info?.canConfigure && (() => {
+      const view = draft ?? cfg;
+      const lock = busy === "save" || info.missing;
+      const stage = (next: Config) => setDraft(JSON.stringify(next) === JSON.stringify(cfg) ? null : next);
+      const changes = draft ? diffConfig(cfg, draft) : [];
+      const goesLive = Boolean(draft && draft.enabled && !draft.shadow && Object.values(draft.kinds).some(Boolean) && !live);
+      return <div className="aj-settings">
+        <label className="aj-switch"><input type="checkbox" role="switch" checked={view.enabled} disabled={lock} onChange={(e) => stage({ ...view, enabled: e.target.checked })}/><span><Power size={14}/> Auto-judge {view.enabled ? "on" : "off"}</span><small>Master switch. Off = preview only.</small></label>
+        <label className="aj-switch"><input type="checkbox" role="switch" checked={view.shadow} disabled={lock} onChange={(e) => stage({ ...view, shadow: e.target.checked })}/><span>Shadow mode</span><small>Decide but do not write. Use for a few days with the accuracy check before going live.</small></label>
+        <fieldset className="aj-kinds"><legend>Rule families that may be finalised automatically</legend>
+          {(Object.keys(KIND_LABEL) as Kind[]).map((k) => <label key={k}><input type="checkbox" checked={view.kinds[k]} disabled={lock} onChange={(e) => stage({ ...view, kinds: { ...view.kinds, [k]: e.target.checked } })}/> {KIND_LABEL[k]}</label>)}
+        </fieldset>
+        {draft && <div className={"aj-confirm" + (goesLive ? " live" : "")} role="group" aria-label="Confirm auto-judge changes">
+          <div><strong>{changes.length} unsaved change{changes.length === 1 ? "" : "s"}</strong><ul>{changes.map((c) => <li key={c}>{c}</li>)}</ul>
+            <p>{goesLive ? "After saving, complete cases in the switched-on families are written as FINAL by the system. " : ""}Saving records you as the approver, with the date, in the settings and the audit log.</p></div>
+          <div className="aj-confirm-actions"><button type="button" onClick={() => setDraft(null)} disabled={busy === "save"}>Discard</button><button type="button" className="primary" onClick={() => void save(draft)} disabled={busy === "save"}>{busy === "save" ? <LoaderCircle size={14} className="spin"/> : <ShieldCheck size={14}/>} Save and approve</button></div>
+        </div>}
+        <p className="aj-fine">Error Type 19, HOLD, missing evidence and flows that are not encoded are never finalised. {cfg.approvedBy ? `Last approved by ${cfg.approvedBy} on ${String(cfg.approvedAt || "").slice(0, 10)}${cfg.ruleSet && info?.ruleSet && cfg.ruleSet === info.ruleSet ? ` for ${info.ruleSetLabel}` : " (older rule set)"}.` : "Not approved yet."} Flows marked draft in their source (MCCP) are never finalised.</p>
+      </div>;
+    })()}
   </section>;
+}
+
+/** Human-readable list of what a staged auto-judge change does. */
+export function diffConfig(a: Config, b: Config): string[] {
+  const out: string[] = [];
+  if (a.enabled !== b.enabled) out.push(b.enabled ? "Turn auto-judge ON" : "Turn auto-judge OFF");
+  if (a.shadow !== b.shadow) out.push(b.shadow ? "Shadow mode ON (decide, do not write)" : "Shadow mode OFF (decisions are written)");
+  for (const k of Object.keys(KIND_LABEL) as Kind[]) if (a.kinds[k] !== b.kinds[k]) out.push((b.kinds[k] ? "Allow: " : "Stop: ") + KIND_LABEL[k]);
+  return out;
 }

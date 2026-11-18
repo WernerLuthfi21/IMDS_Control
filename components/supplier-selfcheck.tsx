@@ -43,23 +43,33 @@ export function SupplierSelfCheck({ role, supplierCode }: { role: string; suppli
     if (m.length < 2) { setError("The data needs a header row and at least one data row."); return; }
     setMatrix(m); setFileName(name); setMapOverride(null); setAnswers({}); setAnalysis(null); setNotice(""); setError(""); setLimit(PREVIEW_PAGE); setOnlyProblems(false); setFilter("ALL"); setPdf(null); setStep("preview");
   }
+  /** Upload to the private bucket, then let the server read it. */
+  async function stageAndParse(file: File, extra: Record<string, string> = {}) {
+    const init = await fetch("/api/prechecks/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, fileSize: file.size, classification: "PROTECTED" }) });
+    const ij = await init.json(); if (!init.ok) throw new Error(ij.error || "Upload could not start.");
+    const sb = createClient(); if (!sb) throw new Error("Supabase is not configured.");
+    const up = await sb.storage.from("supplier-precheck-private").uploadToSignedUrl(ij.path, ij.token, file); if (up.error) throw new Error(up.error.message);
+    const pr = await fetch("/api/self-check/parse-file", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storagePath: ij.path, fileName: file.name, classification: "PROTECTED", ...extra }) });
+    const pj = await pr.json(); return { ok: pr.ok, ...pj };
+  }
   async function onFile(file: File) {
     setError(""); setNotice("");
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (file.size > 20 * 1024 * 1024) { setError("The file is larger than 20 MB."); return; }
-    if (ext === "pdf") { setPdf(file); return; }
-    if (ext === "csv") { load(parseDelimited(await file.text()), file.name); return; }
-    if (ext !== "xlsx") { setError("Use an Excel (.xlsx) or CSV file, paste the cells, or attach a PDF."); return; }
-    setBusy("Reading the workbook…");
+    if (ext === "xls") { setError("Old Excel (.xls): open it in Excel and Save As .xlsx, or select the cells, copy and paste them in the box on the right."); return; }
+    if (ext === "csv" || ext === "txt" || ext === "tsv") { load(parseDelimited(await file.text()), file.name); return; }
+    if (ext !== "xlsx" && ext !== "pdf") { setError("Use Excel (.xlsx), CSV or PDF, or paste the cells."); return; }
+    setBusy(ext === "pdf" ? "Reading the PDF…" : "Reading the workbook…");
     try {
-      const init = await fetch("/api/prechecks/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, fileSize: file.size, classification: "PROTECTED" }) });
-      const ij = await init.json(); if (!init.ok) throw new Error(ij.error || "Upload could not start.");
-      const sb = createClient(); if (!sb) throw new Error("Supabase is not configured.");
-      const up = await sb.storage.from("supplier-precheck-private").uploadToSignedUrl(ij.path, ij.token, file); if (up.error) throw new Error(up.error.message);
-      const pr = await fetch("/api/self-check/parse-file", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storagePath: ij.path, fileName: file.name, classification: "PROTECTED" }) });
-      const pj = await pr.json(); if (!pr.ok) throw new Error(pj.error || "The workbook could not be read.");
-      setBusy(""); load(pj.matrix, `${file.name} · ${pj.sheetName}`);
-      if (pj.truncated) setNotice("The sheet is larger than 5,000 rows or 60 columns; only the first part was loaded.");
+      const pj = await stageAndParse(file, ext === "pdf" && pdfPart.trim() ? { partNo: pdfPart.trim() } : {});
+      setBusy("");
+      if (!pj.ok) {
+        if (ext === "pdf" && pj.code === "PDF_NO_TEXT") { setPdf(file); setNotice("This PDF has no readable substance table. Attach it for Toyota below, or paste the table."); return; }
+        throw new Error(pj.error || "The file could not be read.");
+      }
+      load(pj.matrix, `${file.name} · ${pj.sheetName}`);
+      if (ext === "pdf") { setPdf(file); setNotice(`Read ${pj.matrix.length - 1} substance line(s) from the PDF${pj.partFound ? ` for part ${pj.partFound}` : ""}. Check the part number column before you continue.`); }
+      else if (pj.truncated) setNotice("The sheet is larger than 5,000 rows or 60 columns; only the first part was loaded.");
     } catch (e) { setBusy(""); setError(e instanceof Error ? e.message : "The file could not be read."); }
   }
   async function attachPdf() {
@@ -147,14 +157,12 @@ export function SupplierSelfCheck({ role, supplierCode }: { role: string; suppli
 
     {step === "add" && <>
       <div className={"sc-drop" + (drag ? " on" : "")} data-dropzone="" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }} onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) void onFile(f); }}>
-        <label className="sc-file"><UploadCloud size={22}/><strong>Drop a file here or click</strong><span>.xlsx · .csv · .pdf</span>
-          <input type="file" hidden accept=".xlsx,.csv,.pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }}/></label>
+        <label className="sc-file"><UploadCloud size={22}/><strong>Drop a file here or click</strong><span>.xlsx · .csv · .pdf (text) · or paste</span>
+          <input type="file" className="sc-file-input" aria-label="Choose an .xlsx, .csv or .pdf file" accept=".xlsx,.xls,.csv,.txt,.pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }}/></label>
         <div className="sc-or">or</div>
         <label className="sc-paste"><span><ClipboardPaste size={14}/> Paste cells from Excel</span>
           <textarea rows={4} placeholder="Click here, then Ctrl+V" onPaste={(e) => { const t = e.clipboardData.getData("text"); if (t.trim()) { e.preventDefault(); load(parseDelimited(t), "Pasted cells"); (e.target as HTMLTextAreaElement).value = ""; } }} aria-label="Paste table data"/></label>
       </div>
-      {pdf && <div className="sc-pdf"><FileText size={16}/><div><strong>{pdf.name}</strong><span>PDFs are attached for Toyota to read; they are not read automatically. Part number:</span></div>
-        <input className="field" value={pdfPart} onChange={(e) => setPdfPart(e.target.value)} placeholder="Delivery Part No." aria-label="Part number for the PDF"/><button className="btn btn-primary btn-sm" type="button" disabled={!pdfPart.trim() || !isSupplier || !!busy} onClick={() => void attachPdf()}>Attach PDF</button></div>}
     </>}
 
     {step === "preview" && det && <>
@@ -178,15 +186,28 @@ export function SupplierSelfCheck({ role, supplierCode }: { role: string; suppli
       <div className={"sc-ready " + (ready.ready ? "ok" : "wait")}>{ready.ready ? <CheckCircle2 size={16}/> : <AlertTriangle size={16}/>}
         <div><strong>{ready.ready ? (ready.ng ? `Nothing is waiting on you; ${ready.ng} item(s) are likely NG` : "Nothing is waiting on you") : `${ready.waiting} item(s) need your action`}</strong>
           <span>{ready.ready ? "Save your confirmations, then correct any NG items in IMDS before you submit." : "Answer the questions or fix the data. Your answers are remembered per part number."}</span></div></div>
+      {analysis.identity && <div className="sc-id" aria-label="What we read from your data">
+        <div className="sc-id-main"><span className="sc-kicker">YOUR DATA</span><strong>{analysis.identity.parts} part number{analysis.identity.parts === 1 ? "" : "s"}</strong>
+          <small>{analysis.identity.substanceLines} substance line(s) · {analysis.identity.massLines} mass line(s)</small></div>
+        <div className="sc-id-sup">{analysis.identity.suppliers.length ? analysis.identity.suppliers.map((sp) => <span key={sp.code} className={"sc-sup " + (sp.inMaster ? "ok" : "warn")}>
+          Supplier code <b>{sp.code}</b>{sp.inMaster ? ` · registered as ${sp.masterName}` : " · not in Toyota's Purchasing list (WARP check)"}{sp.fromAccount ? " · from your account" : ""}</span>)
+          : <span className="sc-sup">No supplier code in the data</span>}</div>
+        <div className="sc-id-pred"><span className="sc-kicker">LIKELY G-CATS CHECKS</span>{analysis.identity.predicted.length
+          ? analysis.identity.predicted.map((p) => <span key={p.errorType} className="sc-pchip">{p.errorType} <b>{p.items}</b></span>)
+          : <span className="sc-none">None expected</span>}</div>
+        <p className="sc-fine">Toyota applies the vehicle destination and the mass tolerance class from its drawing; you are never asked for them.</p>
+      </div>}
       <div className="sc-counts">{FILTERS.filter((s) => analysis.counts[s]).map((s) => <button key={s} type="button" className={`sc-chip ${s.toLowerCase()}${filter === s ? " on" : ""}`} onClick={() => setFilter(filter === s ? "ALL" : s)}>{STATE_LABEL[s]} <b>{analysis.counts[s]}</b></button>)}</div>
       {groups.size > 0 && <div className="sc-bulk"><strong>Answer once for every item that asks the same thing</strong>
         {Array.from(groups.values()).map((g) => <div key={g.qid + g.text} className="sc-q"><span>{g.text} <em>({g.keys.length} item{g.keys.length > 1 ? "s" : ""})</em></span><div className="sc-opts">{g.options.map(([v, t]) => <button key={v} type="button" onClick={() => setAnswer(g.keys, g.qid, v)}>{t}</button>)}</div></div>)}</div>}
       <div className="sc-parts">{parts.slice(0, 200).map((p) => <details key={p.partNo} className={"sc-part " + p.worst.toLowerCase()} open={p.worst !== "OK" && p.worst !== "HOLD"}>
         <summary><strong>{p.partNo}</strong><span className={`sc-chip ${p.worst.toLowerCase()} static`}>{STATE_LABEL[p.worst]}</span><small>{p.items.length} item(s)</small></summary>
         <ul>{p.items.map((r: AnalyzedRow, i) => <li key={r.r + "-" + r.cas + "-" + i}>
-          <div className="sc-itemhead"><span className="mono">{r.cas || (r.family === "pb" ? "Pb" : r.family === "mass" ? "Mass" : r.flowTitle || "—")}</span><span className={`sc-chip ${r.state.toLowerCase()} static`}>{STATE_LABEL[r.state]}</span></div>
+          <div className="sc-itemhead"><span className="mono">{r.cas || (r.family === "pb" ? "Pb" : r.family === "mass" ? "Mass" : r.family === "warp" ? "Supplier code " + r.supplierCode : r.flowTitle || "—")}</span>
+            {r.predicted && <span className="sc-pred-tag" title="The G-CATS check this line is likely to raise">{r.predicted}</span>}<span className={`sc-chip ${r.state.toLowerCase()} static`}>{STATE_LABEL[r.state]}</span></div>
+          {r.reason && r.state !== "OK" && r.reason !== resolution(r) && <p className="sc-why">{r.reason}</p>}
           <p>{resolution(r)}</p>
-          {r.state === "DEPENDS" && r.byDest && <p className="sc-dest">{Object.entries(r.byDest).map(([d, s]) => `${d} ${s}`).join(" · ")}</p>}
+          {r.state === "DEPENDS" && r.byDest && <p className="sc-dest">{r.dependsOn === "class" ? "By tolerance class: " : "By destination: "}{Object.entries(r.byDest).map(([d, s]) => `${d} ${s}`).join(" · ")}</p>}
           {r.state === "ASK" && r.ask.map((a) => <div key={a.id} className="sc-q"><span>{a.text}</span><div className="sc-opts">{a.options.map(([v, t]) => <button key={v} type="button" className={r.answered[a.id] === v ? "on" : ""} onClick={() => setAnswer([r.key], a.id, v)}>{t}</button>)}</div></div>)}
           {Object.keys(r.answered).length > 0 && r.state !== "ASK" && <span className="sc-ans">Your answer: {Object.values(r.answered).join(", ")}</span>}</li>)}</ul></details>)}
         {parts.length > 200 && <div className="sc-more">Showing the first 200 part numbers. Use the recap file for the full list.</div>}</div>
@@ -196,5 +217,7 @@ export function SupplierSelfCheck({ role, supplierCode }: { role: string; suppli
         <button type="button" className="btn btn-primary" disabled={!isSupplier || !uniqueSave.length || !!busy} title={isSupplier ? "" : "Only supplier accounts can save confirmations"} onClick={() => void save()}><Save size={14}/> Save my confirmations ({uniqueSave.length})</button></div>
       <small className="sc-fine">Preliminary self-check only. It is not a G-CATS approval and not an IMDS upload file. Toyota makes the final OK/NG.</small>
     </>}
+    {pdf && step !== "preview" && <div className="sc-pdf"><FileText size={16}/><div><strong>{pdf.name}</strong><span>Attach the PDF to the part so Toyota can open it. Part number:</span></div>
+        <input className="field" value={pdfPart} onChange={(e) => setPdfPart(e.target.value)} placeholder="Delivery Part No." aria-label="Part number for the PDF"/><button className="btn btn-primary btn-sm" type="button" disabled={!pdfPart.trim() || !isSupplier || !!busy} onClick={() => void attachPdf()}>Attach PDF</button></div>}
   </section>;
 }

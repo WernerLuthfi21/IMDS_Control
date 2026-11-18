@@ -48,6 +48,9 @@ export async function postToFlow(url: string, secret: string | null, payload: un
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
     });
+    // 202 = accepted but not yet run. The standard (non-premium) Teams-webhook trigger always answers 202
+    // before the flow runs, so it is a hand-off, not a confirmed send. Only 200/201/204 from a Response action confirm.
+    if (res.status === 202) return { ok: true, status: 202, handedOff: true };
     if (res.status >= 200 && res.status < 300) return { ok: true, status: res.status };
     return { ok: false, status: res.status, error: `Flow answered HTTP ${res.status}` };
   } catch (e) {

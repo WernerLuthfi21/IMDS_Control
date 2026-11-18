@@ -43,3 +43,18 @@ describe("workflow piles (To Judge / Judged / Waiting TMA)", () => {
     expect(c).toMatchObject({ toJudge: 1, waitingTma: 2, judged: 1, other: 1, total: 5, judgedTotal: 3 });
   });
 });
+
+import { isWorking } from "@/lib/judgement/piles";
+import { summarizeRegister } from "@/lib/judgement/overview";
+describe("one WORKING test for every counter", () => {
+  it("accepts case and spacing variants, nothing else", () => {
+    expect(["WORKING", "Working", " working ", "WORKING "].every(isWorking)).toBe(true);
+    expect(["ACCEPTED", "", null, undefined, "WORKING-X"].some((s) => isWorking(s as string))).toBe(false);
+  });
+  it("the overview and the piles agree on a padded status", () => {
+    const rows = [row("a", { source_status: "Working " }), row("b"), row("c", { judge: "OK" })];
+    const o = summarizeRegister(rows.map((r) => ({ ...r, supplier_code: null, delivery_part_no: null, km_judge: r.km_judge })) as never);
+    expect(o.pending).toBe(pileCounts(rows).toJudge);
+    expect(o.pending).toBe(2);
+  });
+});
