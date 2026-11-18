@@ -6,6 +6,7 @@ import { familyOfKind, loadConfirmation } from "@/lib/intake/confirmations";
 import { normalizeCas } from "@/lib/reference-data";
 import type { PartMemory } from "@/lib/judgement/memory";
 import { escalationKey, needsTmc, tmcRecommendation, type Escalation } from "@/lib/judgement/escalation";
+import { classifyCase, type ReviewCard } from "@/lib/judgement/review";
 
 export type BulkSourceItem = {
   id: string; source_record_key: string; error_type_label: string;
@@ -20,6 +21,8 @@ export type BulkCandidate = {
   prohibitedStatus: "CONNECTED" | "NEEDS_REVIEW" | "NOT_PROHIBITED"; reviewReason: string;
   /** Set when the flow says "Contact TMC": the case key and what Toyota answered so far. */
   tmc: { key: string; status: Escalation["status"]; answer: "OK" | "NG" | null } | null;
+  /** What a person still has to give, as one flashcard. */
+  card: ReviewCard;
 };
 function stable(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
@@ -91,7 +94,12 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     procedureText: auto.procedureText, signature, eligible,
     inPendingQueue: item.source_status === "WORKING" && !item.judge,
     prohibited, prohibitedStatus: !prohibited ? "NOT_PROHIBITED" : connected ? "CONNECTED" : "NEEDS_REVIEW",
-    reviewReason, tmc
+    reviewReason, tmc,
+    card: classifyCase(auto, { eligible, tmcOpen: Boolean(tmc && !tmcDecided), facts: {
+      "CAS": facts.cas, "Substance": facts.substanceName, "Content": facts.substanceContentPct ? facts.substanceContentPct + " %" : "",
+      "Material": facts.materialName, "IMDS mass": facts.imdsMass ? facts.imdsMass + " g" : "", "Drawing mass": facts.drawingMass ? facts.drawingMass + " g" : "",
+      "Application ID": facts.applicationId, "Company": facts.companyName
+    } })
   };
 }
 export function groupBulkCandidates(candidates: BulkCandidate[]) {
