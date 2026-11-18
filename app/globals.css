@@ -1128,3 +1128,25 @@ html[data-theme="dark"] .st-link.violet{border-left-color:#a78bfa}html[data-them
 @media(max-width:1180px){.ov-grid{grid-template-columns:1fr 1fr}.ov-c12{grid-column:1 / -1}}
 @media(max-width:760px){.ov-grid{grid-template-columns:1fr}}
 @media(min-width:1000px) and (max-height:860px){.ov-hero p,.ov .jw-kpi small,.ov-hint,.jw-head p{display:none}.ov-ring,.ov-ring svg{width:92px;height:92px}.ov-ring b{font-size:26px}.ov-hero h2{font-size:20px}.ov-att{min-height:38px}.fc-facts dd{font-size:13px}.fc-face{gap:10px;padding:16px 18px}.fc-id strong{font-size:24px}.fc-opts button{min-height:46px}}
+
+/* ── Shell sidebar: Jasmine's solid brand sidebar, in the Judgement green (both themes) ── */
+html .sidebar{background:linear-gradient(180deg,#17603a 0%,#11472a 100%);border-right:0;color:#e3f6ea}
+html[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#123d25 0%,#0b2617 100%);border-right:1px solid #1d3a28;color:#e3f6ea}
+html .sidebar .brand-mark{background:#fff;color:#14532d;box-shadow:0 4px 12px -4px rgba(0,0,0,.35)}
+html .sidebar .brand-title{color:#fff}
+html .sidebar .brand-subtitle{color:#b5e4c6}
+html .sidebar .workspace-chip{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16);color:#e3f6ea}
+html .sidebar .nav-group-label{color:#b5e4c6}
+html .sidebar .nav-item{color:#e3f6ea;border-radius:12px;height:42px;font-size:13.5px}
+html .sidebar .nav-item:hover{background:rgba(255,255,255,.12);color:#fff}
+html .sidebar .nav-item:focus-visible{outline:2px solid #fde68a;outline-offset:1px}
+html .sidebar .nav-active,html .sidebar .nav-active:hover{background:#fff;color:#14532d;font-weight:800;box-shadow:0 6px 16px -8px rgba(0,0,0,.45)}
+html[data-theme="dark"] .sidebar .nav-active,html[data-theme="dark"] .sidebar .nav-active:hover{background:#e3f6ea;color:#0f3d22}
+html .sidebar .sidebar-bottom{border-top-color:rgba(255,255,255,.14)}
+html .sidebar .secure-card{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16);color:#e3f6ea}
+html .sidebar .secure-card strong,html .sidebar .secure-card span{color:#e3f6ea}
+html .sidebar .profile-row,html .sidebar .profile-copy strong{color:#fff}
+html .sidebar .profile-copy span{color:#b5e4c6}
+html .sidebar .avatar{background:#fff;color:#14532d}
+html .sidebar .mobile-close{color:#fff}
+html .sidebar .nav-active-indicator{background:#16a34a}
