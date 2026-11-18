@@ -405,3 +405,63 @@ export function pb71Run(facts: RowFacts, answers: Record<string, string>): FlowR
 export function elvRun(errorType: string, facts: RowFacts, answers: Record<string, string>): FlowRun {
   return runFlow(selectFlow(errorType, "", false, "", "", false), facts, answers, "");
 }
+
+// ---------- Flow charts for the Rules page ----------
+/** One step of a drawn flow chart: automatic checks on the way, then a question or an end result. */
+export type FlowChartNode = {
+  autos: string[];
+  question: { id: string; text: string } | null;
+  outcome: FlowOutcome | null;
+  branches: Array<{ labels: string[]; node: FlowChartNode }>;
+};
+export type FlowChart = {
+  id: string; title: string; page: number | null; source: string; draft: boolean; caution?: string;
+  root: FlowChartNode; truncated: boolean;
+};
+
+const BLANK_FACTS: RowFacts = {
+  cas: "", substanceName: "", substanceContentPct: "", applicationId: "", materialName: "", matlClass: "",
+  componentPartName: "", deliveryPartName: "", imdsMass: "", drawingMass: "", toleranceClass: "", drawingRefs: [], drawingStatus: "", companyName: ""
+};
+const CHART_LIMIT = 600;
+const nodeKey = (n: FlowChartNode): string => JSON.stringify([n.autos, n.question?.text ?? null, n.outcome, n.branches.map((b) => [b.labels, nodeKey(b.node)])]);
+
+/**
+ * Draw a flow by running the real engine with every possible answer. Row facts are left blank,
+ * so each decision the chart makes from row data (content %, material, part name) becomes a visible
+ * question. Options that lead to the same continuation are merged into one branch
+ * (e.g. "KR · CN · TW · IN · JP · Other → OK"). Same code path as judging a case: the chart cannot drift
+ * from the rules.
+ */
+export function flowChart(id: string, today = new Date().toISOString().slice(0, 10)): FlowChart | null {
+  const def = DEFS[id];
+  if (!def) return null;
+  let budget = CHART_LIMIT;
+  let truncated = false;
+  const walk = (answers: Record<string, string>, from: number): FlowChartNode => {
+    budget--;
+    const run = runFlow(pick(id), BLANK_FACTS, { ...answers, __today: today }, "");
+    // The answered question that led here is trail[from]; automatic checks follow it.
+    const autos = run.trail.slice(from).filter((t) => t.auto).map((t) => `${t.question} → ${t.answer.replace(/^.*→\s*/, "")}`);
+    if (run.outcome || !run.next) return { autos, question: null, outcome: run.outcome, branches: [] };
+    const q = run.next;
+    if (budget <= 0 || Object.keys(answers).length > 14) { truncated = true; return { autos, question: { id: q.id, text: q.text }, outcome: null, branches: [] }; }
+    const raw = q.options.map(([value, label]) => ({ label, node: walk({ ...answers, [q.id]: value }, run.trail.length) }));
+    const merged: FlowChartNode["branches"] = [];
+    const seen = new Map<string, number>();
+    for (const b of raw) {
+      const k = nodeKey(b.node);
+      const at = seen.get(k);
+      if (at === undefined) { seen.set(k, merged.length); merged.push({ labels: [b.label], node: b.node }); }
+      else merged[at].labels.push(b.label);
+    }
+    return { autos, question: { id: q.id, text: q.text }, outcome: null, branches: merged };
+  };
+  const root = walk({}, 0);
+  return { id, title: def.title, page: def.page, source: def.source || SRC5, draft: Boolean(def.draft), ...(def.caution ? { caution: def.caution } : {}), root, truncated };
+}
+
+/** Every implemented flow, in source order (Ver.7 first, then Ver.5.1.10 charts). */
+export function listFlows(): Array<{ id: string; title: string; page: number | null; source: string; draft: boolean }> {
+  return Object.values(DEFS).map((d) => ({ id: d.id, title: d.title, page: d.page, source: d.source || SRC5, draft: Boolean(d.draft) }));
+}
