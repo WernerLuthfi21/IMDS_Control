@@ -1077,3 +1077,54 @@ button.ov-att:focus-visible{outline:3px solid #fcd34d;outline-offset:2px}
 .fl-branch::after{content:"";position:absolute;top:0;left:50%;height:16px;border-left:2px solid var(--line-strong)}
 .fl-label{position:relative;z-index:1;max-width:220px;padding:3px 10px;border-radius:99px;background:var(--surface);border:1.5px solid var(--line-strong);color:var(--ink);font-size:11.5px;font-weight:700;text-align:center}
 @media(max-width:980px){.fl{height:auto}.fl-body{grid-template-columns:1fr}.fl-list{max-height:260px}.fl-canvas{min-height:70vh}}
+
+/* ── Settings: one section at a time ───────────────────────────────────────────────── */
+.st{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}
+.st-nav{position:sticky;top:76px;display:grid;gap:4px;padding:8px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.st-nav button{display:grid;gap:2px;padding:10px 12px;border:1px solid transparent;border-radius:12px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.st-nav button strong{font-size:14px}
+.st-nav button span{font-size:12px;color:var(--muted)}
+.st-nav button:hover{background:var(--surface-2)}
+.st-nav button.on{background:var(--accent-soft);border-color:var(--accent)}
+.st-nav button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.st-panel{min-width:0;display:grid;gap:14px}
+.st-panel .two-col{margin:0}
+.st-stack{display:grid;gap:14px}
+.st-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.st-link{display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-height:132px;padding:16px 18px;border-radius:16px;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--accent);color:var(--ink);text-decoration:none;transition:transform .15s,box-shadow .15s}
+.st-link.violet{border-left-color:#7c5cdb}
+.st-link:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.st-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.st-link strong{display:block;font-size:15px;margin-bottom:4px}
+.st-link span{display:block;font-size:13px;line-height:1.5;color:var(--muted)}
+.st-link em{font-style:normal;font-weight:800;font-size:13.5px;color:var(--accent)}
+.st-link.violet em{color:#7c5cdb}
+html[data-theme="dark"] .st-link.violet{border-left-color:#a78bfa}html[data-theme="dark"] .st-link.violet em{color:#c4b5fd}
+@media(max-width:900px){.st{grid-template-columns:1fr}.st-nav{position:static;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);overflow-x:auto}}
+
+/* ── Judgement: one screen per view on a laptop ────────────────────────────────────── */
+.jw-head{align-items:center;flex-wrap:wrap}
+.jw-head-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jw-head-right .jw-view{margin:0}
+.jw-auto{display:grid;gap:14px}
+.ov{gap:12px}
+.ov-hero-main{padding:18px 24px;gap:22px}
+.ov-ring,.ov-ring svg{width:112px;height:112px}
+.ov-ring b{font-size:32px}
+.ov-hero h2{font-size:23px;margin:4px 0}
+.ov-prog{margin-top:10px;height:10px}
+.ov-hero-side{padding:16px 20px;gap:6px}
+.ov-att{min-height:44px;font-size:14px}
+.ov-att b{font-size:19px}
+.ov .jw-kpi{padding:10px 14px}
+.ov .jw-kpi b{font-size:26px}
+.ov-grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:12px}
+.ov-c7,.ov-c5,.ov-c12{grid-column:auto}
+.ov-card{padding:14px 16px}
+.ov-hint{margin:2px 0 8px;font-size:12.5px}
+.ov-bar{min-height:32px;grid-template-columns:minmax(90px,150px) 1fr 40px;gap:8px}
+.ov-bar .nm{font-size:13px}
+.ov-table td{padding:6px 8px}
+@media(max-width:1180px){.ov-grid{grid-template-columns:1fr 1fr}.ov-c12{grid-column:1 / -1}}
+@media(max-width:760px){.ov-grid{grid-template-columns:1fr}}
+@media(min-width:1000px) and (max-height:860px){.ov-hero p,.ov .jw-kpi small,.ov-hint,.jw-head p{display:none}.ov-ring,.ov-ring svg{width:92px;height:92px}.ov-ring b{font-size:26px}.ov-hero h2{font-size:20px}.ov-att{min-height:38px}.fc-facts dd{font-size:13px}.fc-face{gap:10px;padding:16px 18px}.fc-id strong{font-size:24px}.fc-opts button{min-height:46px}}

@@ -182,7 +182,7 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
   </div>;
 }
 
-export function JudgementWorkspace({ rows: initialRows, year, role, actorName, sourceDate, queryError, initialSearch = "" }: { rows: Item[]; year: number; role: string; actorName: string; sourceDate: string | null; queryError: string | null; initialSearch?: string }) {
+export function JudgementWorkspace({ rows: initialRows, year, role, actorName, sourceDate, queryError, initialSearch = "", openAutoJudgeSettings = false }: { rows: Item[]; year: number; role: string; actorName: string; sourceDate: string | null; queryError: string | null; initialSearch?: string; openAutoJudgeSettings?: boolean }) {
   const [rows, setRows] = useState(initialRows);
   const [live, setLive] = useState(false);
   useEffect(() => {
@@ -198,7 +198,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [errorType, setErrorType] = useState("All Error Types");
   const [month, setMonth] = useState("All");
   const [search, setSearch] = useState(initialSearch);
-  const [view, setView] = useState<"overview" | "cards" | "list">(initialSearch ? "list" : "overview");
+  const [view, setView] = useState<"overview" | "cards" | "list" | "auto">(openAutoJudgeSettings ? "auto" : initialSearch ? "list" : "overview");
   const [needs, setNeeds] = useState<NeedCounts | null>(null);
   const [needsLoading, setNeedsLoading] = useState(true);
   const [jump, setJump] = useState<{ need: ReviewNeed; n: number } | null>(null);
@@ -232,7 +232,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     for (const r of rows) if (!m.has(r.error_type_label)) m.set(r.error_type_label, 0);
     return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [rows]);
-  const summary = useMemo(() => summarizeRegister(rows), [rows]);
+  const summary = useMemo(() => summarizeRegister(rows, 6, 6), [rows]);
   const pendingRows = useMemo(() => rows.filter((r) => r.source_status === "WORKING" && !r.judge), [rows]);
   const months = useMemo(() => [...new Set(rows.map((r) => String(r.source_month || "")).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [rows]);
   const visible = useMemo(() => {
@@ -336,11 +336,11 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     { key: "judged", label: "Judged", n: counts.judged, on: tab === "judged", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved" },
     { key: "km", label: "Awaiting KM", n: counts.km, on: tab === "km", tone: "blue", act: () => { setTab("km"); setSubstanceOnly(false); }, hint: "Judged, KM judge still empty" },
     { key: "sub", label: "Prohibited substances", n: prohibitedPending, on: substanceOnly, tone: "red", act: () => { setTab("pending"); setSubstanceOnly((v) => !v); setErrorType("All Error Types"); }, hint: `${prohibitedMissingCas} without CAS` },
-    { key: "auto", label: "Judged by Miko", n: autoCount, on: false, tone: "violet", act: () => { setTab("judged"); setSearch(""); }, hint: "Automatic decisions (reopenable)" }
+    { key: "auto", label: "Judged by Miko", n: autoCount, on: view === "auto", tone: "violet", act: () => { setTab("judged"); setSearch(""); }, hint: "Automatic decisions (reopenable)" }
   ];
 
   const kpiRow = <div className="jw-kpis" role="group" aria-label="Queue">
-      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on && view !== "overview" ? " on" : "")} aria-pressed={k.on && view !== "overview"} onClick={() => { k.act(); setView(k.key === "pending" ? "cards" : "list"); }} title={k.hint}>
+      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on && view !== "overview" ? " on" : "")} aria-pressed={k.on && view !== "overview"} onClick={() => { k.act(); setView(k.key === "pending" ? "cards" : k.key === "auto" ? "auto" : "list"); }} title={k.hint}>
         <span>{k.label}</span><b>{k.n.toLocaleString("en-US")}</b><small>{k.hint}</small></button>)}
     </div>;
 
@@ -348,16 +348,19 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     <header className="jw-head">
       <div><span className="jw-kicker">WORK / JUDGEMENT</span><h1>Judgement</h1>
         <p>{year} · WORKING records{updated ? " · snapshot " + updated : ""} · <span className={live ? "jw-live on" : "jw-live"} title="Other users' judgements appear here as they are saved">{live ? "live" : "not live"}</span></p></div>
-      <a className="jx-back" href="/workspace"><ArrowLeft size={14}/> Menu</a>
+      <div className="jw-head-right">
+      <div className="jw-view" role="tablist" aria-label="View">
+      <button type="button" role="tab" aria-selected={view === "overview"} className={view === "overview" ? "on" : ""} onClick={() => setView("overview")}>Overview</button>
+      <button type="button" role="tab" aria-selected={view === "cards"} className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}>Flashcards</button>
+      <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>All cases</button>
+      <button type="button" role="tab" aria-selected={view === "auto"} className={view === "auto" ? "on" : ""} onClick={() => setView("auto")}>Auto-judge</button>
+      </div>
+        <a className="jx-back" href="/workspace"><ArrowLeft size={14}/> Menu</a>
+      </div>
     </header>
     {queryError && <div className="jx-error"><AlertTriangle size={14}/> {queryError}</div>}
     {rows.length === 0 && !queryError && <div className="jx-empty"><strong>No current-year source records</strong><span>Commit the current G-CATS workbook from Daily G-CATS Update to fill the queue.</span></div>}
 
-    <div className="jw-view" role="tablist" aria-label="View">
-      <button type="button" role="tab" aria-selected={view === "overview"} className={view === "overview" ? "on" : ""} onClick={() => setView("overview")}>Overview</button>
-      <button type="button" role="tab" aria-selected={view === "cards"} className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}>Flashcards</button>
-      <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>All cases</button>
-    </div>
 
     {view !== "overview" && kpiRow}
     {view === "overview" && <>
@@ -365,11 +368,14 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
         onKm={() => { setTab("km"); setSubstanceOnly(false); setView("list"); }}
         onSupplier={(code) => { setTab("pending"); setSubstanceOnly(false); setErrorType("All Error Types"); setSearch(code); setView("list"); }}
         onType={(label) => { setTab("pending"); setSubstanceOnly(false); setSearch(""); setErrorType(label); setView("list"); }}/>
-      <AutoJudgeCard
+    </>}
+
+    {view === "auto" && <div className="jw-auto">
+      <AutoJudgeCard openSettings={openAutoJudgeSettings}
       pendingIds={rows.filter((r) => r.source_status === "WORKING" && !r.judge).map((r) => r.id)}
       judgedIds={rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR).map((r) => r.id)}
       onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>
-    </>}
+    </div>}
 
     {/* Stays mounted on every view: its pile counts feed the overview and a pile opens instantly. */}
     <div hidden={view !== "cards"}><ReviewDeck rows={pendingRows} canEdit={canEdit} active={view === "cards"} onNeeds={onNeeds} jump={jump}

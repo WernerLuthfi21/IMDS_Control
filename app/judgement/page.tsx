@@ -7,8 +7,10 @@ import { extractRowFacts } from "@/lib/judgement/row-facts";
 
 export const dynamic = "force-dynamic";
 
-export default async function JudgementPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const initialSearch = String((await searchParams).q || "").slice(0, 80);
+export default async function JudgementPage({ searchParams }: { searchParams: Promise<{ q?: string; autojudge?: string }> }) {
+  const params = await searchParams;
+  const initialSearch = String(params.q || "").slice(0, 80);
+  const openAutoJudgeSettings = params.autojudge === "settings";
   const auth = await getAuthContext();
   if (!auth.configured) redirect("/setup-required");
   if (!auth.userId) redirect("/login?next=%2Fjudgement");
@@ -63,5 +65,6 @@ export default async function JudgementPage({ searchParams }: { searchParams: Pr
     sourceDate={latestSource?.source_last_seen_at || null}
     queryError={queryError}
     initialSearch={initialSearch}
+    openAutoJudgeSettings={openAutoJudgeSettings}
   />;
 }
