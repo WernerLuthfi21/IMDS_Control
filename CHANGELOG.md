@@ -30,3 +30,5 @@
 
 - Added missing `CalendarClock` and `ArrowRight` Lucide imports used by the Judgement Register page.
 - Added Windows runtime recovery instructions.
+
+- 2026-11-18: redeploy for review-card duplicate-id fix (#48)
