@@ -6,7 +6,8 @@ import { useId } from "react";
  * blushing cheeks and a contact shadow under the head. Decorative by default; pass `label`
  * when the mood itself carries meaning.
  */
-export type CatMood = "idle" | "thinking" | "success" | "alert" | "error" | "empty";
+/** idle · working (busy saving/loading) · thinking · success · waiting (on someone else) · alert (warning) · error · celebrate (batch done) · empty. */
+export type CatMood = "idle" | "working" | "thinking" | "success" | "waiting" | "alert" | "error" | "celebrate" | "empty";
 
 const MOUTH: Record<CatMood, string> = {
   idle: "M45 58 q3 3.2 6 0 q3 3.2 6 0",
@@ -14,14 +15,17 @@ const MOUTH: Record<CatMood, string> = {
   success: "M44 56.5 q7 7 14 0",
   alert: "M47 60.5 q4 -2.6 8 0",
   error: "M45 61.5 q6 -4.6 12 0",
-  empty: "M47 59 q4 2 8 0"
+  empty: "M47 59 q4 2 8 0",
+  working: "M47 59.5 h8",
+  waiting: "M46 59.5 q5 1.6 10 0",
+  celebrate: "M43 55.5 q8 9 16 0"
 };
 
 export function CatMascot({ mood = "idle", size = 64, label, look }: { mood?: CatMood; size?: number; label?: string; look?: { x: number; y: number } }) {
   const raw = useId();
   const id = "m" + raw.replace(/[^a-zA-Z0-9]/g, "");
   const u = (k: string) => `url(#${id}-${k})`;
-  const closed = mood === "success" || mood === "empty";
+  const closed = mood === "success" || mood === "celebrate" || mood === "empty";
   const eyeShift = look ? `translate(${(look.x * 2.6).toFixed(2)}px, ${(look.y * 1.8).toFixed(2)}px)` : undefined;
   const headTilt = look ? `rotate(${(look.x * 5).toFixed(2)}deg)` : undefined;
   return <span className={"cat cat3d cat-" + mood} style={{ width: size, height: size }} role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
@@ -76,9 +80,12 @@ export function CatMascot({ mood = "idle", size = 64, label, look }: { mood?: Ca
           <g className="cat-whisk" strokeWidth="1.3" strokeLinecap="round" fill="none"><path d="M14 50 q8 -1 13 1 M15 57 q7 -3 12 -2 M88 50 q-8 -1 -13 1 M87 57 q-7 -3 -12 -2"/></g>
         </g>
       </g>
+      {mood === "working" && <g className="cat-gear" fill="none" strokeWidth="3" strokeLinecap="round"><circle cx="91" cy="11" r="6"/><path d="M91 1 v3 M91 18 v3 M81 11 h3 M98 11 h3"/></g>}
+      {mood === "waiting" && <g className="cat-clock" fill="none" strokeWidth="3" strokeLinecap="round"><circle cx="91" cy="11" r="8"/><path d="M91 6 v5 l4 2"/></g>}
       {mood === "thinking" && <g className="cat-dots"><circle cx="86" cy="14" r="3"/><circle cx="93" cy="8" r="3"/><circle cx="99" cy="2" r="3"/></g>}
       {mood === "alert" && <path className="cat-mark" d="M92 4 v12 M92 22 v.5" strokeWidth="4" strokeLinecap="round"/>}
-      {mood === "success" && <g className="cat-spark"><path d="M88 6 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 z"/><path d="M12 10 l1.4 3.4 l3.4 1.4 l-3.4 1.4 l-1.4 3.4 l-1.4 -3.4 l-3.4 -1.4 l3.4 -1.4 z"/></g>}
+      {(mood === "success" || mood === "celebrate") && <g className="cat-spark"><path d="M88 6 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 z"/><path d="M12 10 l1.4 3.4 l3.4 1.4 l-3.4 1.4 l-1.4 3.4 l-1.4 -3.4 l-3.4 -1.4 l3.4 -1.4 z"/></g>}
+      {mood === "celebrate" && <g className="cat-spark cat-confetti"><rect x="4" y="30" width="5" height="5" rx="1" transform="rotate(20 6 32)"/><rect x="93" y="34" width="5" height="5" rx="1" transform="rotate(-25 95 36)"/><circle cx="18" cy="4" r="2.5"/><circle cx="78" cy="2" r="2.5"/></g>}
       {mood === "error" && <path className="cat-mark bad" d="M84 4 l12 12 M96 4 l-12 12" strokeWidth="4" strokeLinecap="round"/>}
     </svg>
   </span>;

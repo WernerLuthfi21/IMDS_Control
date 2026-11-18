@@ -21,6 +21,11 @@ describe("power automate bridge", () => {
     expect(await postToFlow("https://x", null, {}, f as unknown as typeof fetch)).toMatchObject({ ok: false, status: 500 });
     expect(await postToFlow("https://x", null, {}, f as unknown as typeof fetch)).toMatchObject({ ok: false, status: 0 });
   });
+  it("202 from a standard (Teams webhook) trigger is a hand-off; 200 from a Response action is a confirmed send", async () => {
+    const f = vi.fn().mockResolvedValueOnce(new Response("", { status: 202 })).mockResolvedValueOnce(new Response("", { status: 200 }));
+    expect(await postToFlow("https://x", "s", {}, f as unknown as typeof fetch)).toMatchObject({ ok: true, status: 202, handedOff: true });
+    expect(await postToFlow("https://x", "s", {}, f as unknown as typeof fetch)).toEqual({ ok: true, status: 200 });
+  });
 });
 
 import { mailSubject, transportFor } from "@/lib/automation/flow";

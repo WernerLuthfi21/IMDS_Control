@@ -13,17 +13,8 @@ export const popsRecords = pops.records;
 export const annex17Records = annex17.records;
 export const annex14Records = annex14.records;
 
-export function normalizeCas(value: string) {
-  return value.trim().replace(/[\s‐‑‒–—]/g, "-").replace(/[^0-9-]/g, "");
-}
-
-export function isValidCas(value: string) {
-  const cas = normalizeCas(value);
-  if (!/^\d{2,7}-\d{2}-\d$/.test(cas)) return false;
-  const digits = cas.replace(/-/g, "").slice(0, -1).split("").reverse();
-  const sum = digits.reduce((acc, digit, index) => acc + Number(digit) * (index + 1), 0);
-  return sum % 10 === Number(cas.split("-").at(-1));
-}
+import { isValidCas, normalizeCas } from "@/lib/cas";
+export { isValidCas, normalizeCas };
 
 function textHasCas(text: unknown, cas: string) {
   if (typeof text !== "string") return false;
@@ -36,12 +27,31 @@ function normalizeSubstanceName(value: unknown) {
     .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 
+// Lazy lookup indexes (built once per server instance): the lookups used to scan all 7,285 GADSL
+// records on every call. Arrays keep the original record order, so results are identical.
+let gadslCasIndex: Map<string, GadslRecord[]> | null = null;
+let gadslNameIndex: Map<string, GadslRecord[]> | null = null;
+let tszNameIndex: Map<string, typeof tsz3Records> | null = null;
+function push<T>(m: Map<string, T[]>, k: string, v: T) { const a = m.get(k); if (a) a.push(v); else m.set(k, [v]); }
+function byGadslCas(cas: string) {
+  if (!gadslCasIndex) { gadslCasIndex = new Map(); for (const r of gadslRecords) push(gadslCasIndex, normalizeCas(r.casOriginal || ""), r); }
+  return gadslCasIndex.get(cas) ?? [];
+}
+function byGadslName(key: string) {
+  if (!gadslNameIndex) { gadslNameIndex = new Map(); for (const r of gadslRecords) push(gadslNameIndex, normalizeSubstanceName(r.substance), r); }
+  return gadslNameIndex.get(key) ?? [];
+}
+function byTszName(key: string) {
+  if (!tszNameIndex) { tszNameIndex = new Map(); for (const r of tsz3Records) push(tszNameIndex, normalizeSubstanceName(r.values?.[2]), r); }
+  return tszNameIndex.get(key) ?? [];
+}
+
 /** Exact normalized-name fallback when the IMDS row masks CAS. Ambiguous names stay in manual review. */
 export function lookupSubstanceByName(rawName: string) {
   const key = normalizeSubstanceName(rawName);
   if (!key || key.length < 4) return { gadsl: [] as GadslRecord[], tsz: [] as typeof tsz3Records, casCandidates: [] as string[] };
-  const gadsl = gadslRecords.filter((row) => normalizeSubstanceName(row.substance) === key);
-  const tsz = tsz3Records.filter((row) => normalizeSubstanceName(row.values?.[2]) === key);
+  const gadsl = [...byGadslName(key)];
+  const tsz = [...byTszName(key)];
   const candidates = new Set<string>();
   for (const row of gadsl) {
     const cas = normalizeCas(row.casOriginal || "");
@@ -78,7 +88,7 @@ function groupsByName(names: string[]) {
 
 export function lookupSubstance(rawCas: string) {
   const cas = normalizeCas(rawCas);
-  const active = gadslRecords.filter((row) => normalizeCas(row.casOriginal || "") === cas);
+  const active = [...byGadslCas(cas)];
   const byCas = tsz3Records.filter((row) => textHasCas(row.values?.[3], cas));
   const byName = byCas.length ? [] : groupsByName(active.map((row) => String(row.substance || "")));
   const tsz = byCas.length ? byCas : byName;

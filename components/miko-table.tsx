@@ -8,7 +8,7 @@ export type PileKind = "toJudge" | "waitingTma" | "judged";
 export type PileTop = { part: string; type: string; tag?: string } | null;
 export const PILE_LABEL: Record<PileKind, { title: string; sub: string; mark: string }> = {
   toJudge: { title: "To judge", sub: "never judged", mark: "TO JUDGE" },
-  waitingTma: { title: "Waiting TMA", sub: "judged · awaiting TMA/KM", mark: "WAITING TMA" },
+  waitingTma: { title: "Waiting TMA", sub: "judged · TMA/KM still empty", mark: "WAITING TMA" },
   judged: { title: "Judged", sub: "TMA/KM done", mark: "JUDGED" }
 };
 

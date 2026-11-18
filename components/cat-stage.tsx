@@ -12,7 +12,10 @@ const LINES: Record<CatMood, string[]> = {
   success: ["Done! Those were easy.", "Purr-fect.", "All saved, with the full trace."],
   alert: ["Some cases need a person.", "I left the tricky ones for you."],
   error: ["Oops, something went wrong.", "I couldn't reach the server."],
-  empty: ["Nothing pending. Nap time!", "Queue is clear. Zzz…"]
+  empty: ["Nothing pending. Nap time!", "Queue is clear. Zzz…"],
+  working: ["Saving…", "Working through the batch…"],
+  waiting: ["Waiting on the supplier, Purchasing or TMC.", "Those cases need someone else first."],
+  celebrate: ["Batch done!", "Every case in this run is handled."]
 };
 
 export function CatStage({ mood, size = 112 }: { mood: CatMood; size?: number }) {
@@ -24,9 +27,13 @@ export function CatStage({ mood, size = 112 }: { mood: CatMood; size?: number })
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    let raf = 0;
+    let raf = 0, visible = false;
+    // Follow the pointer only while Miko is on screen (no layout reads for a hidden cat).
+    const io = typeof IntersectionObserver === "function" && ref.current
+      ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: 0 }) : null;
+    if (io && ref.current) io.observe(ref.current); else visible = true;
     const onMove = (e: PointerEvent) => {
-      const el = ref.current; if (!el) return;
+      const el = ref.current; if (!el || !visible || document.hidden) return;
       const r = el.getBoundingClientRect();
       const nx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
       const ny = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
@@ -34,7 +41,7 @@ export function CatStage({ mood, size = 112 }: { mood: CatMood; size?: number })
       raf = requestAnimationFrame(() => setLook({ x: nx, y: ny }));
     };
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => { window.removeEventListener("pointermove", onMove); cancelAnimationFrame(raf); };
+    return () => { window.removeEventListener("pointermove", onMove); cancelAnimationFrame(raf); io?.disconnect(); };
   }, []);
   useEffect(() => () => window.clearTimeout(sayTimer.current), []);
 

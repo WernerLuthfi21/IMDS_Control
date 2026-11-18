@@ -81,10 +81,14 @@ describe("analysis", () => {
     const a = analyzeMatrix([head, ["P1", "872-50-4; 118-74-1", "0.1"]]);
     expect(a.rows).toHaveLength(2);
   });
-  it("mass rows: class missing → asks; outside buffer → asks A/B", () => {
+  it("mass rows: the tolerance class is Toyota's, never asked; outside the buffer → supplier answers A/B up front", () => {
     const h = ["Part No", "IMDS mass (g)", "Drawing Mass (g)", "Mass Tol. Class"];
     const a = analyzeMatrix([h, ["M1", "500", "100", ""]]);
-    expect(a.rows[0].ask[0].id).toBe("toleranceClass");
+    expect(a.rows[0].ask.map((q) => q.id)).toEqual(["supplierConfirmation"]);
+    expect(a.rows[0].ask.some((q) => q.id === "toleranceClass")).toBe(false);
+    expect(a.rows[0].predicted).toBe("Mass tolerance range");
+    const same = analyzeMatrix([h, ["M1", "100", "100", ""]]);
+    expect(same.rows[0].state).toBe("OK");
     const b = analyzeMatrix([h, ["M1", "500", "100", "MC"]]);
     expect(b.rows[0].ask[0].id).toBe("supplierConfirmation");
     const c = analyzeMatrix([h, ["M1", "100", "100", "MC"]]);
@@ -97,5 +101,70 @@ describe("analysis", () => {
   it("handles a large paste quickly", () => {
     const rows = [head]; for (let i = 0; i < 2000; i++) rows.push([`P${i}`, i % 2 ? "872-50-4" : "118-74-1", "0.1"]);
     const t = Date.now(); const a = analyzeMatrix(rows); expect(a.rows).toHaveLength(2000); expect(Date.now() - t).toBeLessThan(5000);
+  });
+});
+
+
+describe("supplier self-check predicts G-CATS errors and asks only what the supplier can confirm", () => {
+  const head = ["Delivery Part No.", "Supplier Code", "CAS No.", "Substance Content(%)", "Application ID"];
+  it("a CAS on none of Toyota's lists is expected to pass", () => {
+    const a = analyzeMatrix([head, ["P1", "5010", "7732-18-5", "1", ""]]);
+    expect(a.rows[0]).toMatchObject({ state: "OK", predicted: "" });
+  });
+  it("Cd / Hg / Cr6+ / Pb CAS numbers are checked under their ELV error type", () => {
+    const a = analyzeMatrix([head, ["P1", "5010", "7440-43-9", "0.005", "44"], ["P2", "5010", "7439-92-1", "0.05", "40"]]);
+    expect(a.rows.find((r) => r.cas === "7440-43-9")).toMatchObject({ predicted: "ELV (Cd)", state: "OK" });
+    expect(a.rows.find((r) => r.cas === "7439-92-1")?.predicted).toBe("ELV (Pb)");
+    expect(a.identity.predicted.map((p) => p.errorType)).toEqual(expect.arrayContaining(["ELV (Cd)", "ELV (Pb)"]));
+  });
+  it("a supplier code missing from the Purchasing master predicts WARP and asks the supplier once per part", () => {
+    const a = analyzeMatrix([head, ["P1", "9999", "7732-18-5", "1", ""], ["P1", "9999", "50-00-0", "0.01", ""]]);
+    const warp = a.rows.filter((r) => r.family === "warp");
+    expect(warp).toHaveLength(1);
+    expect(warp[0]).toMatchObject({ state: "ASK", predicted: "WARP Part number" });
+    expect(warp[0].ask[0].id).toBe("supplierCodeOk");
+    expect(a.identity.suppliers).toEqual([{ code: "9999", inMaster: false, masterName: null, parts: 1, fromAccount: false }]);
+    const yes = analyzeMatrix([head, ["P1", "9999", "7732-18-5", "1", ""]], { answers: { [warp[0].key]: { supplierCodeOk: "Y" } } });
+    expect(yes.rows.find((r) => r.family === "warp")?.state).toBe("HOLD");
+    const no = analyzeMatrix([head, ["P1", "9999", "7732-18-5", "1", ""]], { answers: { [warp[0].key]: { supplierCodeOk: "N" } } });
+    expect(no.rows.find((r) => r.family === "warp")).toMatchObject({ state: "NG", comment: "Supplier code is incorrect." });
+  });
+  it("a registered code raises no WARP; without a code column the account's code is used", () => {
+    expect(analyzeMatrix([head, ["P1", "5010", "7732-18-5", "1", ""]]).rows.some((r) => r.family === "warp")).toBe(false);
+    const a = analyzeMatrix([["Part No", "CAS No.", "Content %"], ["P9", "7732-18-5", "1"]], { accountSupplierCode: "9999" });
+    expect(a.identity.suppliers[0]).toMatchObject({ code: "9999", fromAccount: true, inMaster: false });
+    expect(a.rows.some((r) => r.family === "warp" && r.partNo === "P9")).toBe(true);
+  });
+  it("destination is never asked to the supplier", () => {
+    const a = analyzeMatrix([head, ["P1", "5010", "7439-97-6", "0.05", "44"]]);
+    expect(a.rows.flatMap((r) => r.ask.map((q) => q.id))).not.toContain("destination");
+  });
+});
+
+import { runAutoWorkflow } from "@/lib/judgement/auto";
+import { extractRowFacts } from "@/lib/judgement/row-facts";
+import { familyOfKind } from "@/lib/intake/confirmations";
+describe("supplier answers reach Toyota's judgement", () => {
+  const facts = extractRowFacts({});
+  it("WARP: supplier says the code is wrong → NG; says correct → still Purchasing (HOLD) with the answer in the steps", () => {
+    const no = runAutoWorkflow({ errorType: "WARP Part number", facts, supplierCode: "9999", answers: { supplierCodeOk: "N" } });
+    expect(no.recommendation).toMatchObject({ state: "NG", comment: "Supplier code is incorrect." });
+    const yes = runAutoWorkflow({ errorType: "WARP Part number", facts, supplierCode: "9999", answers: { supplierCodeOk: "Y" } });
+    expect(yes.recommendation.state).toBe("HOLD");
+    expect(yes.steps.map((s) => s.id)).toContain("warp-supplier");
+    expect(runAutoWorkflow({ errorType: "WARP Part number", facts, supplierCode: "9999", answers: { supplierCodeOk: "Y", purchasingWarp: "Y" } }).recommendation.state).toBe("OK");
+  });
+  it("ELV and WARP confirmations are stored under families the table accepts", () => {
+    expect(familyOfKind("elv")).toBe("substance");
+    expect(familyOfKind("warp")).toBe("warp");
+    expect(familyOfKind("manual")).toBeNull();
+  });
+});
+
+describe("mixed supplier files", () => {
+  it("a row with masses and no CAS is checked as mass even when the sheet has a CAS column", () => {
+    const a = analyzeMatrix([["Part No", "CAS No.", "Content %", "IMDS mass (g)", "Drawing Mass (g)"], ["M1", "", "", "130", "100"], ["S1", "7732-18-5", "1", "", ""]]);
+    expect(a.rows.find((r) => r.partNo === "M1")).toMatchObject({ family: "mass", predicted: "Mass tolerance range" });
+    expect(a.rows.find((r) => r.partNo === "S1")?.state).toBe("OK");
   });
 });

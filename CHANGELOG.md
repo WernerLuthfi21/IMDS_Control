@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased: Fieldbook overhaul, case history, rule path, command palette, safety fixes (2026-11-18)
+
+- **Audit first:** UX/accessibility, domain/history and performance audits are in `docs/audit/`. `docs/UX-AUDIT.md` shows what was fixed and what is still open. Tokens and rules are in `docs/DESIGN-SYSTEM.md`.
+- **Safety:**
+  - Judgement shortcuts (Enter, 1–9, ←/→) work only while focus is on the judgement table. Enter on a link no longer saves a judgement.
+  - Auto-judge switches are staged and saved only with "Save and approve". Roles without rights see a read-only summary.
+- **Case context next to the card:** *Rule path* shows the engine's own steps, the result, and a link that lights up the same path on the flow chart. *History* (`GET /api/judgement/history`) builds a timeline from existing records only. It has no migration, invents no timestamps, and shows which sources are restricted or unavailable.
+- **Flow charts:** pan by dragging, arrow keys or wheel; zoom with buttons, Ctrl+wheel or + / −; fit; reset; step details; the case path is highlighted and centred (`lib/judgement/flow-path.ts`, 6 tests).
+- **Command palette:** Ctrl/⌘ K jumps to any module, searches a part, CAS or supplier in the register, and switches the theme.
+- **Miko** shows the table's real state: working, waiting, warning (draft flow), celebrate (batch done) and more. Clicking it shows the pile meanings and shortcuts. Idle loops are off.
+- **Counters:**
+  - One `isWorking()` test is used everywhere.
+  - "All judged" (KPI) and "Judged" (pile) no longer share a name.
+  - "Awaiting KM" is now "Waiting TMA" everywhere.
+- **Accessibility:**
+  - Global focus ring.
+  - Skip link and `aria-current` in the navigation.
+  - 37 labels tied to their fields.
+  - Keyboard-reachable self-check upload.
+  - Mobile search and sidebar fixes.
+  - Error and not-found pages.
+  - Light-theme greys and HOLD amber pass 4.5:1 on paper.
+- **Performance (measured):**
+  - /supplier-precheck JS: 3.87 MB → 0.78 MB. The CAS helpers moved to `lib/cas.ts`, so the GADSL list is no longer shipped to supplier browsers.
+  - Sign-out is a form post, which removes supabase-js from most routes (−63 KB gzip).
+  - Substance lookups are indexed: 16 ms → 0.002 ms by name, 0.96 → 0.20 ms by CAS.
+  - Mass cases no longer run the check twice.
+  - The mascot pauses while off screen.
+- **Supplier self-check + judgement engine:**
+  - The check predicts which G-CATS check each line will hit: WARP when the supplier code is not in the Purchasing master, ELV by CAS, prohibited substance, mass.
+  - It summarises the supplier's data: part numbers, supplier code and whether it is registered, and the likely checks.
+  - Suppliers answer only what they can confirm. WARP gets "is code X correct?". The destination and the drawing's tolerance class always stay with Toyota.
+  - PDFs with real text are read (CAS + %) without a new dependency. Old .xls files get a clear Save-As/paste message.
+- **Power Automate:**
+  - New guide using standard connectors only (`docs/POWER_AUTOMATE_STANDARD_ID.md`): a Teams webhook trigger and a daily supplier reminder flow.
+  - HTTP 202 is recorded as "handed off to the flow".
+  - `scripts/build_judgement_register.py` refills the JudgementRegister master from Master Data All IMDS.
+- **Fixes:** Final NG button style; FINAL_NG shown red; literal `\n` in the bulk confirm; sidebar classification label set to PROTECTED; follow-up page names both e-mail paths.
+
 ## Unreleased — Judge + Auto-judge on one table, decks per error type, one shell standard (2026-11-18)
 
 - **One tab:** Auto-judge opens as a panel on Miko's table (Judge tab). The separate Auto-judge tab is gone; Settings → Judgement and "Judged by Miko" open the panel.

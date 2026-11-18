@@ -1,6 +1,7 @@
 import catalog from "@/data/error-type-catalog.json";
 import rules from "@/data/judgement-rules.json";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { Suspense } from "react";
 import { FlowLibrary } from "@/components/flow-library";
 import { flowChart, listFlows, type FlowChart } from "@/lib/judgement/flows";
 // Charts follow today's date (exemption end dates), so rebuild them hourly instead of freezing them at build time.
@@ -16,5 +17,5 @@ export default function RulesPage(){
   <section className="panel" style={{marginTop:14}}><div className="panel-header"><div><div className="panel-title">Historical-only labels and source conflicts</div><div className="panel-subtitle">Labels are preserved and cannot be silently mapped.</div></div><AlertTriangle size={16} color="#ad7415"/></div><div className="panel-body"><div className="table-wrap"><table><thead><tr><th>Label / conflict</th><th>State</th><th>Handling</th></tr></thead><tbody>{catalog.historicalOnlyLabels.map((x:any)=><tr key={x.name}><td className="table-primary">{x.name}</td><td><span className="status status-gray">HISTORICAL ONLY</span></td><td>{x.reason}</td></tr>)}<tr><td className="table-primary">{catalog.sourceConflict.title}</td><td><span className="status status-red">HOLD</span></td><td>{catalog.sourceConflict.details}</td></tr></tbody></table></div></div></section>
  </>;
  const charts = listFlows().map((f) => flowChart(f.id)).filter((c): c is FlowChart => Boolean(c));
- return <FlowLibrary charts={charts} register={register}/>;
+ return <Suspense fallback={null}><FlowLibrary charts={charts} register={register}/></Suspense>;
 }

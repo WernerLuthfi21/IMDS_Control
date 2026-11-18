@@ -2,10 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { partKey, supplierKey } from "@/lib/intake/keys";
 
 export type StoredConfirmation = { supplier_code: string; delivery_part_no: string; answers: Record<string, string>; submitted_at: string; source_file_name: string | null };
-export type Family = "substance" | "pb" | "mass" | "sms" | "app44";
+export type Family = "substance" | "pb" | "mass" | "sms" | "app44" | "warp";
 
 export function familyOfKind(kind: string): Family | null {
-  return kind === "substance" || kind === "pb" || kind === "mass" || kind === "sms" || kind === "app44" ? kind : null;
+  // ELV Cd/Hg/Cr6+ answers are the same supplier questions as substances, stored per CAS.
+  if (kind === "elv") return "substance";
+  return kind === "substance" || kind === "pb" || kind === "mass" || kind === "sms" || kind === "app44" || kind === "warp" ? kind : null;
 }
 
 /** Latest supplier confirmation for this part (same supplier code, same family, same CAS). Returns null when none or when the table is not migrated yet. */

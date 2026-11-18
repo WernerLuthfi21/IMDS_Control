@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 import { analyzeMatrix, type AnswerMap } from "@/lib/intake/analyze";
 import type { Field } from "@/lib/intake/detect";
 import { FIELD_LABEL } from "@/lib/intake/detect";
@@ -35,6 +36,13 @@ export async function POST(request: NextRequest) {
       answers[key] = clean;
     }
   }
-  const analysis = analyzeMatrix(matrix as string[][], { mapping, headerRow, answers });
+  // A supplier account's own code identifies its data when the file has no supplier-code column (WARP check).
+  let accountSupplierCode: string | null = null;
+  if (auth.role === "supplier") {
+    const supabase = await createClient();
+    const { data } = supabase ? await supabase.from("profiles").select("supplier_code").eq("id", auth.userId).maybeSingle() : { data: null };
+    accountSupplierCode = data?.supplier_code?.trim() || null;
+  }
+  const analysis = analyzeMatrix(matrix as string[][], { mapping, headerRow, answers, accountSupplierCode });
   return NextResponse.json({ analysis }, { headers: { "Cache-Control": "no-store" } });
 }

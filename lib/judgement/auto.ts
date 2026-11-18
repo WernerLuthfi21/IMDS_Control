@@ -238,9 +238,14 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     const w = checkWarp(input.supplierCode, facts.companyName);
     const steps: AutoStep[] = [{ id: "warp-master", title: "Supplier code in Purchasing supplier code master", status: w.found && w.nameMatches !== false ? "DONE" : w.found ? "INFO" : "INFO", detail: `${w.reason} (${WARP_SOURCE})` }];
     const purchasing = input.answers?.purchasingWarp;
+    // Supplier's own answer from the self-check ("Is supplier code X correct?"), saved per part.
+    const supplierSays = input.answers?.supplierCodeOk;
+    if (supplierSays === "Y" || supplierSays === "N") steps.push({ id: "warp-supplier", title: "Supplier confirmation (self-check)", status: "DONE", detail: supplierSays === "Y" ? "Supplier confirmed the supplier code is correct." : "Supplier says the supplier code is wrong and will correct IMDS." });
     let recommendation: AutoRecommendation;
     if (w.found && w.nameMatches !== false) {
       recommendation = { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Supplier code is registered in the Purchasing supplier code master (G-CATS Appendix I No.21)." };
+    } else if (supplierSays === "N" && purchasing !== "Y") {
+      recommendation = { state: "NG", comment: "Supplier code is incorrect.", reason: "The supplier confirmed in its self-check that the supplier code is wrong (Appendix I No.21)." };
     } else if (purchasing === "Y" || purchasing === "N") {
       steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "DONE", detail: purchasing === "Y" ? "Purchasing confirmed the supplier code / WARP registration." : "Purchasing says the supplier code is incorrect." });
       recommendation = purchasing === "Y" ? { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Purchasing Div. confirmed the supplier code." } : { state: "NG", comment: "Supplier code is incorrect.", reason: "Purchasing Div. says the supplier code is incorrect." };
@@ -252,7 +257,7 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       trail: [{ question: "Supplier code in Purchasing master?", answer: w.found ? (w.nameMatches === false ? "Yes, name differs" : "Yes") : "No", auto: true }],
       next: recommendation.state === "HOLD" ? { id: "purchasingWarp", text: "Does Purchasing Div. confirm the supplier code / WARP registration?", options: [["Y", "Yes · confirmed"], ["N", "No · code incorrect"]] } : null,
       outcome: recommendation.state === "HOLD" ? null : { state: recommendation.state, comment: recommendation.comment, reason: recommendation.reason } };
-    const procedureText = recommendation.state === "HOLD" ? "" : `No.21 WARP: ${w.reason}${purchasing ? ` Purchasing Div.: ${purchasing === "Y" ? "confirmed" : "code incorrect"}.` : ""}`;
+    const procedureText = recommendation.state === "HOLD" ? "" : `No.21 WARP: ${w.reason}${supplierSays ? ` Correct supplier code? ${supplierSays === "Y" ? "YES" : "NO"} (supplier self-check).` : ""}${purchasing ? ` Purchasing Div.: ${purchasing === "Y" ? "confirmed" : "code incorrect"}.` : ""}`;
     return { kind, steps, flow, procedureText, recommendation, needs: { destination: false, toleranceClass: false, supplierConfirmation: false }, massBands: null, engineInput, engine: pick(result) };
   }
 

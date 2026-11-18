@@ -1,4 +1,4 @@
-import { isValidCas } from "@/lib/reference-data";
+import { isValidCas } from "@/lib/cas";
 import { CAS_IN_TEXT } from "@/lib/intake/keys";
 
 export type Field = "partNo" | "supplierCode" | "partName" | "errorType" | "cas" | "substanceName" | "contentPct" | "materialName" | "matlClass" | "componentPartName" | "applicationId" | "imdsMass" | "drawingMass" | "toleranceClass" | "destination";
