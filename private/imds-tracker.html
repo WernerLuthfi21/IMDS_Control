@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="meta-theme" content="#F7F5FA">
 <title>IMDS Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,750&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
 <style>
 /* ==========================================================================
    IMDS Tracker — Violet Refractive · Editorial Industrial Glass
@@ -33,9 +34,9 @@
   /* scales */
   --r-1:6px;--r-2:10px;--r-3:16px;
   --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:24px;--s-6:32px;--s-7:48px;
-  --f-display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
-  --f-ui:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono","Segoe UI Mono",monospace;
+  --f-display:'Century Gothic',CenturyGothic,'URW Gothic','URW Gothic L',Questrial,AppleGothic,'Segoe UI',sans-serif;
+  --f-ui:'Century Gothic',CenturyGothic,'URW Gothic','URW Gothic L',Questrial,AppleGothic,'Segoe UI',sans-serif;
+  --f-mono:'Century Gothic',CenturyGothic,'URW Gothic','URW Gothic L',Questrial,AppleGothic,'Segoe UI',sans-serif;
   --sidebar-w:244px;
 }
 :root[data-theme="dark"]{
@@ -102,6 +103,13 @@ kbd{font-size:11px;border:1px solid var(--line-strong);border-bottom-width:2px;b
 .nav-count{margin-left:auto;font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--neutral-soft);color:var(--muted)}
 .nav-count.warn{background:var(--warn-soft);color:var(--warn-ink)}
 .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px;align-items:flex-start;padding:0 8px}
+.user-row{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:6px;padding:8px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface)}
+.user-row form{margin:0}
+.ur-avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--violet,#6d28d9);color:#fff;font-size:11px;font-weight:700}
+.ur-copy{min-width:0;display:grid;gap:1px}.ur-copy b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ur-copy small{font-size:11px;color:var(--muted);text-transform:capitalize}
+.ur-btn{width:32px;height:32px;display:grid;place-items:center;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+.ur-btn:hover{border-color:var(--line-strong);color:var(--ink);background:var(--surface-2)}
+.ur-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .brand-logo{width:120px;height:auto;border-radius:8px;background:#fff;padding:4px;border:1px solid var(--line)}
 .confidential{font-size:11px;letter-spacing:.04em;color:var(--faint)}
 .conn-badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--ok-soft);color:var(--ok-ink);white-space:nowrap}
@@ -569,6 +577,9 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
   <div class="side-foot">
     <span class="conn-badge state-neutral" role="status"><span class="dot" aria-hidden="true"></span><span class="conn-text">Not connected</span></span>
     <img id="brand-logo" class="brand-logo" alt="PT Toyota Motor Manufacturing Indonesia" width="120" height="51">
+    <div class="user-row"><span class="ur-avatar" aria-hidden="true">__IMDS_USER_INITIALS__</span><span class="ur-copy"><b title="__IMDS_USER_EMAIL__">__IMDS_USER_EMAIL__</b><small>__IMDS_USER_ROLE__</small></span>
+      <a class="ur-btn" href="#settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg></a>
+      <form method="post" action="/auth/signout"><button type="submit" class="ur-btn" title="Sign out" aria-label="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/></svg></button></form></div>
     <span class="confidential">Confidential · internal use only</span>
   </div>
 </aside>

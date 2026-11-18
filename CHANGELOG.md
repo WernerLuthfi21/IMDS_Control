@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Judge + Auto-judge on one table, decks per error type, one shell standard (2026-11-18)
+
+- **One tab:** Auto-judge opens as a panel on Miko's table (Judge tab). The separate Auto-judge tab is gone; Settings → Judgement and "Judged by Miko" open the panel.
+- **Decks and piles:** every Error Type is a deck of cards (count, ready / you / wait bar); a card is dealt from its deck. The To Judge / Waiting TMA / Judged piles show the case on top (part number, error type, OK/NG).
+- **Miko 3D:** soft-toy shading (light, rim shadow, glossy eyes, blush), calm float / blink / ear twitch, a happy hop with sparkles after a save. Deal and save flights are smoother (GPU transforms, eased paths).
+- **Contrast, type and size system:** Century Gothic everywhere (app and Tracker; IBM Plex Mono and other fonts removed, minimum 10.5px), one height (36px), radius (14px cards / 12px buttons / pills) and border (1.5px) on the table; brighter text on the felt; option labels no longer wrap ("Other").
+- **One shell standard** for Judgement and Tracker: brand · Back to menu · navigation · Toyota Indonesia logo · user row (Settings, Sign out) · "Confidential · internal use only". Sign-out and settings left the Judgement top bar; the Tracker gets the same user row (`POST /auth/signout`). Theme button shows icon + label in both.
+- **Favicon:** Miko on green (`app/icon.svg`), also used by the Tracker.
+
 ## Unreleased — Miko's judgement table, real workflow piles, drag-and-drop fixed (2026-11-18)
 
 - **Workflow piles** (`lib/judgement/piles.ts`, 11 tests): To Judge = WORKING without an internal judgement (the only remaining work); Waiting TMA = judgement saved, KM/TMA judge empty (already judged, never dealt again); Judged = judgement and KM filled; Other = not WORKING and not judged. Every count on the Judgement page uses these definitions (KPI tiles, statistics, Auto-judge). Duplicate ids count once. New list filter "TMA/KM done".

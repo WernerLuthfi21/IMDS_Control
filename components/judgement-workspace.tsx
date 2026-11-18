@@ -12,7 +12,6 @@ import { GcatsDetailView } from "@/components/gcats-detail-view";
 import { buildCommentHistory } from "@/lib/judgement/comment-history";
 import { summarizeRegister, type NeedCounts } from "@/lib/judgement/overview";
 import { pileCounts, pileOf } from "@/lib/judgement/piles";
-import { Piles } from "@/components/miko-table";
 import type { ReviewNeed } from "@/lib/judgement/review";
 
 const SYSTEM_ACTOR = "Auto-judgement (System)";
@@ -204,7 +203,9 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [errorType, setErrorType] = useState("All Error Types");
   const [month, setMonth] = useState("All");
   const [search, setSearch] = useState(initialSearch);
-  const [view, setView] = useState<"judge" | "list" | "detail" | "auto">(openAutoJudgeSettings ? "auto" : initialSearch ? "list" : "judge");
+  const [view, setView] = useState<"judge" | "list" | "detail">(initialSearch && !openAutoJudgeSettings ? "list" : "judge");
+  // Auto-judge lives on the Judge table (one tab); this opens its panel.
+  const [autoOpen, setAutoOpen] = useState(openAutoJudgeSettings);
   const [detailPart, setDetailPart] = useState("");
   const [needs, setNeeds] = useState<NeedCounts | null>(null);
   const [needsLoading, setNeedsLoading] = useState(true);
@@ -231,6 +232,15 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   // One definition for every count on the page (lib/judgement/piles.ts): Waiting TMA is judged, never remaining.
   const piles = useMemo(() => pileCounts(rows), [rows]);
   const counts = useMemo(() => ({ pending: piles.toJudge, judged: piles.judgedTotal, km: piles.waitingTma }), [piles]);
+  // The case on top of the Waiting TMA / Judged piles: the most recently judged one.
+  const pileTops = useMemo(() => {
+    const latest = (k: "waitingTma" | "judged") => {
+      let best: Item | null = null;
+      for (const r of rows) if (pileOf(r) === k && (!best || String(r.starting_date || "") > String(best.starting_date || ""))) best = r;
+      return best ? { part: best.delivery_part_no || "—", type: best.error_type_label, tag: (best.judge || "").toUpperCase() } : null;
+    };
+    return { waitingTma: latest("waitingTma"), judged: latest("judged") };
+  }, [rows]);
   const types = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of rows) if (r.source_status === "WORKING" && !r.judge) m.set(r.error_type_label, (m.get(r.error_type_label) || 0) + 1);
@@ -343,11 +353,11 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     { key: "judged", label: "Judged", n: counts.judged, on: tab === "judged" || tab === "kmdone", tone: "green", act: () => { setTab("judged"); setSubstanceOnly(false); }, hint: "OK or NG saved" },
     { key: "km", label: "Awaiting KM", n: counts.km, on: tab === "km", tone: "blue", act: () => { setTab("km"); setSubstanceOnly(false); }, hint: "Judged, KM judge still empty" },
     { key: "sub", label: "Prohibited substances", n: prohibitedPending, on: substanceOnly, tone: "red", act: () => { setTab("pending"); setSubstanceOnly((v) => !v); setErrorType("All Error Types"); }, hint: `${prohibitedMissingCas} without CAS` },
-    { key: "auto", label: "Judged by Miko", n: autoCount, on: view === "auto", tone: "violet", act: () => { setTab("judged"); setSearch(""); }, hint: "Automatic decisions (reopenable)" }
+    { key: "auto", label: "Judged by Miko", n: autoCount, on: false, tone: "violet", act: () => { setAutoOpen(true); }, hint: "Automatic decisions (reopenable)" }
   ];
 
   const kpiRow = <div className="jw-kpis" role="group" aria-label="Queue">
-      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on && view === "list" ? " on" : "")} aria-pressed={k.on && view === "list"} onClick={() => { k.act(); setView(k.key === "auto" ? "auto" : "list"); }} title={k.hint}>
+      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on && view === "list" ? " on" : "")} aria-pressed={k.on && view === "list"} onClick={() => { k.act(); setView(k.key === "auto" ? "judge" : "list"); }} title={k.hint}>
         <span>{k.label}</span><b>{k.n.toLocaleString("en-US")}</b><small>{k.hint}</small></button>)}
     </div>;
 
@@ -360,7 +370,6 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       <button type="button" role="tab" aria-selected={view === "judge"} className={view === "judge" ? "on" : ""} onClick={() => setView("judge")}>Judge</button>
       <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>All cases</button>
       <button type="button" role="tab" aria-selected={view === "detail"} className={view === "detail" ? "on" : ""} onClick={() => setView("detail")}>G-CATS Detail (TMA)</button>
-      <button type="button" role="tab" aria-selected={view === "auto"} className={view === "auto" ? "on" : ""} onClick={() => setView("auto")}>Auto-judge</button>
       </div>
         <a className="jx-back" href="/workspace"><ArrowLeft size={14}/> Menu</a>
       </div>
@@ -374,16 +383,15 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       onKm={() => { setTab("km"); setSubstanceOnly(false); setView("list"); }}/>}
     {view === "detail" && <GcatsDetailView rows={rows} initialPart={detailPart}/>}
 
-    {view === "auto" && <section className="mt mt-auto" aria-label="Miko's auto-judge table">
-      <Piles piles={piles} onPile={(k) => { if (k === "toJudge") setView("judge"); else { setTab(k === "judged" ? "kmdone" : "km"); setSubstanceOnly(false); setView("list"); } }}/>
-      <AutoJudgeCard openSettings={openAutoJudgeSettings}
-      pendingIds={pendingRows.map((r) => r.id)}
-      judgedIds={rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR).map((r) => r.id)}
-      onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>
-    </section>}
+
 
     {/* Stays mounted on every view: its pile counts feed the overview and a pile opens instantly. */}
-    <div hidden={view !== "judge"}><ReviewDeck rows={pendingRows} piles={piles}
+    <div hidden={view !== "judge"}><ReviewDeck rows={pendingRows} piles={piles} tops={pileTops}
+      autoOpen={autoOpen} onAutoToggle={setAutoOpen}
+      autoJudge={<AutoJudgeCard openSettings={openAutoJudgeSettings}
+      pendingIds={pendingRows.map((r) => r.id)}
+      judgedIds={rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR).map((r) => r.id)}
+      onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>}
       onPile={(k) => { setTab(k === "judged" ? "kmdone" : "km"); setSubstanceOnly(false); setView("list"); }} canEdit={canEdit} active={view === "judge"} history={history} onNeeds={onNeeds} jump={jump}
       onDetail={(part) => { setDetailPart(part); setView("detail"); }}
       onOpenCase={(id) => { setView("list"); setTab("pending"); setOpenId(id); }}

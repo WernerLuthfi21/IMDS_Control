@@ -1,12 +1,12 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCheck, CircleX, ExternalLink, FileText, FileWarning, History, LoaderCircle, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Bot, Check, CheckCheck, CircleX, ExternalLink, FileText, FileWarning, History, LoaderCircle, RefreshCw, RotateCcw } from "lucide-react";
 import type { AutoOutput } from "@/lib/judgement/auto";
 import { classifyCase, NEED_LABEL, NEED_ORDER, type ReviewCard, type ReviewNeed } from "@/lib/judgement/review";
 import { rememberAnswer, runCheck, saveJudgement } from "@/lib/judgement/client-save";
 import { answerKey, mergeAnswer, type DeckAnswers } from "@/lib/judgement/deck";
 import { CatMascot, type CatMood } from "@/components/cat-mascot";
-import { Piles, PILE_LABEL, type PileKind } from "@/components/miko-table";
+import { Decks, Piles, PILE_LABEL, type PileKind, type PileTop } from "@/components/miko-table";
 import type { PileCounts } from "@/lib/judgement/piles";
 import type { NeedCounts } from "@/lib/judgement/overview";
 import { buildStacks, toneOf, type Stack } from "@/lib/judgement/stacks";
@@ -44,7 +44,11 @@ function viewOf(c: Candidate, l: Live | undefined): View {
  * biggest thing; the comment window checks the wording against what was saved before for the
  * same Error Type and decision, because TMA checks it and it is typed into G-CATS as written.
  */
-export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onOpenCase, onDetail, onNeeds, jump, piles, onPile }: {
+export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onOpenCase, onDetail, onNeeds, jump, piles, onPile, tops, autoJudge, autoOpen = false, onAutoToggle }: {
+  /** Case on top of the Waiting TMA / Judged piles. */
+  tops?: Partial<Record<PileKind, PileTop>>;
+  /** The Auto-judge panel (shown on the table when open). */
+  autoJudge?: React.ReactNode; autoOpen?: boolean; onAutoToggle?: (open: boolean) => void;
   rows: Row[]; canEdit: boolean;
   /** Real pile counts from the register (lib/judgement/piles.ts). */
   piles: PileCounts;
@@ -76,10 +80,11 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   const [enter, setEnter] = useState<"next" | "prev" | "up">("next");
   const [stamp, setStamp] = useState<{ id: string; decision: "OK" | "NG" } | null>(null);
   const [bump, setBump] = useState<PileKind | null>(null);
-  const [cheer, setCheer] = useState(0);
+  const [, setCheer] = useState(0);
   const [cheerOn, setCheerOn] = useState(false);
   const pileRefs = useRef<Partial<Record<PileKind, HTMLButtonElement | null>>>({});
   const cardRef = useRef<HTMLElement | null>(null);
+  const deckRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const liveRef = useRef(live);
   useEffect(() => { liveRef.current = live; }, [live]);
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
@@ -244,12 +249,16 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   async function flyToPile(to: PileKind) {
     const card = cardRef.current; const pile = pileRefs.current[to];
     if (!card || !pile || reducedMotion()) { await wait(250); return; }
-    await wait(380);
+    await wait(420);
     const a = card.getBoundingClientRect(); const b = pile.getBoundingClientRect();
     const dx = b.left + b.width / 2 - (a.left + a.width / 2); const dy = b.top + b.height / 2 - (a.top + a.height / 2);
-    const k = Math.max(0.12, Math.min(0.4, b.width / a.width));
-    try { await card.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${dx}px, ${dy}px) scale(${k}) rotate(10deg)`, opacity: 0.25 }],
-      { duration: 480, easing: "cubic-bezier(.45,.05,.55,.95)", fill: "forwards" }).finished; } catch { /* element removed */ }
+    const k = Math.max(0.1, Math.min(0.35, b.width / a.width));
+    card.style.willChange = "transform, opacity";
+    try { await card.animate([
+      { transform: "translate3d(0,0,0) scale(1) rotate(0)", opacity: 1 },
+      { transform: `translate3d(${dx * 0.55}px, ${dy * 0.55 - 40}px, 0) scale(${(1 + k) / 2}) rotate(4deg)`, opacity: 0.9, offset: 0.55 },
+      { transform: `translate3d(${dx}px, ${dy}px, 0) scale(${k}) rotate(8deg)`, opacity: 0 }],
+      { duration: 620, easing: "cubic-bezier(.45,0,.25,1)", fill: "forwards" }).finished; } catch { /* element removed */ }
   }
 
   async function confirmDecided() {
@@ -276,32 +285,29 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   const say = !cands ? (loading ? [`Miko is sorting ${progress.total.toLocaleString("en-US")} cases…`, "Checking every unjudged case against the rules"] : error ? ["Miko could not deal the cards", error] : ["Nothing to deal", "Every WORKING case has a judgement."])
     : !open.length ? ["All unjudged cases have been processed", "Judged cards wait in Waiting TMA until TMA/KM is filled."]
     : stamp ? [`Judged ${stamp.decision} — saved`, "Moving the card to its pile…"]
-    : current && sel ? [current && views.get(current.id)?.decided ? "Next case is ready — confirm it" : "Next case is ready", `${sel.errorType} · ${deck.length} card${deck.length === 1 ? "" : "s"} in this stack · ${toJudge.toLocaleString("en-US")} to judge in total`]
+    : current && sel ? [current && views.get(current.id)?.decided ? "Ready to confirm" : "Next case is ready", `${sel.errorType} · ${deck.length} in this deck · ${toJudge.toLocaleString("en-US")} to judge`]
     : sel ? ["Stack cleared", "Pick another stack."] : ["Miko is ready to deal", `${toJudge.toLocaleString("en-US")} cases to judge`];
 
   return <section className="mt" aria-label="Miko's judgement table">
     <header className="mt-dealer">
-      <span className="mt-miko"><CatMascot key={cheer} mood={mood} size={58}/></span>
+      <span className="mt-miko"><CatMascot mood={mood} size={62}/></span>
       <div className="mt-say" aria-live="polite"><strong>{say[0]}</strong><span>{say[1]}</span>
         {loading && <div className="aj-bar"><i style={{ width: (progress.total ? progress.done / progress.total * 100 : 0) + "%" }}/></div>}</div>
       <Piles piles={piles} toJudge={toJudge} active="toJudge" bump={bump} refs={pileRefs}
+        tops={{ ...tops, toJudge: current ? { part: current.partNo || "—", type: current.errorType } : null }}
         onPile={(k) => { if (k === "toJudge") { if (stacks[0] && !stack) openStack(stacks[0].errorType); } else onPile(k); }}/>
       <div className="mt-dealer-actions">
+        {autoJudge && <button type="button" className={"mt-btn" + (autoOpen ? " on" : "")} aria-expanded={autoOpen} onClick={() => onAutoToggle?.(!autoOpen)}><Bot size={15}/> Auto-judge</button>}
         {decidedHere.length > 0 && canEdit && <button type="button" className="jb-confirm-all" disabled={Boolean(bulk)} onClick={() => void confirmDecided()}>
           <CheckCheck size={15}/> Confirm {decidedHere.length} <small>{okN} OK · {decidedHere.length - okN} NG</small></button>}
         <button type="button" className="mt-icon" onClick={() => void load()} disabled={loading || Boolean(bulk)} title="Check all pending cases again" aria-label="Check all pending cases again">{loading ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}</button>
       </div>
     </header>
 
+    {autoJudge && autoOpen && <div className="mt-auto-panel mt-auto">{autoJudge}</div>}
     <div className="mt-board">
       <div className="mt-play">
-        {stacks.length > 0 && <div className="mt-families" role="tablist" aria-label="Rule families still to judge">
-          {stacks.map((s) => <button type="button" role="tab" key={s.errorType} aria-selected={s.errorType === stack} title={`${s.errorType}: ${s.decided} ready · ${s.yours} need your answer · ${s.waiting} waiting`}
-            className={"mt-fam t-" + s.tone + (s.errorType === stack ? " on" : "")} onClick={() => openStack(s.errorType)}>
-            <span className="jb-orb" aria-hidden="true">{s.fullAuto ? <Sparkles size={11}/> : null}</span><b>{s.total.toLocaleString("en-US")}</b><span>{shortType(s.errorType)}</span>
-            {s.decided > 0 && <em title="Decided by the rules">{s.decided}</em>}
-          </button>)}
-        </div>}
+        {stacks.length > 0 && <Decks stacks={stacks} selected={stack} onPick={(t) => openStack(t)} label={shortType} refs={deckRefs}/>}
         {sel && <div className={"jb-needs t-" + sel.tone} role="group" aria-label="Filter this stack">
           <button type="button" className={needFilter === "all" ? "on" : ""} aria-pressed={needFilter === "all"} onClick={() => pickNeed("all")}>All <b>{sel.total}</b></button>
           {NEED_ORDER.filter((n) => stackNeeds.get(n)).map((n) => <button type="button" key={n} className={(needFilter === n ? "on " : "") + "n-" + n} aria-pressed={needFilter === n} onClick={() => pickNeed(n)}>{NEED_LABEL[n].title} <b>{stackNeeds.get(n)}</b></button>)}
@@ -312,7 +318,7 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
         {cands && !open.length && <div className="mt-slot done"><CatMascot mood="success" size={64}/><strong>All unjudged cases are done</strong><span>Open Waiting TMA or Judged to review them.</span></div>}
         {sel && !current && open.length > 0 && <div className="mt-slot done"><strong>Stack cleared</strong><span>Pick another rule family above.</span></div>}
         {!cands && loading && <div className="mt-slot"><span className="mt-slot-card" aria-hidden="true"/><strong>Shuffling the deck…</strong></div>}
-        {sel && current && <Flashcard key={current.id} cardRef={cardRef} dealFrom={() => pileRefs.current.toJudge?.getBoundingClientRect() ?? null} stamp={stamp?.id === current.id ? stamp.decision : null}
+        {sel && current && <Flashcard key={current.id} cardRef={cardRef} dealFrom={() => (stack && deckRefs.current[stack]) ? deckRefs.current[stack]!.getBoundingClientRect() : pileRefs.current.toJudge?.getBoundingClientRect() ?? null} stamp={stamp?.id === current.id ? stamp.decision : null}
           active={active} c={current} v={views.get(current.id)!} pos={pos + 1} total={deck.length} left={deck.length - pos - 1} canEdit={canEdit}
           enter={enter} busy={working.has(current.id) || Boolean(bulk)} error={error} similar={similarTo(current).length} answered={live.has(current.id)} history={history}
           comment={comments.get(current.id) ?? views.get(current.id)!.rec.comment}
@@ -348,15 +354,20 @@ function Flashcard({ cardRef, dealFrom, stamp, active, c, v, pos, total, left, c
   const [all, setAll] = useState(true);
   const [drag, setDrag] = useState<{ x0: number; dx: number; id: number } | null>(null);
   const q = v.decided ? null : v.card.question;
-  // Miko deals the card from the To Judge pile (forward moves only; reduced motion: no flight).
+  // Miko deals the card from its Error Type deck (forward moves only; reduced motion: no flight).
   useLayoutEffect(() => {
     const el = cardRef.current; const from = dealFrom();
-    if (!el || !from || enter === "prev" || reducedMotion()) return;
+    if (!el || enter === "prev" || reducedMotion()) return;
     const to = el.getBoundingClientRect();
-    const dx = from.left + from.width / 2 - (to.left + to.width / 2); const dy = from.top + from.height / 2 - (to.top + to.height / 2);
-    const k = Math.max(0.12, Math.min(0.4, from.width / Math.max(1, to.width)));
-    el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${k}) rotate(-8deg)`, opacity: 0.35 }, { transform: "none", opacity: 1 }],
-      { duration: 460, easing: "cubic-bezier(.2,.8,.2,1)" });
+    const dx = from ? from.left + from.width / 2 - (to.left + to.width / 2) : 0; const dy = from ? from.top + from.height / 2 - (to.top + to.height / 2) : 30;
+    const k = from ? Math.max(0.12, Math.min(0.35, from.width / Math.max(1, to.width))) : 0.96;
+    el.style.willChange = "transform, opacity";
+    const anim = el.animate([
+      { transform: `translate3d(${dx}px, ${dy}px, 0) scale(${k}) rotate(-6deg)`, opacity: 0 },
+      { transform: `translate3d(${dx * 0.25}px, ${dy * 0.25 - 18}px, 0) scale(${(1 + k) / 2 + 0.2}) rotate(-1.5deg)`, opacity: 1, offset: 0.6 },
+      { transform: "translate3d(0,0,0) scale(1) rotate(0)", opacity: 1 }],
+      { duration: 560, easing: "cubic-bezier(.22,1,.36,1)" });
+    anim.onfinish = () => { el.style.willChange = ""; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const tone = toneOf(c.errorType);

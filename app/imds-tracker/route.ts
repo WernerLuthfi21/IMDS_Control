@@ -27,7 +27,12 @@ export async function GET(request: Request) {
     // commitDataset, SRC, …), so it must be injected INSIDE that scope, right after its last statement.
     const anchor = "  tryAutoReconnect();\n})();";
     if (!sourceHtml.includes(anchor)) throw new Error("Tracker injection anchor not found.");
-    const html = sourceHtml.replace(anchor, () => "  tryAutoReconnect();\n" + syncScript + "\n})();");
+    const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+    const who = auth.displayName || auth.email || "Workspace user";
+    const html = sourceHtml.replace(anchor, () => "  tryAutoReconnect();\n" + syncScript + "\n})();")
+      .replaceAll("__IMDS_USER_EMAIL__", esc(auth.email || who))
+      .replaceAll("__IMDS_USER_ROLE__", esc(auth.role || "internal"))
+      .replaceAll("__IMDS_USER_INITIALS__", esc(who.slice(0, 2).toUpperCase()));
     return new NextResponse(html, {
       status: 200,
       headers: {
