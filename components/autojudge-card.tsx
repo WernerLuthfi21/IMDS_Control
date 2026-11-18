@@ -103,7 +103,7 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal }: {
   const pct = progress.total ? Math.round(progress.done / progress.total * 100) : 0;
   return <section className="aj" aria-labelledby="aj-title">
     <div className="aj-top">
-      <CatStage mood={mood} size={128}/>
+      <CatStage mood={mood} size={104}/>
       <div className="aj-copy">
         <span className="aj-kicker"><Bot size={13}/> AUTO-JUDGE <b className={"aj-mode " + mode.toLowerCase()}>{mode}</b></span>
         <h2 id="aj-title">{live ? "Let the system judge what it can" : "See what the system would judge"}</h2>
