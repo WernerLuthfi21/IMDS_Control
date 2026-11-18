@@ -65,3 +65,11 @@ TMMIN destination codes → rule regions (`lib/judgement/destinations.ts`) come 
 - `3.G-CATS_Manual_Flow_Ver_7.pdf` (38 pages, every page PROTECTED 関係者外秘, TMC-MED(KM)). Becomes the primary source for the flows it contains (No.6, 7, 9, 10–14, 16–19); see `docs/RULE_COVERAGE.md` for each change against Ver.5.1.10. Its remarks say the appendices were updated in **July 2026** and it numbers them differently (Ver.7 "Appendix 2" = group list, "Appendix 3" = POPs list, "Appendix 4" = Annex XVII, "Appendix 5" = Annex XIV). The packaged appendices are the "First release 2026MAR05" files (our Appendix 3–6). **Request the July 2026 appendices** from the process owner and replace the packaged JSON when they arrive.
 - Ver.7 numbers MCCP as **No.19**. The CLAUDE.md rule "Numerical Error Type 19 is always HOLD" is unchanged; the process owner must decide whether Ver.7 resolves the Version 6 Section II / Appendix I conflict.
 - Also uploaded 2026-11-18 and read for context only (not encoded): `1.G-CATS_judgment_Ver_5.1.10.pdf` (already the previous source), `2.G-CATS_Manual_Flow.pdf`, `1.G-CATS_Manual_Operation.pdf`, `7.G-CATS_operation_-_How_to.pdf`, `5.How_to_find_Mass_tolerance_in_drawing.pdf`. None of them were committed.
+
+## Uploads of 2026-11-18 (afternoon) — classification check
+
+- `1.G-CATS_Manual_Operation_3.pdf` and `2.G-CATS_Manual_Judge_Flow.pdf`: marked PROTECTED (関係者外秘) — permitted; not committed.
+- `Master Data All IMDS Project_new.xlsx`: Microsoft sensitivity label "Public"; already registered above. Words like "confidential" inside it are IMDS data values (confidential substances), not a document label.
+- `gcatsFAQ.pdf` (image only), `gcatsSLA.pdf`, `3.G-CATS_Operation_-_How_to_-.pdf`, `CheckImdsStructure_…_86140YYA50.xlsx`: **no classification label found → UNKNOWN → blocked**, not read beyond the label check. ("IS CONFIDENTIAL" in the structure file is an IMDS column header.) Confirm the classification before they are used.
+- `GCATS_TMMIN_20261106.xls` (daily export): not opened; the G-CATS Detail view reads the same columns from the committed register (`raw_source`).
+- The G-CATS Detail layout (TMA package) follows the user's screenshot of TMC's G-CATS Detail screen.
