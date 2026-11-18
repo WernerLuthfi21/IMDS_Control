@@ -5,6 +5,8 @@ import type { AutoOutput, StepStatus } from "@/lib/judgement/auto";
 import { createClient } from "@/lib/supabase/client";
 import { AutoJudgeCard } from "@/components/autojudge-card";
 import { DEST_CODES, regionOfCode } from "@/lib/judgement/destinations";
+import { saveJudgement } from "@/lib/judgement/client-save";
+import { ReviewDeck } from "@/components/review-deck";
 
 const SYSTEM_ACTOR = "Auto-judgement (System)";
 function remember(row: { id: string; delivery_part_no: string | null }, field: string, value: string) {
@@ -122,17 +124,9 @@ function JudgePanel({ row, canEdit, actorName, onSaved }: { row: Item; canEdit: 
     if (!auto || !canEdit) return;
     setBusy(true); setError("");
     try {
-      const trace = await fetch("/api/judgement/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...auto.engineInput, caseId: row.case_id || undefined }) });
-      const traceJson = await trace.json();
-      if (!trace.ok) throw new Error(traceJson.error || "Could not record the evaluation trace.");
-      const res = await fetch("/api/register/" + row.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        judgement_procedure: procedure, judge: finalJudge,
-        ok_comment: finalJudge === "OK" ? finalComment : null, imds_reject_comment: finalJudge === "NG" ? finalComment : null }) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not save the judgement.");
-      const item = json.item as Partial<Item> | undefined;
+      const item = await saveJudgement({ itemId: row.id, caseId: row.case_id, auto, procedure, judge: finalJudge, comment: finalComment });
       onSaved(row.id, { judge: finalJudge, ok_comment: finalJudge === "OK" ? finalComment : null, imds_reject_comment: finalJudge === "NG" ? finalComment : null,
-        judgement_procedure: procedure, assigned_person: item?.assigned_person ?? actorName, starting_date: item?.starting_date ?? today() });
+        judgement_procedure: procedure, assigned_person: item.assigned_person ?? actorName, starting_date: item.starting_date ?? today() });
     } catch (e) { setError(e instanceof Error ? e.message : "Save failed."); setBusy(false); }
   }
 
@@ -201,6 +195,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [errorType, setErrorType] = useState("All Error Types");
   const [month, setMonth] = useState("All");
   const [search, setSearch] = useState(initialSearch);
+  const [view, setView] = useState<"cards" | "list">("cards");
   const [openId, setOpenId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [substanceOnly, setSubstanceOnly] = useState(false);
@@ -349,10 +344,20 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
       onFinal={(items, actor) => { const m = new Map(items.map((i) => [i.id, i.decision])); setRows((old) => old.map((r) => m.has(r.id) ? { ...r, judge: m.get(r.id)!, assigned_person: actor, starting_date: r.starting_date || today() } : r)); }}/>
 
     <div className="jw-kpis" role="group" aria-label="Queue">
-      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on ? " on" : "")} aria-pressed={k.on} onClick={k.act} title={k.hint}>
+      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on ? " on" : "")} aria-pressed={k.on} onClick={() => { k.act(); setView(k.key === "pending" ? "cards" : "list"); }} title={k.hint}>
         <span>{k.label}</span><b>{k.n.toLocaleString("en-US")}</b><small>{k.hint}</small></button>)}
     </div>
 
+    <div className="jw-view" role="tablist" aria-label="View">
+      <button type="button" role="tab" aria-selected={view === "cards"} className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}>Review cards</button>
+      <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>All cases</button>
+    </div>
+
+    {view === "cards" && <ReviewDeck rows={rows.filter((r) => r.source_status === "WORKING" && !r.judge)} canEdit={canEdit}
+      onOpenCase={(id) => { setView("list"); setTab("pending"); setOpenId(id); }}
+      onSaved={(sv) => setRows((old) => old.map((r) => r.id === sv.id ? { ...r, judge: sv.judge, ok_comment: sv.judge === "OK" ? sv.comment : null, imds_reject_comment: sv.judge === "NG" ? sv.comment : null, judgement_procedure: sv.procedure, assigned_person: r.assigned_person || actorName, starting_date: r.starting_date || today() } : r))}/>}
+
+    {view === "list" && <>
     <div className="jw-tools">
       <label className="jx-search"><Search size={14}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Part no., supplier, CAS, substance…" aria-label="Search"/></label>
       <select value={errorType} onChange={(e) => { setErrorType(e.target.value); setSubstanceOnly(false); }} aria-label="Error type">
@@ -405,6 +410,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
         <JudgePanel key={openRow.id} row={openRow} canEdit={canEdit} actorName={actorName} onSaved={saveAndNext}/>
       </aside>}
     </div>
+    </>}
     <p className="jx-gov"><ShieldCheck size={13}/> Every case is checked by the rules. Miko saves only the rule families an admin switched on; everything else is your decision. Saves are written with the evaluation trace and audit log; automatic decisions can be reopened.</p>
   </div>;
 }

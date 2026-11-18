@@ -7,7 +7,7 @@ function candidate(id: string, signature: string, eligible = true): BulkCandidat
     cas: "71-55-6", substanceName: "Test substance", kind: "substance",
     recommendation: { state: "NG", comment: "Input mistake", reason: "Exact source rule" },
     procedureText: "GADSL + TSZ trace", signature, eligible, inPendingQueue: true,
-    prohibited: true, prohibitedStatus: "CONNECTED", reviewReason: "Exact source rule", tmc: null
+    prohibited: true, prohibitedStatus: "CONNECTED", reviewReason: "Exact source rule", tmc: null, card: { need: "ready", reason: "", question: null, facts: [] }
   };
 }
 describe("strict bulk judgement grouping", () => {
