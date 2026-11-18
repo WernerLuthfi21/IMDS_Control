@@ -48,5 +48,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
+  // Skip the dev live-reload socket (/_next/hmr, /_next/webpack-hmr): auth handling broke its handshake,
+  // so pages reloaded in a loop during local development and E2E. Those paths do not exist in production.
+  matcher: ["/((?!_next/static|_next/image|_next/hmr|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
 };
