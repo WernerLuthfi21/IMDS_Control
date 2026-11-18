@@ -2,50 +2,79 @@
 
 ## Runtime
 
-- Next.js App Router: server-rendered register pages and route handlers.
-- React + TypeScript: compact enterprise workspace and form state.
-- Supabase Auth: user identity; new accounts receive `viewer` by default.
-- PostgreSQL: source cases, error items, AO–AW judgement fields, import batches/snapshots, suppliers, pre-checks, follow-ups, tasks, evidence, rule versions and audit events.
-- Supabase Storage: private buckets for import staging, supplier pre-check attachments and evidence.
-- ExcelJS: server-side XLSX/CSV preview and field mapping.
-- Decimal.js: decimal-safe mass comparisons.
-- Playwright / Vitest: E2E and unit test suites.
+- **Next.js 16 App Router + TypeScript**: server components by default, route handlers under `app/api`.
+- **Supabase**: Auth (SSR with `@supabase/ssr`, publishable key + RLS), PostgreSQL (migrations in `supabase/migrations/`),
+  private Storage buckets (import staging, supplier attachments, evidence).
+- **IMDS Tracker**: `private/imds-tracker.html` + `private/shared-master-sync.js`, served by `app/imds-tracker/route.ts`
+  behind the same login. Its UI is approved; changes are fixes and integration only.
+- Libraries: ExcelJS (workbook preview/export), Decimal.js (mass), Vitest (unit), Playwright (E2E + contrast audit).
+
+## Modules (one login, one shell)
+
+| Module | Route | Main code |
+|---|---|---|
+| Judgement: Judge table (Miko, decks per Error Type, piles To Judge / Waiting TMA / Judged, auto-judge panel), All cases, G-CATS Detail for TMA | `/judgement` | `components/judgement-workspace.tsx`, `lib/judgement/*` |
+| Daily G-CATS Update (import, preview, commit, SharePoint fetch) | `/daily-update` | `components/import-workbook.tsx`, `app/api/imports/*` |
+| Supplier Pre-check / Self-check | `/supplier-precheck` | `components/supplier-selfcheck.tsx`, `app/api/self-check/*`, `app/api/prechecks/*` |
+| Supplier Follow-up and Power Automate panel | `/follow-up` | `lib/followup/*`, `app/api/automation/*` |
+| Substance References (CAS / GADSL / TSZ) | `/substances` | `lib/reference-data.ts`, `lib/cas.ts` |
+| Judgement Rules: flow charts + error types & sources | `/rules` | `components/flow-library.tsx`, `lib/judgement/flows.ts` |
+| Settings (account, judgement, tracker, team & access, system) | `/settings` | `components/settings-tabs.tsx` |
+| IMDS Tracker (purple) | `/imds-tracker` | `private/*`, `app/api/imds-master/*` |
+
+Command palette: Ctrl/⌘ K (modules, part / CAS / supplier search, theme).
+
+## Judgement logic
+
+- `lib/judgement/engine.ts`: deterministic checks (mass with Decimal.js, comments, HOLD guardrails).
+- `lib/judgement/flows.ts`: G-CATS Manual Flow Ver.7 charts; `flowChart()` draws them for the Rules page by running
+  the same code with every answer.
+- `lib/judgement/auto.ts`: rule family per Error Type (`detectKind`) and the recommendation with its steps.
+- `lib/judgement/review.ts`, `piles.ts`, `deck.ts`: what each card still needs and which pile it is in.
+- Final OK/NG: a person, or auto-judge for owner-enabled families only (`docs/RULE_COVERAGE.md`). Error Type 19 is always HOLD.
 
 ## Main data flows
 
-1. **G-CATS daily import**: user uploads workbook to a private staging bucket → server detects the Error Log sheet/header → preview normalizes fields and retains raw row JSON → user confirms → PostgreSQL RPC commits the snapshot and merges source fields into the editable register.
-2. **Judgement editing**: operator updates only the desired AO–AW values → API checks identity/role and OK/NG comment rules → field-level override flags protect explicit website edits from later imports → change log and audit event are written.
-3. **Historical suggestions**: server queries exact Error Type and independent same-part/supplier/CAS contexts → groups repeated procedure strings → displays ranked suggestions without auto-deciding.
-4. **Bulk preparation**: internal user selects same-label Error Type rows → API confirms all selected items share one exact label → writes Assigned person/start date/procedure and field-level overrides → no Judge or KM decision is changed.
-5. **Supplier pre-check**: supplier enters fields or uploads XLSX/CSV to private storage → server maps known headers into editable preview → submission is recorded → internal reviewer checks source → only reviewer/admin can clear after confirming original MDS status/final version in IMDS.
-6. **Supplier follow-up**: internal preparer selects a stored PIC → API records a portal notification and Outlook compose payload → user reviews and sends the draft manually.
-7. **Evidence**: case-specific task is created → file is uploaded by a signed URL to private storage → server verifies object existence and registers source page/sheet/row metadata.
+1. **Daily import**: upload to private staging → server finds the Error Log sheet/header → preview keeps raw row JSON
+   (`raw_source`, keys `<header> [col N]`) → person commits → RPC merges source fields into the register.
+   Identity is `code`; a row TMA has not coded yet gets the same key its code will have: Download Date (YYYYMMDD) +
+   `No.` padded to 3 digits (`lib/judgement/source-key.ts`). Rows missing from a later export are kept; website edits
+   are protected by per-field override flags.
+2. **Judging**: card answers → `/api/judgement/*` re-runs the rules → save writes the AO–AW fields, change log and
+   audit event → optional `EXCEL_UPSERT` job in `sync_outbox` for Power Automate.
+3. **TMA package**: `/api/judgement/detail` builds the G-CATS Detail per part number (JSON or Excel). A person types the
+   TMA-approved result into G-CATS; nothing is sent by the app.
+4. **Tracker**: MD System / master uploads → `imds_master_*` tables → outbox → Power Automate writes the Excel Super
+   Master; Excel edits come back through `/api/imds-master/sync-from-excel`.
+5. **Supplier**: self-check parses the supplier's file, predicts the G-CATS checks, stores confirmations; follow-up
+   e-mails go through one payload (`lib/followup/payload.ts`) to the e-mail flow.
 
-## Identity and merge strategy
+## API groups (`app/api`)
 
-- `code` is the preferred stable identity from the G-CATS Error Log source.
-- `No.` is a daily sequence and is not used as identity.
-- If no code exists, import fallback uses a file-hash + sheet + row token. Reordered rows in a new file may become new observations rather than risking a false merge.
-- Each upload is retained as an `import_batches` and `import_rows` snapshot.
-- Rows absent from the latest file are preserved; there is no destructive delete-by-absence.
-- Per-field override flags distinguish website-edited judgement values from source values and control later import refresh.
+| Group | Purpose | Who |
+|---|---|---|
+| `access/*`, `auth/forgot`, `admin/*` | Access requests, password help, approvals, roles, notification recipients | Public forms (rate-limited) / admin |
+| `imports/*`, `sharepoint/*` | Staged daily import, preview, commit, history; read-only SharePoint fetch | preparer / admin |
+| `judgement/*` | evaluate, auto, autorun, bulk, memory, escalations, history, detail | internal roles per route |
+| `register/*`, `approvals/finalize`, `tasks`, `evidence/*` | Register edits and export, finalisation RPC, tasks, private evidence | internal roles |
+| `self-check/*`, `prechecks/*` | Supplier self-check and pre-check workflow | supplier (own code) / internal review |
+| `followups`, `automation/*`, `suppliers/contacts` | Follow-ups, Power Automate dispatch / status / test, PIC directory | internal roles |
+| `imds-master/*` | Tracker data, MD System import, master import/export, Excel reverse sync | internal roles; reverse sync by shared secret |
+| `reference` | CAS → GADSL / TSZ lookup | authenticated |
 
-## Deployment profiles
-
-- Local preview: no persistent data; packaged reference and evaluator only.
-- Persistent local development: Docker + Supabase CLI.
-- Initial personal hosting: Vercel web frontend + private Supabase project.
-- Future self-host: Docker web container and independently provisioned self-hosted Supabase-compatible Auth/PostgreSQL/Storage endpoint.
-
-The web app does not depend on Vercel-specific database/storage features. The Docker Compose file runs the web app only; it does not bundle the full Supabase stack.
+Routes check identity and role; RLS enforces record access. The service-role key is used only in server routes that
+must create accounts or accept the Excel reverse sync.
 
 ## Trust boundaries
 
-- No service-role key is sent to the browser.
-- API routes and RLS enforce role and record access.
-- CONFIDENTIAL and UNKNOWN sources are blocked by the import/upload path and must not be introduced through source code, prompts, tests, logs or reference data.
-- The supplier portal is isolated by the supplier code on the authenticated profile and RLS. Supplier attachments use private storage and short-lived signed retrieval URLs.
-- Bulk preparation runs as `SECURITY INVOKER`; reviewer update access is RLS-scoped and KM field changes remain trigger-restricted to reviewer/admin.
-- The MDS Report PDF sample is attachment-only; parsing is deliberately disabled.
-- Outlook is an editable deep link, not an email-send integration.
-- External IMDS/G-CATS API, SEND and ACCEPTED/REJECTED synchronization are not implemented.
+- No service-role key or Microsoft secret reaches the browser.
+- CONFIDENTIAL and UNKNOWN sources are blocked at upload and must never enter code, prompts, tests or logs.
+- Suppliers are isolated by `supplier_code` on their profile (RLS) and see only Self-check.
+- No connection to IMDS, G-CATS, GXATS or MD System; no automatic SEND/ACCEPT. Microsoft Graph mail send and SharePoint
+  write-back are not implemented (SharePoint fetch is read-only, `docs/SHAREPOINT_SETUP.md`).
+- Power Automate: the app only hands off JSON; HTTP 202 means "handed off", not "delivered".
+
+## Deployment
+
+Vercel (web) + Supabase (data). `Dockerfile` / `docker-compose.yml` package the web app only for future self-hosting;
+a Supabase-compatible Auth / PostgreSQL / Storage endpoint is still needed. Setup steps: `docs/PANDUAN_SETUP_LENGKAP_ID.md`.

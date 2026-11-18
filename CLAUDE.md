@@ -1,35 +1,69 @@
-# Project context for coding agents
+# Instructions for coding agents
 
-Read `README.md`, `docs/SOURCE_REGISTER.md`, `docs/RULE_COVERAGE.md` and `docs/SECURITY.md` before changing the application.
+Before changing anything, read `README.md`, then the doc for the area you touch: `docs/RULE_COVERAGE.md` and
+`docs/SOURCE_REGISTER.md` (rules), `docs/SECURITY.md` (access, data handling), `docs/ARCHITECTURE.md` (where code lives).
+Reply to the user in Indonesian; keep UI text in English unless asked otherwise.
 
 ## Non-negotiable rules
 
-- Never process, copy, summarize, index or store any CONFIDENTIAL material. Block UNKNOWN classifications. PROTECTED may be processed under the user's stated permission; keep repository private until redistribution is approved.
-- Source material outranks generic domain assumptions. Do not fill missing Toyota/G-CATS policy branches with generic IMDS or regulatory knowledge.
-- Preserve source page/sheet/row and source version with every extracted fact or judgement run.
-- Do not silently merge duplicate workbook headers or multiple historical master sheets.
-- Historical labels are not official Error Type mappings.
-- Numerical Error Type 19 is always HOLD pending process-owner reconciliation of the Version 6 Section II / Appendix I conflict.
-- Final OK/NG from the rule engine (auto-judgement) is allowed ONLY for rule families an admin/rule approver switched on in Auto-judge, only for cases the engine decided completely (no open step, no missing input, encoded flow, comment + procedure), and never for Error Type 19 or any HOLD. Every automatic decision is written as `Auto-judgement (System)`, audited (`JUDGEMENT_AUTO_FINAL`), synced like a human save and can be reopened. Default is OFF + shadow mode. Amended on 2026-11-18 by the repository owner (Werner): "OK bisa tanpa manusia asalkan final dan tidak perlu input manusia lagi". All other cases still need human approval.
-- Draft/manual rules must not be finalized. Only owner-approved/active rules can pass the database approval RPC. For auto-judgement, switching a rule family on in Auto-judge is the recorded owner approval (name + date in the settings and audit log); families left off are never finalised by the system.
-- No automated external G-CATS submission is implemented. Never claim that the app clicks SEND, ACCEPT, or submits a result externally.
-- Keep Supabase service-role secrets out of browser code and source control.
+### Source material and classification
+- Never process, copy, summarize, index or store **CONFIDENTIAL** material. **UNKNOWN** (no label found) is blocked
+  until the owner confirms. **PROTECTED** only under the user's permission, in this private repository.
+- Source hierarchy: (1) the G-CATS Manual Operation / Manual Judge Flow version designated for the task; (2) the
+  controlled Toyota appendix / standard revision; (3) GADSL and named regulatory lists as membership data only;
+  (4) historical master rows as precedent only; (5) general IMDS / regulatory knowledge only when asked, labelled as
+  external. Never fill a missing Toyota branch with generic knowledge.
+- Keep source document, page / sheet / row and version with every extracted fact and judgement run. Keep duplicate
+  workbook headers by column position; never merge historical master sheets silently.
+- Historical labels (Battery (Pb), Tokusetsu Part number, …) are not official Error Type mappings.
 
-## Technical conventions
+### Judgement
+- Numerical **Error Type 19 is always HOLD** until the process owner reconciles the Version 6 Section II / Appendix I conflict.
+- Missing input → HOLD / manual, never zero or false. No universal substance threshold.
+- Final OK/NG from the engine (auto-judgement) only for rule families an admin / rule approver switched on in
+  Auto-judge, only for cases decided completely (no open step, no missing input, encoded flow, comment + procedure),
+  never for Error Type 19 or any HOLD. Written as `Auto-judgement (System)`, audited (`JUDGEMENT_AUTO_FINAL`), synced
+  like a human save, reopenable. Default OFF + shadow mode. Owner decision of 2026-11-18 (Werner): "OK bisa tanpa
+  manusia asalkan final dan tidak perlu input manusia lagi". Everything else needs human approval.
+- Draft / manual rules are never finalised. Switching a family on in Auto-judge is the recorded owner approval.
 
-- Next.js App Router + TypeScript; React server components by default.
-- Supabase SSR auth uses `@supabase/ssr` and publishable/anon keys with RLS.
-- Use Decimal.js for mass calculations.
-- Place deterministic judgement logic in `lib/judgement/engine.ts` and unit-test every new branch.
-- Preserve raw source fields, source row number and duplicate column identity during Excel import.
-- Do not add data migration or destructive schema changes without a matching SQL migration and documentation.
-- Add tests and update source/rule coverage docs with each rule modification.
+### External systems
+- No automated G-CATS submission. Never claim the app clicks SEND / ACCEPT or submits anything. The G-CATS Detail
+  export is prepared for TMA and typed into G-CATS by a person.
+- Microsoft Graph mail send and SharePoint write-back are not implemented (SharePoint fetch is read-only). Do not mark
+  them done without Entra registration, tenant consent, delegated OAuth, server-only secrets, approval UX, audit and tests.
+- No GXATS / MD System endpoints or credentials exist. Do not invent APIs, browser automation or sync status.
+- Power Automate: the app only hands off JSON. HTTP 202 = "handed off to the flow", not "delivered".
 
-## Deployment and integration guardrails
+### Secrets and data in git
+- Supabase service-role key, Microsoft secrets and flow URLs stay server-side, never in `NEXT_PUBLIC_*`, code or chat.
+- Never commit workbooks, PDFs, daily G-CATS exports, supplier attachments, database dumps, `.env*`, `.vercel`,
+  auth state, tokens, archives (`*.zip`) or production data. Keep the repository private.
 
-- Current dedicated Supabase target is documented in `docs/DEPLOYMENT_AND_CLAUDE_GUIDE_ID.md`; eight migrations are already applied remotely. Verify remote migration versions before running any migration push. Never reset the remote project.
-- Keep the GitHub repository private. Do not commit Excel workbooks, source PDFs, daily G-CATS exports, supplier attachments, database dumps, `.env.local`, `.vercel`, auth state, tokens or production data.
-- Do not read or use `CONFIDENTIAL` content. `PROTECTED` is permitted only within the user's authorization and approved private environment; `UNKNOWN` is blocked.
-- Microsoft Graph mail send and SharePoint Excel write-back are not implemented. Do not mark them complete until Entra app registration, tenant consent, delegated OAuth, server-only secret storage, approval UX, audit logging and integration tests exist.
-- No GXATS / MD SYSTEM endpoints or credentials are configured. Do not invent API paths, credentials, browser automation or fake synchronization status.
-- A local syntax parse is not a substitute for `npm run typecheck`, `npm test`, `npm run lint`, `npm run build` and Playwright E2E. Report actual command output.
+## Engineering conventions
+
+- Next.js App Router + TypeScript, server components by default; Supabase SSR auth with publishable key + RLS.
+- Judgement logic lives in `lib/judgement/` (`engine.ts`, `flows.ts`, `auto.ts`). Every new branch gets a unit test;
+  every rule change updates `docs/RULE_COVERAGE.md` and `docs/SOURCE_REGISTER.md`. Mass maths uses Decimal.js.
+- Shared logic goes in `lib/`, never copied between Judgement and Tracker. The Tracker UI
+  (`private/imds-tracker.html`, purple) is approved: bug fixes and integration only.
+- Styles use the tokens in `app/globals.css` (`docs/DESIGN-SYSTEM.md`); no hard-coded hex in components. Light and dark
+  must both pass the E2E contrast audit.
+- Import keeps raw source fields, source row number and duplicate column identity.
+- Schema changes: a new SQL migration in `supabase/migrations/` + docs. Before any push run
+  `npx supabase migration list --linked` and compare remote and local. Never reset the remote project.
+
+## Checks and reporting
+
+Run and report the real result of `npm run typecheck`, `npm test`, `npm run lint:server`, `npm run build` and
+`npm run test:e2e` (CI runs the same: jobs **validate** and **E2E + contrast audit**). Write PASS / FAIL / NOT TESTED;
+a local syntax parse is not a substitute.
+
+## Git, deploy, docs
+
+- Branch from `main`, small pull requests, one purpose each. If `gh pr create` fails (GraphQL blocked), use REST:
+  `gh api repos/WernerLuthfi21/IMDS_Control/pulls --input pr.json`.
+- Vercel is on the Hobby plan: production only builds commits by the project owner. Do not merge yourself; Werner
+  merges with *Create a merge commit* (`docs/PANDUAN_SETUP_LENGKAP_ID.md` section 0.5).
+- Keep the doc set small: update the existing file listed in `README.md` instead of adding a new one. One-off audits
+  and plans go in the pull request description, not in the repository. Record changes in `CHANGELOG.md` by date.

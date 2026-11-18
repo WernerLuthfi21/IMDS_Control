@@ -38,3 +38,6 @@ Thumbs.db
 *.swp
 *.swo
 *.tsbuildinfo
+
+# Packaged source archives (never commit)
+*.zip

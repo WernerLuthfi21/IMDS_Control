@@ -25,6 +25,7 @@ The workbook import endpoint requires explicit classification and rejects CONFID
 - `rule_author`: may create draft rule definitions.
 - `rule_approver`: may approve rule versions and finalize eligible judgements.
 - `admin`: administrative privileges.
+- `supplier`: sees only Supplier Self-check for its own supplier code (RLS by `supplier_code` on the profile).
 
 Grant roles through a controlled administrator action / SQL, not through client input.
 
@@ -44,3 +45,46 @@ Classification selection is an explicit user attestation. The application does n
 - Bulk preparation accepts only `assigned_person`, `starting_date`, and `judgement_procedure`, verifies all selected rows share one exact historical Error Type label, and writes a change log for each row. It cannot update Judge, OK/NG comments or KM review fields.
 - `current_app_role()` and `has_any_role()` are granted only to authenticated users and are used by row policies. Trigger-only functions are revoked from `PUBLIC` and `anon`. Guarded commit/finalization RPCs have explicit role checks and authenticated-only execution grants.
 - Never replace a failed RLS policy with a broad `SECURITY DEFINER` function. Any future definer function must have an explicit threat review, fixed search path, internal role check, least-privilege execute grants and a documented reason it cannot run as invoker.
+
+## Access requests, approval and password recovery
+
+Migration `20261107000000_access_requests.sql`. Check it is applied remotely (`npx supabase migration list --linked`) before relying on these screens.
+
+### Who can do what
+| Action | Who | Result |
+|---|---|---|
+| Request access (login page) | Anyone, **suppliers only** (name, company, supplier code, work email, **own password**) | Login is created **banned** (cannot sign in); pending request; admins get an email |
+| Register a colleague | Signed-in TMMIN staff (admin/preparer/reviewer), Settings → Register TMMIN staff | Pending request (`via = STAFF`); nothing is created |
+| Approve / reject | **Admin only** (Settings → Access requests) | Approve creates the account by e-mail invitation and sets role (+ supplier code) |
+| Forgot password | Anyone, suppliers and staff alike (login → Forgot password) | Reset link by e-mail; same answer whether or not the account exists |
+| "No email? Ask an administrator" | Anyone on the forgot screen | `password_help` request; admin clicks **Send reset** |
+| Approval PIC list | Admin (Settings → Approval PIC) | Who receives the "request waiting" e-mail; empty list = all admins |
+
+Supplier password: chosen at request time, stored only as a Supabase Auth hash. On approval the ban is lifted and the admin vouches for the email, so the supplier can sign in immediately (check the “contact on file” badge before approving). Strict mode: set `REQUIRE_EMAIL_CONFIRMATION=1` and configure Auth SMTP; then the supplier must click a confirmation email first. Rejecting deletes the banned login.
+
+Rules enforced in the server: suppliers can only be granted `supplier` (+ valid supplier code); a request you submitted must be approved by a different admin (unless you are the only admin); every decision writes `audit_events`.
+
+The notification e-mail contains **no approve link**: approval happens signed-in on the website.
+
+### Environment variables (Vercel, server-only)
+- `SUPABASE_SERVICE_ROLE_KEY` – needed to create accounts and store public requests. **Never** `NEXT_PUBLIC_`, never committed.
+- `APP_BASE_URL` – e.g. `https://your-app.vercel.app` (used in links; falls back to the request host).
+- `STAFF_EMAIL_DOMAINS` – optional, e.g. `tmmin.co.id` (comma list). Empty = admin reviews every staff request anyway.
+- `NOTIFY_SMTP_HOST/PORT/USER/PASS/FROM` – approval notification mail (falls back to `FLOW_SMTP_*`). Without it requests still appear in the admin queue; the notification status is stored as `SMTP_NOT_CONFIGURED`.
+- `THROTTLE_SALT` – optional random string for hashing rate-limit keys.
+
+### Supabase dashboard settings (required, do these once)
+1. **Authentication → Sign In / Providers → turn OFF “Allow new users to sign up”.** Otherwise anyone with the public key can create an account themselves. Accounts must come only from approvals.
+2. **Authentication → SMTP**: configure a custom SMTP. The built-in Supabase mailer only delivers to your own team and is heavily rate-limited, so supplier invites and resets will NOT arrive without it.
+3. **Authentication → URL Configuration**: Site URL = your app URL; add `<APP_BASE_URL>/auth/confirm` to Redirect URLs.
+4. **Authentication → Email Templates**: make the links work from any device:
+   - Reset password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`
+   - Confirm signup: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next=/workspace`
+   - Invite user: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password`
+5. **Authentication → Password policy**: set a minimum length (the form already requires 10+ with a digit) and consider leaked-password protection.
+
+### Protections built in
+Same-origin check on public POSTs, honeypot field, input length/charset validation, per-IP and per-email rate limits (hashed, stored server-side), no account enumeration on forgot-password and password-help, single pending request per email, RLS on all new tables (browser cannot write them), service-role key used only in route handlers, audit log for requests/decisions.
+
+### Not implemented
+Authenticator-app (TOTP) MFA and SSO. Supabase supports TOTP MFA; add it as a follow-up if required. Forgot-password is the primary recovery path.

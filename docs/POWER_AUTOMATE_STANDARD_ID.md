@@ -169,11 +169,11 @@ menerima **satu** email. Begitu Judge diisi, rumus *Judgement state* berubah dan
 ---
 
 ## 5. Flow D: Tracker → Excel Super Master
-Sama seperti `POWER_AUTOMATE_IMDS_MASTER_SETUP.md` bagian B, dengan dua perubahan: pemicu diganti **When a Teams webhook request is received**
+Sama seperti `PANDUAN_SETUP_LENGKAP_ID.md` bagian 5, dengan dua perubahan: pemicu diganti **When a Teams webhook request is received**
 (seperti 2.1, lalu Parse JSON `triggerBody()`), dan aksi **Response** dihapus. Di Vercel: `POWER_AUTOMATE_TRACKER_URL`.
 
 ## 6. Jika semua pemicu webhook diblokir oleh kebijakan DLP tenant
-Gunakan **Opsi B (email perintah)** di `POWER_AUTOMATE_SETUP.md`: website mengirim email JSON ke mailbox Anda, dan flow
+Gunakan **email perintah** di `POWER_AUTOMATE_ALL_FLOWS.md` Lampiran B: website mengirim email JSON ke mailbox Anda, dan flow
 **When a new email arrives (V3)** (standard) memprosesnya. Flow C (pengingat) tidak terpengaruh karena tidak butuh website.
 
 ## 7. Membagikan flow ke rekan atau akun lain
