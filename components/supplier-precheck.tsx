@@ -141,7 +141,7 @@ export function SupplierPrecheck({ role, supplierCode }: { role: string; supplie
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 13 }}><button className="btn btn-primary" disabled={loading || !supplier || !partNo || !["PROTECTED", "INTERNAL", "PUBLIC"].includes(classification)}>{loading ? <LoaderCircle size={14} className="spin"/> : <CheckCircle2 size={14}/>} Submit for pre-check</button></div>
         </form>
       </section>
-      <aside className="simple-card"><div className="simple-card-head"><div><h2>What this pre-check does</h2><p>Readiness checks, not a replacement for IMDS or G-CATS.</p></div><Lock size={16}/></div>
+      <aside className="simple-card pc-info"><div className="simple-card-head"><div><h2>What this pre-check does</h2><p>Readiness checks, not a replacement for IMDS or G-CATS.</p></div><Lock size={16}/></div>
         <div className="checklist">
           <div><CheckCircle2/><span><strong>Structured Excel / CSV input</strong><small>Recognises familiar headers and fills the form. All extracted fields remain editable for confirmation.</small></span></div>
           <div><CheckCircle2/><span><strong>Supplier Code and Part No.</strong><small>Required to create a traceable pre-check record.</small></span></div>

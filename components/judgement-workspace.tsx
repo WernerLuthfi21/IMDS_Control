@@ -7,7 +7,9 @@ import { AutoJudgeCard } from "@/components/autojudge-card";
 import { DEST_CODES, regionOfCode } from "@/lib/judgement/destinations";
 import { saveJudgement } from "@/lib/judgement/client-save";
 import { ReviewDeck } from "@/components/review-deck";
-import { JudgementOverview } from "@/components/judgement-overview";
+import { JudgeStats } from "@/components/judgement-overview";
+import { GcatsDetailView } from "@/components/gcats-detail-view";
+import { buildCommentHistory } from "@/lib/judgement/comment-history";
 import { summarizeRegister, type NeedCounts } from "@/lib/judgement/overview";
 import type { ReviewNeed } from "@/lib/judgement/review";
 
@@ -22,6 +24,8 @@ type Item = {
   source_status: string | null; source_year: string | null; source_month: string | null; judge: string | null; km_judge: string | null;
   source_km_judge_label: string | null; assigned_person: string | null; starting_date: string | null; judgement_procedure: string | null;
   ok_comment: string | null; imds_reject_comment: string | null; case_id: string | null; cas: string; substance_name: string;
+  /** G-CATS "Comment(last time)" from the source row. */
+  comment_last_time?: string;
 };
 type Tab = "pending" | "judged" | "km";
 type BulkItem = { id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null; cas: string; substanceName: string; recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string } };
@@ -198,12 +202,13 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   const [errorType, setErrorType] = useState("All Error Types");
   const [month, setMonth] = useState("All");
   const [search, setSearch] = useState(initialSearch);
-  const [view, setView] = useState<"overview" | "cards" | "list" | "auto">(openAutoJudgeSettings ? "auto" : initialSearch ? "list" : "overview");
+  const [view, setView] = useState<"judge" | "list" | "detail" | "auto">(openAutoJudgeSettings ? "auto" : initialSearch ? "list" : "judge");
+  const [detailPart, setDetailPart] = useState("");
   const [needs, setNeeds] = useState<NeedCounts | null>(null);
   const [needsLoading, setNeedsLoading] = useState(true);
   const [jump, setJump] = useState<{ need: ReviewNeed; n: number } | null>(null);
   const onNeeds = useCallback((c: NeedCounts | null, loading: boolean) => { setNeeds(c); setNeedsLoading(loading); }, []);
-  const openPile = useCallback((need: ReviewNeed) => { setJump((j) => ({ need, n: (j?.n ?? 0) + 1 })); setView("cards"); }, []);
+  const openPile = useCallback((need: ReviewNeed) => { setJump((j) => ({ need, n: (j?.n ?? 0) + 1 })); setView("judge"); }, []);
   const [openId, setOpenId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [substanceOnly, setSubstanceOnly] = useState(false);
@@ -233,6 +238,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [rows]);
   const summary = useMemo(() => summarizeRegister(rows, 6, 6), [rows]);
+  const history = useMemo(() => buildCommentHistory(rows), [rows]);
   const pendingRows = useMemo(() => rows.filter((r) => r.source_status === "WORKING" && !r.judge), [rows]);
   const months = useMemo(() => [...new Set(rows.map((r) => String(r.source_month || "")).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [rows]);
   const visible = useMemo(() => {
@@ -340,7 +346,7 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   ];
 
   const kpiRow = <div className="jw-kpis" role="group" aria-label="Queue">
-      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on && view !== "overview" ? " on" : "")} aria-pressed={k.on && view !== "overview"} onClick={() => { k.act(); setView(k.key === "pending" ? "cards" : k.key === "auto" ? "auto" : "list"); }} title={k.hint}>
+      {kpis.map((k) => <button type="button" key={k.key} className={"jw-kpi " + k.tone + (k.on && view === "list" ? " on" : "")} aria-pressed={k.on && view === "list"} onClick={() => { k.act(); setView(k.key === "auto" ? "auto" : "list"); }} title={k.hint}>
         <span>{k.label}</span><b>{k.n.toLocaleString("en-US")}</b><small>{k.hint}</small></button>)}
     </div>;
 
@@ -350,9 +356,9 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
         <p>{year} · WORKING records{updated ? " · snapshot " + updated : ""} · <span className={live ? "jw-live on" : "jw-live"} title="Other users' judgements appear here as they are saved">{live ? "live" : "not live"}</span></p></div>
       <div className="jw-head-right">
       <div className="jw-view" role="tablist" aria-label="View">
-      <button type="button" role="tab" aria-selected={view === "overview"} className={view === "overview" ? "on" : ""} onClick={() => setView("overview")}>Overview</button>
-      <button type="button" role="tab" aria-selected={view === "cards"} className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}>Flashcards</button>
+      <button type="button" role="tab" aria-selected={view === "judge"} className={view === "judge" ? "on" : ""} onClick={() => setView("judge")}>Judge</button>
       <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>All cases</button>
+      <button type="button" role="tab" aria-selected={view === "detail"} className={view === "detail" ? "on" : ""} onClick={() => setView("detail")}>G-CATS Detail (TMA)</button>
       <button type="button" role="tab" aria-selected={view === "auto"} className={view === "auto" ? "on" : ""} onClick={() => setView("auto")}>Auto-judge</button>
       </div>
         <a className="jx-back" href="/workspace"><ArrowLeft size={14}/> Menu</a>
@@ -362,13 +368,10 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     {rows.length === 0 && !queryError && <div className="jx-empty"><strong>No current-year source records</strong><span>Commit the current G-CATS workbook from Daily G-CATS Update to fill the queue.</span></div>}
 
 
-    {view !== "overview" && kpiRow}
-    {view === "overview" && <>
-      <JudgementOverview kpis={kpiRow} summary={summary} needs={needs} needsLoading={needsLoading} onPile={openPile}
-        onKm={() => { setTab("km"); setSubstanceOnly(false); setView("list"); }}
-        onSupplier={(code) => { setTab("pending"); setSubstanceOnly(false); setErrorType("All Error Types"); setSearch(code); setView("list"); }}
-        onType={(label) => { setTab("pending"); setSubstanceOnly(false); setSearch(""); setErrorType(label); setView("list"); }}/>
-    </>}
+    {view === "list" && kpiRow}
+    {view === "judge" && <JudgeStats summary={summary} needs={needs} needsLoading={needsLoading} onPile={openPile}
+      onKm={() => { setTab("km"); setSubstanceOnly(false); setView("list"); }}/>}
+    {view === "detail" && <GcatsDetailView rows={rows} initialPart={detailPart}/>}
 
     {view === "auto" && <div className="jw-auto">
       <AutoJudgeCard openSettings={openAutoJudgeSettings}
@@ -378,7 +381,8 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
     </div>}
 
     {/* Stays mounted on every view: its pile counts feed the overview and a pile opens instantly. */}
-    <div hidden={view !== "cards"}><ReviewDeck rows={pendingRows} canEdit={canEdit} active={view === "cards"} onNeeds={onNeeds} jump={jump}
+    <div hidden={view !== "judge"}><ReviewDeck rows={pendingRows} canEdit={canEdit} active={view === "judge"} history={history} onNeeds={onNeeds} jump={jump}
+      onDetail={(part) => { setDetailPart(part); setView("detail"); }}
       onOpenCase={(id) => { setView("list"); setTab("pending"); setOpenId(id); }}
       onSaved={(sv) => setRows((old) => old.map((r) => r.id === sv.id ? { ...r, judge: sv.judge, ok_comment: sv.judge === "OK" ? sv.comment : null, imds_reject_comment: sv.judge === "NG" ? sv.comment : null, judgement_procedure: sv.procedure, assigned_person: r.assigned_person || actorName, starting_date: r.starting_date || today() } : r))}/></div>
 

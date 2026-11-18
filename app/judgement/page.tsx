@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { uniqueById } from "@/lib/judgement/ids";
+import { pick } from "@/lib/judgement/gcats-detail";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/session";
 import { JudgementWorkspace } from "@/components/judgement-workspace";
@@ -53,7 +54,7 @@ export default async function JudgementPage({ searchParams }: { searchParams: Pr
     rows = uniqueById(rows).map(({ raw_source, ...rest }) => {
       // Only display fields go to the browser; source evidence stays on the server.
       const f = extractRowFacts(raw_source as Record<string, unknown> | null);
-      return { ...rest, cas: f.cas, substance_name: f.substanceName };
+      return { ...rest, cas: f.cas, substance_name: f.substanceName, comment_last_time: pick(raw_source as Record<string, unknown> | null, "Comment(last time)", "Comment (last time)") };
     });
   }
 
