@@ -146,7 +146,7 @@ export function SupplierSelfCheck({ role, supplierCode }: { role: string; suppli
     {notice && <div className="callout callout-success"><CheckCircle2 size={14}/>{notice}</div>}
 
     {step === "add" && <>
-      <div className={"sc-drop" + (drag ? " on" : "")} onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) void onFile(f); }}>
+      <div className={"sc-drop" + (drag ? " on" : "")} data-dropzone="" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }} onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) void onFile(f); }}>
         <label className="sc-file"><UploadCloud size={22}/><strong>Drop a file here or click</strong><span>.xlsx · .csv · .pdf</span>
           <input type="file" hidden accept=".xlsx,.csv,.pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }}/></label>
         <div className="sc-or">or</div>

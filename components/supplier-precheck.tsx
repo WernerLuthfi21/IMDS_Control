@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Inbox, LoaderCircle, Lock, WandSparkles, UploadCloud } from "lucide-react";
+import { DropZone } from "@/components/drop-zone";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Inbox, LoaderCircle, Lock, WandSparkles } from "lucide-react";
 
 type Submission = { id: string; supplier_code: string; delivery_part_no: string; mds_status: string | null; workflow_status: string; review_comment?: string | null; reviewed_at?: string | null; source_verified_by_human?: boolean; attachment_path?: string | null; attachment_name?: string | null; created_at: string };
 type Extracted = { supplierCode?: string; supplierName?: string; deliveryPartNo?: string; deliveryPartName?: string; mdsId?: string; mdsVersion?: string; mdsStatus?: string; preliminaryMds?: boolean | null };
@@ -130,7 +131,7 @@ export function SupplierPrecheck({ role, supplierCode }: { role: string; supplie
             <div className="form-field"><label>Preliminary MDS?</label><select className="select-field" value={preliminary} onChange={e => setPreliminary(e.target.value)}><option>No</option><option>Yes</option><option>Unknown</option></select></div>
           </div>
           <div style={{ marginTop: 13 }}>
-            <label className="upload-zone" htmlFor="supplier-file"><UploadCloud size={24}/><strong>{file ? file.name : "Drop authorised Excel / CSV / MDS Report PDF"}</strong><span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · ${file.type || "file"}` : "Maximum 20 MB · private supplier workspace"}<br/>XLSX / CSV: preview and field extraction. PDF: attachment only, manual review.</span><input id="supplier-file" type="file" accept=".xlsx,.csv,.pdf,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={e => setAttachment(e.target.files?.[0] || null)}/></label>
+            <DropZone accept={[".xlsx", ".csv", ".pdf"]} maxMB={20} files={file ? [file] : []} onFiles={(fs) => setAttachment(fs[0])} onClear={() => setAttachment(null)} title="Drop the supplier Excel / CSV / MDS Report PDF" hint="XLSX / CSV are previewed; a PDF is attached for manual review" label="Supplier file"/>
           </div>
           {file && !file.name.toLowerCase().endsWith(".pdf") && <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 9 }}><button className="btn" type="button" onClick={previewAttachment} disabled={parsing || !["PROTECTED", "INTERNAL", "PUBLIC"].includes(classification)}>{parsing ? <LoaderCircle size={13} className="spin"/> : <WandSparkles size={13}/>} Read Excel / CSV and fill fields</button></div>}
           {file?.name.toLowerCase().endsWith(".pdf") && <div className="callout callout-danger" style={{ marginTop: 10 }}><AlertTriangle size={14}/><span><strong>MDS Report PDF will not be parsed.</strong> The supplied sample report states that parsing is not allowed. It may be attached for authorised manual review only.</span></div>}

@@ -1,16 +1,18 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCheck, CircleX, ExternalLink, FileText, FileWarning, History, LoaderCircle, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
 import type { AutoOutput } from "@/lib/judgement/auto";
 import { classifyCase, NEED_LABEL, NEED_ORDER, type ReviewCard, type ReviewNeed } from "@/lib/judgement/review";
 import { rememberAnswer, runCheck, saveJudgement } from "@/lib/judgement/client-save";
 import { answerKey, mergeAnswer, type DeckAnswers } from "@/lib/judgement/deck";
-import { CatMascot } from "@/components/cat-mascot";
+import { CatMascot, type CatMood } from "@/components/cat-mascot";
+import { Piles, PILE_LABEL, type PileKind } from "@/components/miko-table";
+import type { PileCounts } from "@/lib/judgement/piles";
 import type { NeedCounts } from "@/lib/judgement/overview";
 import { buildStacks, toneOf, type Stack } from "@/lib/judgement/stacks";
 import { checkComment, lastComment, typeKey, type CommentHistory } from "@/lib/judgement/comment-history";
 
-type Row = { id: string; source_record_key: string; error_type_label: string; delivery_part_no: string | null; supplier_code: string | null; case_id: string | null };
+type Row = { id: string; source_record_key: string; error_type_label: string; delivery_part_no: string | null; supplier_code: string | null; case_id: string | null; km_judge?: string | null };
 type Candidate = {
   id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null; cas?: string; kind: string;
   recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string }; procedureText: string; signature: string;
@@ -42,8 +44,12 @@ function viewOf(c: Candidate, l: Live | undefined): View {
  * biggest thing; the comment window checks the wording against what was saved before for the
  * same Error Type and decision, because TMA checks it and it is typed into G-CATS as written.
  */
-export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onOpenCase, onDetail, onNeeds, jump }: {
+export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onOpenCase, onDetail, onNeeds, jump, piles, onPile }: {
   rows: Row[]; canEdit: boolean;
+  /** Real pile counts from the register (lib/judgement/piles.ts). */
+  piles: PileCounts;
+  /** Open the records of the Waiting TMA or Judged pile (read-only list). */
+  onPile: (kind: "waitingTma" | "judged") => void;
   /** False while the deck is hidden behind another view: keyboard shortcuts are off. */
   active?: boolean;
   history: CommentHistory;
@@ -68,6 +74,12 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   const [bulk, setBulk] = useState<{ label: string; done: number; total: number } | null>(null);
   const [notice, setNotice] = useState("");
   const [enter, setEnter] = useState<"next" | "prev" | "up">("next");
+  const [stamp, setStamp] = useState<{ id: string; decision: "OK" | "NG" } | null>(null);
+  const [bump, setBump] = useState<PileKind | null>(null);
+  const [cheer, setCheer] = useState(0);
+  const [cheerOn, setCheerOn] = useState(false);
+  const pileRefs = useRef<Partial<Record<PileKind, HTMLButtonElement | null>>>({});
+  const cardRef = useRef<HTMLElement | null>(null);
   const liveRef = useRef(live);
   useEffect(() => { liveRef.current = live; }, [live]);
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
@@ -211,10 +223,33 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
 
   async function confirmCurrent(judge: "OK" | "NG") {
     if (!current || !canEdit || working.has(current.id)) return;
-    setWorking((w) => new Set(w).add(current.id)); setError("");
-    try { const s = await confirmOne(current, judge); setEnter("up"); setDone((d) => new Set(d).add(s.id)); onSaved(s); }
+    const c = current;
+    setWorking((w) => new Set(w).add(c.id)); setError("");
+    try {
+      const s = await confirmOne(c, judge);
+      // Saved on the server: stamp the card, then send it to the pile its real status belongs to.
+      const to: PileKind = rowById.get(c.id)?.km_judge ? "judged" : "waitingTma";
+      setStamp({ id: c.id, decision: judge });
+      await flyToPile(to);
+      setStamp(null); setEnter("up"); setDone((d) => new Set(d).add(s.id)); onSaved(s);
+      setBump(to); setCheer((n) => n + 1); setCheerOn(true);
+      window.setTimeout(() => setBump(null), 700); window.setTimeout(() => setCheerOn(false), 1600);
+      setNotice(`${c.partNo || "Case"} judged ${judge} — moved to ${PILE_LABEL[to].title}.`);
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Could not save."); }
-    finally { setWorking((w) => { const n = new Set(w); n.delete(current.id); return n; }); }
+    finally { setWorking((w) => { const n = new Set(w); n.delete(c.id); return n; }); }
+  }
+
+  /** Card flies into a pile. Only called after the save succeeded; skipped with reduced motion. */
+  async function flyToPile(to: PileKind) {
+    const card = cardRef.current; const pile = pileRefs.current[to];
+    if (!card || !pile || reducedMotion()) { await wait(250); return; }
+    await wait(380);
+    const a = card.getBoundingClientRect(); const b = pile.getBoundingClientRect();
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2); const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    const k = Math.max(0.12, Math.min(0.4, b.width / a.width));
+    try { await card.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${dx}px, ${dy}px) scale(${k}) rotate(10deg)`, opacity: 0.25 }],
+      { duration: 480, easing: "cubic-bezier(.45,.05,.55,.95)", fill: "forwards" }).finished; } catch { /* element removed */ }
   }
 
   async function confirmDecided() {
@@ -225,63 +260,75 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
     setError(""); setBulk({ label: "Confirming", done: 0, total: list.length });
     const failed: string[] = []; let n = 0;
     for (const c of list) {
-      try { const s = await confirmOne(c, views.get(c.id)!.rec.state as "OK" | "NG"); setDone((d) => new Set(d).add(s.id)); onSaved(s); }
+      try { const s = await confirmOne(c, views.get(c.id)!.rec.state as "OK" | "NG"); setDone((d) => new Set(d).add(s.id)); onSaved(s); setBump(rowById.get(c.id)?.km_judge ? "judged" : "waitingTma"); }
       catch { failed.push(c.partNo || c.sourceRecordKey); }
       n++; setBulk((b) => b && { ...b, done: n });
     }
-    setBulk(null); setIndex(0);
+    setBulk(null); setIndex(0); setCheer((x) => x + 1); window.setTimeout(() => setBump(null), 700);
     if (failed.length) setError(`${failed.length} not saved (changed meanwhile or missing comment): ${failed.slice(0, 5).join(", ")}${failed.length > 5 ? "…" : ""}`);
     else setNotice(`${list.length} card${list.length === 1 ? "" : "s"} confirmed.`);
   }
 
-  if (!cands) return <section className="rd">
-    <div className="rd-loading">{loading ? <><CatMascot mood="thinking" size={72}/><strong>Sorting {progress.total.toLocaleString("en-US")} cases by what they need…</strong><div className="aj-bar"><i style={{ width: (progress.total ? progress.done / progress.total * 100 : 0) + "%" }}/></div></>
-      : error ? <><CatMascot mood="error" size={72}/><strong>{error}</strong><button type="button" className="rd-btn" onClick={() => void load()}><RefreshCw size={14}/> Try again</button></>
-      : <><CatMascot mood="empty" size={72}/><strong>No pending cases.</strong></>}</div>
-  </section>;
-
   const okN = decidedHere.filter((c) => views.get(c.id)?.rec.state === "OK").length;
   const sel = stacks.find((s) => s.errorType === stack) || null;
+  const toJudge = cands ? open.length : piles.toJudge;
+  const mood: CatMood = error && !cands ? "error" : loading || bulk || (current && working.has(current.id)) ? "thinking" : stamp || cheerOn ? "success" : cands && !open.length ? "success" : "idle";
+  const say = !cands ? (loading ? [`Miko is sorting ${progress.total.toLocaleString("en-US")} cases…`, "Checking every unjudged case against the rules"] : error ? ["Miko could not deal the cards", error] : ["Nothing to deal", "Every WORKING case has a judgement."])
+    : !open.length ? ["All unjudged cases have been processed", "Judged cards wait in Waiting TMA until TMA/KM is filled."]
+    : stamp ? [`Judged ${stamp.decision} — saved`, "Moving the card to its pile…"]
+    : current && sel ? [current && views.get(current.id)?.decided ? "Next case is ready — confirm it" : "Next case is ready", `${sel.errorType} · ${deck.length} card${deck.length === 1 ? "" : "s"} in this stack · ${toJudge.toLocaleString("en-US")} to judge in total`]
+    : sel ? ["Stack cleared", "Pick another stack."] : ["Miko is ready to deal", `${toJudge.toLocaleString("en-US")} cases to judge`];
 
-  return <section className="jb">
-    <div className="jb-stacks" role="tablist" aria-label="Stacks by error type">
-      {stacks.map((s) => <button type="button" role="tab" key={s.errorType} aria-selected={s.errorType === stack} title={s.errorType}
-        className={"jb-stack t-" + s.tone + (s.errorType === stack ? " on" : "")} onClick={() => openStack(s.errorType)}>
-        <span className="jb-orb" aria-hidden="true">{s.fullAuto ? <Sparkles size={13}/> : null}</span>
-        <b className="jb-stack-n">{s.total.toLocaleString("en-US")}</b>
-        <span className="jb-stack-name">{shortType(s.errorType)}</span>
-        <span className="jb-stack-bar" aria-hidden="true"><i className="d" style={{ width: (s.decided / s.total) * 100 + "%" }}/><i className="y" style={{ width: (s.yours / s.total) * 100 + "%" }}/><i className="w" style={{ width: (s.waiting / s.total) * 100 + "%" }}/></span>
-        <span className="jb-stack-stats"><span className="d">{s.decided} ready</span><span className="y">{s.yours} you</span><span className="w">{s.waiting} wait</span></span>
-      </button>)}
-    </div>
-
-    {sel && <div className={"jb-tools t-" + sel.tone}>
-      <div className="jb-needs" role="group" aria-label="Filter this stack">
-        <button type="button" className={needFilter === "all" ? "on" : ""} aria-pressed={needFilter === "all"} onClick={() => pickNeed("all")}>All <b>{sel.total}</b></button>
-        {NEED_ORDER.filter((n) => stackNeeds.get(n)).map((n) => <button type="button" key={n} className={(needFilter === n ? "on " : "") + "n-" + n} aria-pressed={needFilter === n} onClick={() => pickNeed(n)}>{NEED_LABEL[n].title} <b>{stackNeeds.get(n)}</b></button>)}
-      </div>
-      <div className="jb-tools-right">
+  return <section className="mt" aria-label="Miko's judgement table">
+    <header className="mt-dealer">
+      <span className="mt-miko"><CatMascot key={cheer} mood={mood} size={58}/></span>
+      <div className="mt-say" aria-live="polite"><strong>{say[0]}</strong><span>{say[1]}</span>
+        {loading && <div className="aj-bar"><i style={{ width: (progress.total ? progress.done / progress.total * 100 : 0) + "%" }}/></div>}</div>
+      <Piles piles={piles} toJudge={toJudge} active="toJudge" bump={bump} refs={pileRefs}
+        onPile={(k) => { if (k === "toJudge") { if (stacks[0] && !stack) openStack(stacks[0].errorType); } else onPile(k); }}/>
+      <div className="mt-dealer-actions">
         {decidedHere.length > 0 && canEdit && <button type="button" className="jb-confirm-all" disabled={Boolean(bulk)} onClick={() => void confirmDecided()}>
           <CheckCheck size={15}/> Confirm {decidedHere.length} <small>{okN} OK · {decidedHere.length - okN} NG</small></button>}
-        <button type="button" className="jb-icon" onClick={() => void load()} disabled={loading || Boolean(bulk)} title="Check all pending cases again" aria-label="Check all pending cases again">{loading ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}</button>
+        <button type="button" className="mt-icon" onClick={() => void load()} disabled={loading || Boolean(bulk)} title="Check all pending cases again" aria-label="Check all pending cases again">{loading ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}</button>
       </div>
-    </div>}
-    {bulk && <div className="rd-progress" role="status"><LoaderCircle size={14} className="spin"/> {bulk.label} {bulk.done}/{bulk.total}<div className="aj-bar"><i style={{ width: (bulk.done / Math.max(1, bulk.total) * 100) + "%" }}/></div></div>}
-    {notice && !bulk && <div className="rd-notice" role="status"><Check size={14}/> {notice}</div>}
+    </header>
 
-    {!stacks.length && <div className="fc-empty done"><CatMascot mood="success" size={84}/><strong>Nothing to judge</strong><span>Every WORKING case has a judgement.</span></div>}
-    {sel && !current && <div className="fc-empty done"><CatMascot mood="success" size={84}/><strong>Stack cleared</strong><span>Pick another stack.</span></div>}
-    {sel && current && <Flashcard key={current.id} active={active} c={current} v={views.get(current.id)!} pos={pos + 1} total={deck.length} left={deck.length - pos - 1} canEdit={canEdit}
-        enter={enter} busy={working.has(current.id) || Boolean(bulk)} error={error} similar={similarTo(current).length} answered={live.has(current.id)} history={history}
-        comment={comments.get(current.id) ?? views.get(current.id)!.rec.comment}
-        onComment={(t) => setComments((m) => new Map(m).set(current.id, t))}
-        onAnswer={(field, value, qid, all) => void answer(current, field, value, qid, all)}
-        onConfirm={(j) => void confirmCurrent(j)} onReset={() => reset(current.id)}
-        onPrev={() => move(Math.max(0, pos - 1), "prev")}
-        onSkip={() => move(pos + 1 < deck.length ? pos + 1 : pos, "next")}
-        onOpen={() => onOpenCase(current.id)} onDetail={() => current.partNo && onDetail(current.partNo)}/>}
+    <div className="mt-board">
+      <div className="mt-play">
+        {stacks.length > 0 && <div className="mt-families" role="tablist" aria-label="Rule families still to judge">
+          {stacks.map((s) => <button type="button" role="tab" key={s.errorType} aria-selected={s.errorType === stack} title={`${s.errorType}: ${s.decided} ready · ${s.yours} need your answer · ${s.waiting} waiting`}
+            className={"mt-fam t-" + s.tone + (s.errorType === stack ? " on" : "")} onClick={() => openStack(s.errorType)}>
+            <span className="jb-orb" aria-hidden="true">{s.fullAuto ? <Sparkles size={11}/> : null}</span><b>{s.total.toLocaleString("en-US")}</b><span>{shortType(s.errorType)}</span>
+            {s.decided > 0 && <em title="Decided by the rules">{s.decided}</em>}
+          </button>)}
+        </div>}
+        {sel && <div className={"jb-needs t-" + sel.tone} role="group" aria-label="Filter this stack">
+          <button type="button" className={needFilter === "all" ? "on" : ""} aria-pressed={needFilter === "all"} onClick={() => pickNeed("all")}>All <b>{sel.total}</b></button>
+          {NEED_ORDER.filter((n) => stackNeeds.get(n)).map((n) => <button type="button" key={n} className={(needFilter === n ? "on " : "") + "n-" + n} aria-pressed={needFilter === n} onClick={() => pickNeed(n)}>{NEED_LABEL[n].title} <b>{stackNeeds.get(n)}</b></button>)}
+        </div>}
+        {bulk && <div className="rd-progress" role="status"><LoaderCircle size={14} className="spin"/> {bulk.label} {bulk.done}/{bulk.total}<div className="aj-bar"><i style={{ width: (bulk.done / Math.max(1, bulk.total) * 100) + "%" }}/></div></div>}
+        {notice && !bulk && <div className="rd-notice" role="status"><Check size={14}/> {notice}</div>}
+        {!cands && error && <button type="button" className="mt-retry" onClick={() => void load()}><RefreshCw size={14}/> Try again</button>}
+        {cands && !open.length && <div className="mt-slot done"><CatMascot mood="success" size={64}/><strong>All unjudged cases are done</strong><span>Open Waiting TMA or Judged to review them.</span></div>}
+        {sel && !current && open.length > 0 && <div className="mt-slot done"><strong>Stack cleared</strong><span>Pick another rule family above.</span></div>}
+        {!cands && loading && <div className="mt-slot"><span className="mt-slot-card" aria-hidden="true"/><strong>Shuffling the deck…</strong></div>}
+        {sel && current && <Flashcard key={current.id} cardRef={cardRef} dealFrom={() => pileRefs.current.toJudge?.getBoundingClientRect() ?? null} stamp={stamp?.id === current.id ? stamp.decision : null}
+          active={active} c={current} v={views.get(current.id)!} pos={pos + 1} total={deck.length} left={deck.length - pos - 1} canEdit={canEdit}
+          enter={enter} busy={working.has(current.id) || Boolean(bulk)} error={error} similar={similarTo(current).length} answered={live.has(current.id)} history={history}
+          comment={comments.get(current.id) ?? views.get(current.id)!.rec.comment}
+          onComment={(t) => setComments((m) => new Map(m).set(current.id, t))}
+          onAnswer={(field, value, qid, all) => void answer(current, field, value, qid, all)}
+          onConfirm={(j) => void confirmCurrent(j)} onReset={() => reset(current.id)}
+          onPrev={() => move(Math.max(0, pos - 1), "prev")}
+          onSkip={() => move(pos + 1 < deck.length ? pos + 1 : pos, "next")}
+          onOpen={() => onOpenCase(current.id)} onDetail={() => current.partNo && onDetail(current.partNo)}/>}
+      </div>
+    </div>
   </section>;
 }
+
+const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** "Prohibited substance(DBT)" → "Prohibited (DBT)": shorter stack names, same meaning. */
 function shortType(t: string) { return t.replace(/^Prohibited substance\s*\(?/i, (m) => (m.includes("(") ? "Prohibited (" : "Prohibited ")).replace(/\s+/g, " ").trim(); }
@@ -292,7 +339,8 @@ const SWIPE = 90;
  * One flashcard: the case on the left (part, facts, why), the decision on the right.
  * Navigation sits in the card header; drag or swipe sideways to move through the stack.
  */
-function Flashcard({ active, c, v, pos, total, left, canEdit, enter, busy, error, similar, answered, history, comment, onComment, onAnswer, onConfirm, onReset, onPrev, onSkip, onOpen, onDetail }: {
+function Flashcard({ cardRef, dealFrom, stamp, active, c, v, pos, total, left, canEdit, enter, busy, error, similar, answered, history, comment, onComment, onAnswer, onConfirm, onReset, onPrev, onSkip, onOpen, onDetail }: {
+  cardRef: { current: HTMLElement | null }; dealFrom: () => DOMRect | null; stamp: "OK" | "NG" | null;
   active: boolean; c: Candidate; v: View; pos: number; total: number; left: number; canEdit: boolean; enter: "next" | "prev" | "up"; busy: boolean; error: string; similar: number; answered: boolean;
   history: CommentHistory; comment: string; onComment: (t: string) => void; onAnswer: (field: string, value: string, qid: string, all: boolean) => void;
   onConfirm: (j: "OK" | "NG") => void; onReset: () => void; onPrev: () => void; onSkip: () => void; onOpen: () => void; onDetail: () => void;
@@ -300,6 +348,17 @@ function Flashcard({ active, c, v, pos, total, left, canEdit, enter, busy, error
   const [all, setAll] = useState(true);
   const [drag, setDrag] = useState<{ x0: number; dx: number; id: number } | null>(null);
   const q = v.decided ? null : v.card.question;
+  // Miko deals the card from the To Judge pile (forward moves only; reduced motion: no flight).
+  useLayoutEffect(() => {
+    const el = cardRef.current; const from = dealFrom();
+    if (!el || !from || enter === "prev" || reducedMotion()) return;
+    const to = el.getBoundingClientRect();
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2); const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    const k = Math.max(0.12, Math.min(0.4, from.width / Math.max(1, to.width)));
+    el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${k}) rotate(-8deg)`, opacity: 0.35 }, { transform: "none", opacity: 1 }],
+      { duration: 460, easing: "cubic-bezier(.2,.8,.2,1)" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const tone = toneOf(c.errorType);
   const decision = v.decided ? v.rec.state : null;
   const waiting = WAITING.has(v.card.need);
@@ -332,13 +391,14 @@ function Flashcard({ active, c, v, pos, total, left, canEdit, enter, busy, error
   return <div className={"jc-wrap t-" + tone}>
     {left > 1 && <div className="jc-ghost g2" aria-hidden="true"/>}
     {left > 0 && <div className="jc-ghost g1" aria-hidden="true"/>}
-    <article className={"jc enter-" + enter + (drag ? " dragging" : "")} aria-live="polite" aria-busy={busy} aria-roledescription="flashcard"
+    <article ref={(el) => { cardRef.current = el; }} className={"jc t-" + tone + (enter === "prev" ? " enter-prev" : "") + (drag ? " dragging" : "") + (stamp ? " stamped" : "")} aria-live="polite" aria-busy={busy} aria-roledescription="flashcard"
       style={dx ? { transform: `translateX(${dx}px) rotate(${dx / 40}deg)` } : undefined}
       onPointerDown={(e) => { if (e.button !== 0 || interactive(e.target)) return; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setDrag({ x0: e.clientX, dx: 0, id: e.pointerId }); }}
       onPointerMove={(e) => { if (drag && e.pointerId === drag.id) setDrag({ ...drag, dx: e.clientX - drag.x0 }); }}
       onPointerUp={() => { if (!drag) return; const d = drag.dx; setDrag(null); if (d < -SWIPE) onSkip(); else if (d > SWIPE) onPrev(); }}
       onPointerCancel={() => setDrag(null)}>
 
+      {stamp && <div className={"jc-stamp " + stamp.toLowerCase()} aria-hidden="true">JUDGED · {stamp}</div>}
       <header className="jc-head">
         <span className="jc-type">{c.errorType}</span>
         <span className={"jc-need n-" + v.card.need}>{NEED_LABEL[v.card.need].title}</span>

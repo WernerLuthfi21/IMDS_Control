@@ -31,6 +31,18 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
     const id = window.requestAnimationFrame(read);
     return () => { observer.disconnect(); window.cancelAnimationFrame(id); };
   }, []);
+  // A file dropped outside a drop zone must not make the browser open it and leave the app.
+  useEffect(() => {
+    const outside = (e: DragEvent) => {
+      if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+      if ((e.target as Element | null)?.closest?.("[data-dropzone]")) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+    };
+    window.addEventListener("dragover", outside);
+    window.addEventListener("drop", outside);
+    return () => { window.removeEventListener("dragover", outside); window.removeEventListener("drop", outside); };
+  }, []);
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
