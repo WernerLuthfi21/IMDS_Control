@@ -22,11 +22,14 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  // The layout's head script sets data-theme before the first paint; this only mirrors it for the toggle icon.
   useEffect(() => {
-    const saved = window.localStorage.getItem("imds-theme");
-    const initial = saved === "dark" || saved === "light" ? saved : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setTheme(initial);
-    document.documentElement.dataset.theme = initial;
+    const root = document.documentElement;
+    const read = () => setTheme(root.dataset.theme === "dark" ? "dark" : "light");
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    const id = window.requestAnimationFrame(read);
+    return () => { observer.disconnect(); window.cancelAnimationFrame(id); };
   }, []);
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
@@ -37,8 +40,9 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
   const visibleNavigation = role === "supplier" ? navigation.filter((item) => item.href === "/supplier-precheck").map((item) => ({ ...item, label: "Self-check" })) : navigation;
   const active = visibleNavigation.find((item) => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href + "/"))) || visibleNavigation.find((item) => item.href === "/judgement") || visibleNavigation[0];
   function searchSubmit(e: React.FormEvent) { e.preventDefault(); const q = query.trim(); if (q) router.push(`/judgement?q=${encodeURIComponent(q)}`); }
-  if (["/login", "/forgot-password", "/reset-password"].includes(pathname)) return <div className="auth-shell">{children}</div>;
-  if (pathname === "/workspace") return <div className="workspace-selector-shell">{children}</div>;
+  const themeButton = <button type="button" className="theme-toggle shell-theme" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Light mode" : "Dark mode"}>{theme === "dark" ? <Sun size={16}/> : <Moon size={16}/>}</button>;
+  if (["/login", "/forgot-password", "/reset-password"].includes(pathname)) return <div className="auth-shell">{themeButton}{children}</div>;
+  if (pathname === "/workspace") return <div className="workspace-selector-shell">{themeButton}{children}</div>;
   return <div className="app-frame">
     {mobileOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)}/>}
     <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>

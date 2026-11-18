@@ -90,7 +90,7 @@ function substanceSteps(facts: RowFacts) {
     const no = String(t.values?.[1] ?? "").trim(), name = firstLine(t.values?.[2]);
     flowName = firstLine(t.values?.[4]);
     tszText = `${no} ${name}`.trim();
-    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "DONE", detail: `TSZ0001G #${no} · ${name} · judge flow: ${flowName || "—"}` });
+    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "DONE", detail: `TSZ0001G #${no} · ${name} · judge flow: ${flowName || "—"}${lookup.tszMatchedBy === "group-name" ? " (\"all members\" group, matched by the GADSL substance name)" : ""}` });
   } else {
     steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "INFO", detail: `${cas} is not listed in Appendix 3. Use the GADSL entry and the substance-specific flow.` });
   }

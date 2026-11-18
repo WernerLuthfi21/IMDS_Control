@@ -57,10 +57,31 @@ export function lookupSubstanceByName(rawName: string) {
   return { gadsl, tsz, casCandidates: [...candidates] };
 }
 
+/** "Polychlorinated biphenyls ( PCB ), all members" -> "polychlorinated biphenyls". */
+function groupBase(value: unknown) {
+  return normalizeSubstanceName(String(value ?? "").split(/\n/)[0].replace(/\([^)]*\)/g, " ").replace(/,?\s*all members.*$/i, "").replace(/\s+and its .*$/i, ""));
+}
+/**
+ * Appendix 3 "all members" groups list no CAS ("Various"). When the CAS itself is not listed,
+ * the group is found from the GADSL substance name of that CAS (e.g. 1336-36-3 → GADSL
+ * "Polychlorinated biphenyls" → TSZ0001G "Polychlorinated biphenyls ( PCB ), all members").
+ */
+function groupsByName(names: string[]) {
+  const bases = [...new Set(names.map(groupBase).filter((b) => b.length >= 8))];
+  if (!bases.length) return [] as typeof tsz3Records;
+  return tsz3Records.filter((row) => {
+    if (!/all members/i.test(String(row.values?.[2] ?? ""))) return false;
+    const g = groupBase(row.values?.[2]);
+    return g.length >= 8 && bases.some((b) => b === g || b.startsWith(g + " ") || g.startsWith(b + " "));
+  });
+}
+
 export function lookupSubstance(rawCas: string) {
   const cas = normalizeCas(rawCas);
   const active = gadslRecords.filter((row) => normalizeCas(row.casOriginal || "") === cas);
-  const tsz = tsz3Records.filter((row) => textHasCas(row.values?.[3], cas));
+  const byCas = tsz3Records.filter((row) => textHasCas(row.values?.[3], cas));
+  const byName = byCas.length ? [] : groupsByName(active.map((row) => String(row.substance || "")));
+  const tsz = byCas.length ? byCas : byName;
   const deleted = gadslDeletedRecords.filter((row) => normalizeCas(row.casOriginal || "") === cas);
   const relatedTszNumbers = new Set(tsz.map((row) => String(row.values?.[1] || "")));
   const popRows = popsRecords.filter((row) => relatedTszNumbers.has(String(row.values?.[1] || "")));
@@ -76,6 +97,7 @@ export function lookupSubstance(rawCas: string) {
     reachAnnexXVII: reach17Rows,
     reachAnnexXIV: reach14Rows,
     deletedGadslMatches: deleted,
+    tszMatchedBy: byCas.length ? "cas" as const : byName.length ? "group-name" as const : null,
     notFound: active.length === 0 && tsz.length === 0 && deleted.length === 0,
     source: [
       "GADSL Reference List 2026 V1.0 / Reference List",
