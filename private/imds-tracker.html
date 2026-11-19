@@ -25,7 +25,7 @@
   --line:rgba(76,29,149,.13);--line-strong:rgba(76,29,149,.26);
   --brand-text:#5B21B6;--focus:#6D28D9;
   /* semantic status — always paired with a glyph + label */
-  --ok:#178451;--ok-soft:#E4F4EB;--warn:#9A5A08;--warn-soft:#FBF0DC;--bad:#C62840;--bad-soft:#FBE8EB;--info:#2463A6;--info-soft:#E6EFF9;--neutral:#6B6478;--neutral-soft:#EFECF3;--ok-ink:#126B42;--warn-ink:#865008;
+  --ok:#178451;--ok-soft:#E4F4EB;--warn:#9A5A08;--warn-soft:#FBF0DC;--bad:#C62840;--bad-soft:#FBE8EB;--rej:#A3125E;--rej-soft:#F9E3EE;--info:#2463A6;--info-soft:#E6EFF9;--neutral:#6B6478;--neutral-soft:#EFECF3;--ok-ink:#126B42;--warn-ink:#865008;
   /* glass */
   --glass:rgba(255,255,255,.62);--glass-strong:rgba(255,255,255,.82);--glass-edge:rgba(255,255,255,.75);--glass-edge-2:rgba(124,58,237,.16);
   --blur:18px;
@@ -45,7 +45,7 @@
   --bg:#14101C;--bg-2:#1A1526;--surface:#1E1830;--surface-2:#241D38;--ink:#EEE9F7;--muted:#B0A6C2;--faint:#8D83A0;
   --line:rgba(196,181,253,.14);--line-strong:rgba(196,181,253,.28);
   --brand-text:#C4B5FD;--focus:#C4B5FD;
-  --ok:#52D39A;--ok-soft:rgba(82,211,154,.14);--warn:#F2B552;--warn-soft:rgba(242,181,82,.14);--bad:#FF8093;--bad-soft:rgba(255,128,147,.14);--info:#7DB8F7;--info-soft:rgba(125,184,247,.14);--neutral:#A99FBA;--neutral-soft:rgba(169,159,186,.14);--ok-ink:#52D39A;--warn-ink:#F2B552;
+  --ok:#52D39A;--ok-soft:rgba(82,211,154,.14);--warn:#F2B552;--warn-soft:rgba(242,181,82,.14);--bad:#FF8093;--bad-soft:rgba(255,128,147,.14);--rej:#FF7AC6;--rej-soft:rgba(255,122,198,.14);--info:#7DB8F7;--info-soft:rgba(125,184,247,.14);--neutral:#A99FBA;--neutral-soft:rgba(169,159,186,.14);--ok-ink:#52D39A;--warn-ink:#F2B552;
   --glass:rgba(34,26,54,.58);--glass-strong:rgba(34,26,54,.86);--glass-edge:rgba(196,181,253,.22);--glass-edge-2:rgba(167,139,250,.22);
   --sh-1:0 1px 2px rgba(0,0,0,.35),0 4px 14px rgba(0,0,0,.28);--sh-2:0 2px 4px rgba(0,0,0,.4),0 22px 50px rgba(0,0,0,.5);
   --scrim:rgba(5,2,12,.62);
@@ -226,7 +226,7 @@ main,main:focus,main:focus-visible{outline:0}
 .kpi:last-child{border-right:0}
 button.kpi:hover{background:rgba(124,58,237,.08)}
 .kpi::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--c,var(--violet))}
-.kpi.is-ok{--c:var(--ok)}.kpi.is-warn{--c:var(--warn)}.kpi.is-bad{--c:var(--bad)}.kpi.is-info{--c:var(--info)}
+.kpi.is-ok{--c:var(--ok)}.kpi.is-warn{--c:var(--warn)}.kpi.is-bad{--c:var(--bad)}.kpi.is-rej{--c:var(--rej)}.kpi.is-info{--c:var(--info)}
 .kpi-top{display:flex;align-items:center;gap:8px}
 .kpi-emoji{font-size:24px;line-height:1}
 .kpi-label{font-weight:650;font-size:13.5px;color:var(--c,var(--ink))}
@@ -252,7 +252,7 @@ button.kpi:hover{background:rgba(124,58,237,.08)}
 .mcard-foot{display:flex;justify-content:space-between;align-items:center;gap:4px 8px;flex-wrap:wrap;font-size:12.5px}
 .mcard-dl{font-size:12px}
 .stack{display:flex;height:8px;border-radius:9px;overflow:hidden;background:var(--neutral-soft)}
-.stack i{display:block;height:100%}.s-ok{background:var(--ok)}.s-warn{background:var(--warn)}.s-bad{background:var(--bad)}.s-info{background:var(--info)}
+.stack i{display:block;height:100%}.s-ok{background:var(--ok)}.s-warn{background:var(--warn)}.s-bad{background:var(--bad)}.s-rej{background:var(--rej)}.s-info{background:var(--info)}
 .health{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:650;white-space:nowrap}
 .health-ok{color:var(--ok)}.health-warn{color:var(--warn)}.health-bad{color:var(--bad)}.health-neutral{color:var(--muted)}
 .health.big{font-size:14px;padding:6px 12px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line)}
@@ -285,7 +285,7 @@ button.kpi:hover{background:rgba(124,58,237,.08)}
 .status-chip .n{font-size:12px;padding:0 7px;border-radius:99px;background:var(--neutral-soft);color:var(--muted)}
 .status-chip:hover{border-color:var(--violet)}
 .status-chip.active{background:var(--violet-solid);border-color:var(--violet-solid);color:#fff}.status-chip.active .n{background:rgba(0,0,0,.26);color:#fff}
-.status-chip.ok .chip-glyph{color:var(--ok)}.status-chip.warn .chip-glyph{color:var(--warn)}.status-chip.bad .chip-glyph{color:var(--bad)}.status-chip.info .chip-glyph{color:var(--info)}
+.status-chip.ok .chip-glyph{color:var(--ok)}.status-chip.warn .chip-glyph{color:var(--warn)}.status-chip.bad .chip-glyph{color:var(--bad)}.status-chip.info .chip-glyph{color:var(--info)}.status-chip.rej .chip-glyph{color:var(--rej)}
 .status-chip.active .chip-glyph{color:#fff}
 .seg{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:var(--r-2);background:var(--neutral-soft)}
 .seg-label{font-size:13px;color:var(--muted);margin-right:8px}
@@ -294,9 +294,9 @@ button.kpi:hover{background:rgba(124,58,237,.08)}
 .tag{font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--neutral-soft);color:var(--muted)}
 .tag.legacy{background:var(--warn-soft);color:var(--warn-ink)}.tag.manual{background:var(--lilac);color:var(--brand-text)}
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:650;padding:2px 9px;border-radius:99px;white-space:nowrap}
-.badge-ok{background:var(--ok-soft);color:var(--ok-ink)}.badge-warn{background:var(--warn-soft);color:var(--warn-ink)}.badge-bad{background:var(--bad-soft);color:var(--bad)}.badge-info{background:var(--info-soft);color:var(--info)}
+.badge-ok{background:var(--ok-soft);color:var(--ok-ink)}.badge-warn{background:var(--warn-soft);color:var(--warn-ink)}.badge-bad{background:var(--bad-soft);color:var(--bad)}.badge-info{background:var(--info-soft);color:var(--info)}.badge-rej{background:var(--rej-soft);color:var(--rej)}.badge-neutral{background:var(--neutral-soft);color:var(--neutral)}
 .badge.plain{margin-left:6px}
-.t-ok{color:var(--ok)}.t-warn{color:var(--warn)}.t-bad{color:var(--bad)}.t-info{color:var(--info)}
+.t-ok{color:var(--ok)}.t-warn{color:var(--warn)}.t-bad{color:var(--bad)}.t-rej{color:var(--rej)}.t-info{color:var(--info)}
 
 /* ---------- tables (solid surfaces, no blur) ---------- */
 .table-wrap{overflow-x:auto;max-width:100%;position:relative}
@@ -437,7 +437,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
 
 /* ---------- drawer / scrim / modal ---------- */
 .scrim{position:fixed;inset:0;z-index:50;background:var(--scrim)}
-.drawer{position:fixed;top:0;right:0;bottom:0;z-index:60;width:min(780px,100vw);display:flex;flex-direction:column;gap:var(--s-3);padding:var(--s-5);background:var(--surface);border-left:1px solid var(--line-strong);box-shadow:var(--sh-2);overflow:hidden;overscroll-behavior:contain;padding-top:max(var(--s-5),env(safe-area-inset-top));padding-bottom:max(var(--s-4),env(safe-area-inset-bottom))}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:60;width:min(1040px,100vw);display:flex;flex-direction:column;gap:var(--s-3);padding:var(--s-5);background:var(--surface);border-left:1px solid var(--line-strong);box-shadow:var(--sh-2);overflow:hidden;overscroll-behavior:contain;padding-top:max(var(--s-5),env(safe-area-inset-top));padding-bottom:max(var(--s-4),env(safe-area-inset-bottom))}
 @media (prefers-reduced-motion:no-preference){.drawer:not([hidden]){animation:slide-in .22s cubic-bezier(.2,.8,.2,1)}@keyframes slide-in{from{transform:translateX(24px);opacity:0}}}
 .drawer-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s-3)}
 .drawer-id{display:flex;gap:12px;align-items:center;min-width:0}.drawer-id h2{font-size:22px;overflow-wrap:anywhere}.drawer-id .avatar{width:44px;height:44px;font-size:15px}
@@ -561,6 +561,34 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
   .dg-c::before{content:attr(data-col);display:block;font:650 10.5px/1 var(--f-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
 }
 
+/* ---------- Check tab, part actions, swipe ---------- */
+.tgt-input{width:142px}.pr-act{white-space:nowrap}.pr-act .row-check{margin-left:6px}
+.partop-body .field{display:flex;flex-direction:column;gap:4px;margin:0 0 10px}.partop-body select,.partop-body textarea{width:100%}
+.only-touch{display:none}@media (hover:none) and (pointer:coarse){.only-touch{display:inline}}
+.check-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+.check-list{display:flex;flex-direction:column}
+.ck-card{display:grid;grid-template-columns:auto minmax(220px,1.2fr) minmax(0,2fr) auto;gap:10px 16px;align-items:start;padding:14px 16px;border-bottom:1px solid var(--line)}
+.ck-card:last-child{border-bottom:0}.ck-sel{padding-top:3px}
+.ck-id{display:flex;flex-direction:column;gap:3px;min-width:0}.ck-id>b{font-size:15px}
+.ck-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;margin-top:4px}
+.ck-why{margin:4px 0 0;font-size:13px}
+.ck-fix{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ck-fix .field{display:flex;flex-direction:column;gap:4px;font-size:12px}.ck-fix input,.ck-fix select{width:100%;min-height:36px}
+.ck-act{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.stop-log td,.stop-log th{vertical-align:top}
+@media (max-width:1100px){.ck-card{grid-template-columns:auto 1fr}.ck-fix,.ck-act{grid-column:2}.ck-act{flex-direction:row;flex-wrap:wrap}}
+@media (max-width:768px){
+  .ck-fix{grid-template-columns:1fr}
+  /* supplier drawer parts become cards; swipe a card left to show "Move to Check" */
+  .drawer-body .tbl thead{display:none}.drawer-body .tbl,.drawer-body .tbl tbody{display:block;width:100%}
+  .drawer-body .tbl tr.part-row{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:12px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  .drawer-body .tbl tr.part-row>td{display:block;padding:0;border:0}
+  .pr-no{grid-column:1;grid-row:1}.pr-status{grid-column:2;grid-row:1;justify-self:end}.pr-name{grid-column:1/-1;grid-row:2}
+  .pr-model{grid-column:1;grid-row:3}.pr-target{grid-column:2;grid-row:3}.pr-plan{grid-column:1/-1;grid-row:4}.pr-act{grid-column:1/-1;grid-row:5}
+  .pr-plan:has(.muted:only-child){display:none!important}
+  .pr-act .row-check{position:absolute;top:0;right:0;bottom:0;margin:0;width:0;padding:0;overflow:hidden;border-radius:0;background:var(--rej);color:#fff;white-space:normal;transition:width .18s ease,padding .18s ease;z-index:1}
+  tr.part-row.swiped .pr-act .row-check{width:116px;padding:0 10px}
+  @media (hover:hover){.pr-act .row-check{position:static;width:auto;padding:0 10px;background:transparent;color:inherit}}
+}
 </style>
 </head>
 <body>
@@ -574,6 +602,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
     <a class="nav-link" href="#models" data-view="models"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12 4 7.5M12 12l8-4.5M12 12v9"/></svg><span>Model Tracker</span><span class="nav-count num" hidden></span></a>
     <a class="nav-link" href="#suppliers" data-view="suppliers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.4 2.7-6 6-6s6 2.6 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M17 14.2c2.4.2 4.2 2.2 4.2 5"/></svg><span>Suppliers</span><span class="nav-count num" hidden></span></a>
     <a class="nav-link" href="#followup" data-view="followup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h11M11 6l6 6-6 6"/><path d="M20 5v14"/></svg><span>Follow-up</span><span class="nav-count num warn" hidden></span></a>
+    <a class="nav-link" href="#check" data-view="check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="m9 13 2 2 4-4"/></svg><span>Check</span><span class="nav-count num warn" hidden></span></a>
     <a class="nav-link" href="#directory" data-view="directory"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="14" height="18" rx="2"/><circle cx="11" cy="10" r="2.4"/><path d="M7 17c.6-2 2-3 4-3s3.4 1 4 3M20 7v3M20 13v3"/></svg><span>Directory</span><span class="nav-count num warn" hidden></span></a>
     <a class="nav-link" href="#reports" data-view="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg><span>Reports</span></a>
     <a class="nav-link" href="#history" data-view="history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg><span>History</span></a>
@@ -654,7 +683,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
       <div class="panel filters" id="filters-panel" hidden>
         <label class="field"><span>Model</span><select id="f-model" name="model"><option value="ALL">All models</option></select></label>
         <label class="field"><span>Supplier</span><select id="f-supplier" name="supplier"><option value="ALL">All suppliers</option></select></label>
-        <label class="field"><span>Status</span><select id="f-status" name="status"><option value="ALL">All statuses</option><option value="complete">Submitted</option><option value="process">Working</option><option value="missing">Not Submitted Yet</option><option value="review">Needs Review</option></select></label>
+        <label class="field"><span>Status</span><select id="f-status" name="status"><option value="ALL">All statuses</option><option value="complete">Submitted</option><option value="process">Working</option><option value="missing">Not Submitted Yet</option><option value="rejected">Rejected</option></select></label>
         <label class="field"><span>Urgency</span><select id="f-urgency" name="urgency"><option value="ALL">All urgency</option><option value="pastdue">Past due</option><option value="due14">Due ≤ 14 days</option><option value="ontime">On time or no deadline</option></select></label>
         <button type="button" class="btn btn-ghost btn-sm" data-action="clear-filters">Reset filters</button>
       </div>
@@ -721,6 +750,13 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
         <div class="panel-head"><div><h2 id="h-validation">Data validation</h2><p class="panel-sub" id="validation-sub"></p></div></div>
         <ul class="vlist" id="validation-list"></ul>
       </section>
+    </section>
+
+    <!-- ============ CHECK ============ -->
+    <section class="view" id="view-check" hidden aria-labelledby="h-check">
+      <header class="view-head"><div><h1 id="h-check">Check</h1><p class="panel-sub">Parts we check by hand, for every model: the supplier says it is not theirs, the model is wrong, or the status reads CHECK. They are not counted anywhere else until they go back.</p></div>
+        <div class="view-actions"><div class="seg" role="group" aria-label="Check view" id="check-tabs"></div></div></header>
+      <div id="check-body"></div>
     </section>
 
     <!-- ============ HISTORY ============ -->
@@ -793,6 +829,10 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
   <div class="modal-actions"><button type="button" class="btn btn-secondary" data-action="close-modal" data-close="modal-dirnew">Cancel</button><button type="button" class="btn btn-primary" data-action="dir-new-save">Add supplier</button></div>
 </div></div>
 
+<div id="modal-partop" class="modal" role="dialog" aria-modal="true" aria-labelledby="partop-title" hidden><div class="modal-box narrow">
+  <div class="modal-head"><h3 id="partop-title"></h3><button type="button" class="icon-btn" data-action="partop-cancel" aria-label="Close">×</button></div><p id="partop-text" class="muted"></p><div id="partop-body" class="partop-body"></div>
+  <div class="modal-actions"><button type="button" class="btn btn-secondary" data-action="partop-cancel">Cancel</button><button type="button" class="btn btn-primary" id="partop-ok" data-action="partop-ok">Save</button></div>
+</div></div>
 <div id="modal-confirm" class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text" hidden><div class="modal-box narrow">
   <div class="modal-head"><h3 id="confirm-title">Confirm</h3></div><p id="confirm-text"></p>
   <div class="modal-actions"><button type="button" class="btn btn-secondary" data-action="confirm-cancel" data-autofocus>Cancel</button><button type="button" class="btn btn-primary" id="confirm-ok" data-action="confirm-ok">Confirm</button></div>
@@ -829,6 +869,7 @@ const escAttr=esc;
 function cssSafe(s){return clean(s).replace(/[^a-z0-9_-]/gi,"_")}
 function pct(a,b){return b?Math.round(a/b*100):0}
 function todayStart(){const d=new Date();d.setHours(0,0,0,0);return d}
+function dateToISO(d){return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:""}
 function isoToDate(iso){if(!iso)return null;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);if(!m)return null;return new Date(+m[1],+m[2]-1,+m[3])}
 function dateToISO(d){if(!d)return"";const p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())}
 function datePretty(d){if(!d)return"—";return new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(d)}
@@ -853,7 +894,9 @@ function excelDate(v){
 /* ---------------- Status semantics ----------------
    Two independent dimensions: MODEL identity vs SUBMISSION status.
    complete = Submitted · process = Working (submitted to TMMIN, under judgement)
-   missing  = Not Submitted Yet · review = Needs Review (cannot be normalised).
+   missing  = Not Submitted Yet · rejected = Rejected (supplier must resubmit).
+   Special, outside the general views: review = Check (CHECK / CEK or a status that cannot be
+   normalised: pending a manual check, listed in the Check tab) · stop = STOP RUN (no longer running).
    Blank / "#N/A" keep their original meaning (Not Submitted Yet: nothing was
    found for the part in the source lookup). Anything else that is not
    recognised is Needs Review and is NEVER counted as another status. */
@@ -861,11 +904,20 @@ const STATUS={
   complete:{label:"Submitted",cls:"ok",glyph:"✓",rank:3,sev:2},
   process:{label:"Working",cls:"warn",glyph:"◐",rank:2,sev:1},
   missing:{label:"Not Submitted Yet",cls:"bad",glyph:"✕",rank:1,sev:0},
-  review:{label:"Needs Review",cls:"info",glyph:"?",rank:0,sev:-1}
+  rejected:{label:"Rejected",cls:"rej",glyph:"⊘",rank:1.5,sev:-0.5},
+  review:{label:"Check",cls:"info",glyph:"?",rank:0,sev:-1},
+  stop:{label:"Stop run",cls:"neutral",glyph:"■",rank:-1,sev:-2}
 };
-const STATUS_ORDER=["complete","process","missing","review"];
+const STATUS_ORDER=["complete","process","rejected","missing","review"];
+/* Supplier still has to act: nothing submitted yet, or submitted and rejected. */
+const OPEN=s=>s==="missing"||s==="rejected";
+/* Kept out of the general views: shown in the Check tab instead. */
+const SPECIAL=s=>s==="review"||s==="stop";
 const STATUS_RULES={
-  missing:["not submitted yet","not submit yet","not submitted","not submit","not yet submit","no submission","missing","rejected"],
+  missing:["not submitted yet","not submit yet","not submitted","not submit","not yet submit","no submission","missing"],
+  rejected:/\breject(ed|ion)?\b/,
+  stop:/^stop[\s-]?run$/,
+  check:/^(check|cek)$/,
   negated:/\b(in|not|non|un)[-\s]?(complete|completed|accepted)\b/,
   complete:["submission complete","accepted","complete"],
   process:["working","on process","in process","judgement","judgment","under judgement","under judgment"]
@@ -873,6 +925,9 @@ const STATUS_RULES={
 function classify(raw){
   const s=clean(raw).toLowerCase();
   if(!s||s==="#n/a")return "missing";
+  if(STATUS_RULES.stop.test(s))return "stop";
+  if(STATUS_RULES.check.test(s))return "review";
+  if(STATUS_RULES.rejected.test(s))return "rejected";
   if(STATUS_RULES.missing.some(k=>s.includes(k)))return "missing";
   if(STATUS_RULES.negated.test(s))return "review";
   if(STATUS_RULES.complete.some(k=>s.includes(k)))return "complete";
@@ -899,7 +954,7 @@ function naturalCmp(a,b){return String(a).localeCompare(String(b),"en",{numeric:
 
 const D={                       // dataset (derived from the workbook)
   records:[],rawRecords:[],duplicates:[],validation:{},issues:{},
-  registry:new Map(),modelOrder:[],contacts:new Map()
+  registry:new Map(),modelOrder:[],contacts:new Map(),checks:[],stopped:[]
 };
 const SRC={                     // source / connection
   workbook:null,sheetName:null,rows:null,headerRowIdx:5,headers:[],colMap:{},
@@ -1007,14 +1062,156 @@ function setSupplierDue(company,model,iso){
   if(iso)DUE.suppliers[k]=iso;else delete DUE.suppliers[k];
   saveDueDates({quiet:true});renderAll();if(UI.drill)renderDrawer({keep:true});
 }
+
+/* ---------------- Part operations: target dates, Check, Stop run ----------------
+   Saved on the server (/api/imds-master/part-ops) into the shared master, so everyone sees them, the Excel sync gets
+   them and the next workbook import keeps them. The screen updates first; the server answer then reloads the data. */
+const PLOG={checks:{},events:[],loaded:false,enabled:true};
+function checkCount(){return (D.checks||[]).length}
+function masterIds(rows){return[...new Set(rows.flatMap(r=>(Array.isArray(r.sourceRows)&&r.sourceRows.length?r.sourceRows:[r]).map(x=>x.masterId)).filter(Boolean))]}
+async function partOps(body){
+  const r=await fetch("/api/imds-master/part-ops",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.error||("HTTP "+r.status));e.migrationNeeded=!!j.migrationNeeded;throw e}
+  if(j.log){PLOG.checks=j.log.checks||{};PLOG.events=j.log.events||[];PLOG.loaded=true;PLOG.enabled=true}
+  return j;
+}
+async function loadPartLog({render=true}={}){
+  try{
+    const r=await fetch("/api/imds-master/settings?key=part_log",{credentials:"same-origin"}),j=await r.json().catch(()=>({}));
+    if(!r.ok)return;
+    const v=j.value||{};PLOG.checks=v.checks||{};PLOG.events=v.events||[];PLOG.loaded=true;
+    if(render&&UI.view==="check")renderCheck();
+  }catch(e){/* the Check tab still lists CHECK / STOP RUN parts from the master */}
+}
+function reloadSoon(){if(typeof window.__imdsRefreshData==="function")setTimeout(()=>window.__imdsRefreshData(),300)}
+/* Re-split after a local change so Check / Stop run parts leave (or join) the general views at once. */
+function resplitLocal(){
+  const all=D.records.concat(D.checks||[],D.stopped||[]);
+  commitDataset({records:all,rawRecords:D.rawRecords,duplicates:D.duplicates,validation:D.validation,issues:D.issues});
+  populateFilterOptions();renderAll();
+}
+function setLocalStatus(rows,raw){rows.forEach(r=>{r.statusRaw=raw;r.status=classify(raw);(r.sourceRows||[]).forEach(x=>{x.statusRaw=raw;x.status=r.status})})}
+function markPastDue(r){const t=todayStart();r.pastDue=!!(r.targetDate&&r.status!=="complete"&&r.targetDate<t)}
+
+/** One date for many parts: a model deadline, a supplier × model due date, or one part. */
+async function applyTargets(rows,iso,what){
+  const ids=masterIds(rows);
+  if(!ids.length){toast("These parts are not in the shared master yet, so their target date cannot be saved.","err");return false}
+  const d=iso?isoToDate(iso):null;
+  rows.forEach(r=>{r.targetDate=d;(r.sourceRows||[]).forEach(x=>{x.targetDate=d});markPastDue(r)});
+  renderAll();
+  try{
+    const j=await partOps({action:"set-target",ids,date:iso||null});
+    toast(`Target date ${iso?"set to "+datePretty(d):"cleared"} for ${fmt(rows.length)} part${rows.length===1?"":"s"}${what?" · "+what:""}`+(j.powerAutomate&&j.powerAutomate.configured===false?" (Excel sync is not set up)":""),"ok");
+  }catch(e){toast("Target dates were not saved: "+e.message,"err")}
+  reloadSoon();return true;
+}
+async function applyModelDeadline(model,iso){
+  const rows=D.records.filter(r=>r.model===model);
+  if(!iso||!rows.length)return;
+  const own=Object.keys(DUE.suppliers).filter(k=>k.endsWith("|"+model));
+  const ok=await confirmDialog({title:`Apply ${datePretty(isoToDate(iso))} to every ${M.label(model)} part?`,message:`${fmt(rows.length)} part(s) get this target date${own.length?`, and ${own.length} supplier due date(s) for this model are replaced`:""}. You can still change single parts afterwards in each supplier.`,confirmLabel:"Update all target dates"});
+  if(!ok){toast("Deadline saved. Part target dates were left as they were.","info");return}
+  if(own.length){own.forEach(k=>delete DUE.suppliers[k]);saveDueDates({quiet:true})}
+  applyTargets(rows,iso,M.label(model));
+}
+function applySupplierDue(company,model,iso){
+  const rows=D.records.filter(r=>r.company===company&&r.model===model);
+  const date=iso||M.get(model).deadlineISO||"";
+  if(rows.length&&date)applyTargets(rows,date,company+" · "+M.label(model)+(iso?"":" (model deadline)"));
+}
+
+/* ---- small form dialog (Move to Check, Stop run) ---- */
+let formResolver=null;
+function formDialog({title,message,body,confirmLabel="Save",danger=false,read}){
+  return new Promise(res=>{
+    formResolver={res,read};
+    $("#partop-title").textContent=title;$("#partop-text").textContent=message||"";$("#partop-body").innerHTML=body||"";
+    const b=$("#partop-ok");b.textContent=confirmLabel;b.classList.toggle("btn-danger",danger);b.classList.toggle("btn-primary",!danger);
+    openModal("modal-partop",document.activeElement);
+    const f=$("#partop-body [data-autofocus]");if(f)f.focus();
+  });
+}
+function resolveForm(ok){
+  const f=formResolver;if(!f)return;
+  let v=null;
+  if(ok){v=f.read?f.read():{};if(v&&v.error){toast(v.error,"err");return}}
+  formResolver=null;closeModal("modal-partop");f.res(v);
+}
+const CHECK_REASONS=["Supplier says this part is not theirs","Wrong model","Duplicate / unclear part number","Other"];
+
+async function moveToCheck(rows){
+  if(!rows.length)return;
+  const one=rows.length===1?rows[0]:null;
+  const v=await formDialog({
+    title:one?`Move ${one.partNo} to Check?`:`Move ${rows.length} parts to Check?`,
+    message:"It leaves the tracker and every count until someone returns it with the correct supplier or model, or marks it Stop run.",
+    body:`<label class="field"><span>Why</span><select id="po-why" data-autofocus>${CHECK_REASONS.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
+      <label class="field"><span>Note (optional): e.g. which supplier they say it belongs to</span><textarea id="po-note" rows="3" maxlength="400"></textarea></label>`,
+    confirmLabel:"Move to Check",
+    read:()=>({reason:[$("#po-why").value,$("#po-note").value.trim()].filter(Boolean).join(" · ")})
+  });
+  if(!v)return;
+  const ids=masterIds(rows);
+  if(!ids.length){toast("These parts are not in the shared master, so they cannot be moved.","err");return}
+  setLocalStatus(rows,"CHECK");resplitLocal();
+  try{await partOps({action:"to-check",ids,reason:v.reason});toast(`${rows.length===1?rows[0].partNo:rows.length+" parts"} moved to Check`,"ok")}
+  catch(e){toast(e.migrationNeeded?e.message:"Not moved: "+e.message,"err")}
+  reloadSoon();
+}
+async function stopRun(rows){
+  if(!rows.length)return;
+  const one=rows.length===1?rows[0]:null;
+  const v=await formDialog({
+    title:one?`Stop run for ${one.partNo}?`:`Stop run for ${rows.length} parts?`,
+    message:"The part leaves the tracker. Its last supplier, model, status and target date are kept in the Stop run log, and it can be restored there.",
+    body:`<label class="field"><span>Reason (goes into the log)</span><textarea id="po-reason" rows="3" maxlength="400" data-autofocus placeholder="e.g. part discontinued, model run out"></textarea></label>`,
+    confirmLabel:"Stop run",danger:true,
+    read:()=>{const reason=$("#po-reason").value.trim();return reason?{reason}:{error:"Write why the part stopped running."}}
+  });
+  if(!v)return;
+  const ids=masterIds(rows);
+  setLocalStatus(rows,"STOP RUN");resplitLocal();
+  try{await partOps({action:"stop-run",ids,reason:v.reason});toast(`${one?one.partNo:rows.length+" parts"} stopped · logged`,"ok")}
+  catch(e){toast("Not stopped: "+e.message,"err")}
+  reloadSoon();
+}
+async function returnFromCheck(rows,{company,model,status}){
+  const ids=masterIds(rows);if(!ids.length)return;
+  const body={action:"resolve",ids};
+  if(company){
+    const known=D.records.concat(D.checks||[]).find(r=>r.company===company&&r.vendorCode)||D.records.find(r=>r.company===company);
+    const ct=D.contacts.get(company.toUpperCase());
+    body.company=company;body.vendorCode=known?known.vendorCode||"":"";body.email=(known&&known.email)||(ct&&ct.pic)||"";
+  }
+  if(model)body.model=model;
+  if(status)body.status=status;
+  rows.forEach(r=>{
+    const prev=(PLOG.checks[r.masterId]||{}).from;
+    const raw=status||(prev&&prev.status&&!/^(check|cek)$/i.test(prev.status)?prev.status:"NOT SUBMITTED YET");
+    if(company){r.company=company;if(body.vendorCode!==undefined)r.vendorCode=body.vendorCode;if(body.email)r.email=body.email}
+    if(model){r.model=normModelKey(model);r.project=r.model;r.modelRaw=model}
+    setLocalStatus([r],raw);
+  });
+  resplitLocal();
+  try{await partOps(body);toast(`${rows.length===1?rows[0].partNo:rows.length+" parts"} back in the tracker${company?" under "+company:""}${model?" · "+model:""}`,"ok")}
+  catch(e){toast("Not returned: "+e.message,"err")}
+  reloadSoon();
+}
+function lastStopEvent(id){for(let i=PLOG.events.length-1;i>=0;i--){const e=PLOG.events[i];if(e.id!==id)continue;if(e.action==="stop-run")return e;if(e.action==="restore")return null}return null}
+async function restoreStopped(ids){
+  try{await partOps({action:"restore",ids});toast("Restored to the tracker","ok")}catch(e){toast("Not restored: "+e.message,"err")}
+  reloadSoon();
+}
 function visibleRecords(){return D.records.filter(r=>M.isVisible(r.model))}
 function counts(rows){
-  const c={total:rows.length,complete:0,process:0,missing:0,review:0,pastDue:0};
+  const c={total:rows.length,complete:0,process:0,missing:0,rejected:0,review:0,stop:0,pastDue:0};
   for(const r of rows){c[r.status]++;if(r.pastDue)c.pastDue++}
   return c;
 }
 /* A model is "done" when no part is Not Submitted Yet and none needs review. */
-function modelDone(k){const rs=M.rows(k);if(!rs.length)return false;return !rs.some(r=>r.status==="missing"||r.status==="review")}
+function modelDone(k){const rs=M.rows(k);if(!rs.length)return false;return !rs.some(r=>OPEN(r.status)||r.status==="review")}
 function urgencyForModel(k){
   if(modelDone(k))return"ontime";
   const d=M.days(k);
@@ -1033,7 +1230,8 @@ function modelHealth(k){
 /* Supplier mood — original three states kept; 😈 only when nothing is submitted AND something is overdue. */
 function supplierMood(a){
   if(a.parts&&a.complete===a.parts)return{emoji:"😄",label:"Submitted",cls:"ok"};
-  if(a.parts&&a.missing===a.parts)return a.pastDue?{emoji:"😈",label:"Not Submitted Yet · overdue",cls:"bad"}:{emoji:"😡",label:"Not Submitted Yet",cls:"bad"};
+  if(a.parts&&a.rejected===a.parts)return{emoji:"😤",label:"Rejected",cls:"bad"};
+  if(a.parts&&a.missing+a.rejected===a.parts)return a.pastDue?{emoji:"😈",label:"Not Submitted Yet · overdue",cls:"bad"}:{emoji:"😡",label:"Not Submitted Yet",cls:"bad"};
   if(a.parts&&a.review&&a.review===a.parts)return{emoji:"🤔",label:"Needs Review",cls:"info"};
   return{emoji:"😐",label:"Working",cls:"warn"};
 }
@@ -1095,7 +1293,7 @@ function buildDataset(allRows,headerIdx,cm){
   }
   const records=[...groups.values()];
   /* a model with no open (Not Submitted Yet) part cannot be "past due" — same rule as before */
-  const open=new Set(records.filter(r=>r.status==="missing").map(r=>r.model));
+  const open=new Set(records.filter(r=>OPEN(r.status)).map(r=>r.model));
   records.forEach((r,i)=>{r.id=i;if(!open.has(r.model))r.pastDue=false});
   const duplicates=records.filter(r=>r.sourceCount>1);
   const countUnique=(a,k)=>new Set(a.map(x=>x[k]).filter(Boolean)).size;
@@ -1103,6 +1301,10 @@ function buildDataset(allRows,headerIdx,cm){
   return{records,rawRecords:raw,duplicates,validation,issues};
 }
 function commitDataset(ds,contacts){
+  // Check (review) and Stop run parts never count in the general views: they live in the Check tab.
+  const keep=ds.records.filter(r=>!SPECIAL(r.status));
+  D.checks=ds.records.filter(r=>r.status==="review");D.stopped=ds.records.filter(r=>r.status==="stop");
+  keep.forEach((r,i)=>{r.id=i});D.checks.concat(D.stopped).forEach((r,i)=>{r.id="x"+i});ds.records=keep;
   D._vendor=null;DIRM=null;D.records=ds.records;D.rawRecords=ds.rawRecords;D.duplicates=ds.duplicates;D.validation=ds.validation;D.issues=ds.issues;
   if(contacts)D.contacts=contacts;
   buildRegistry(D.records);
@@ -1144,12 +1346,12 @@ function setPromiseDate(r,iso){
   return saved;
 }
 function promiseStats(rows){
-  const missing=rows.filter(r=>r.status==="missing"),today=todayStart();let given=0,overdue=0;
+  const missing=rows.filter(r=>OPEN(r.status)),today=todayStart();let given=0,overdue=0;
   missing.forEach(r=>{if(r.targetDate){given++;if(r.targetDate<today)overdue++}});
   return{notSubmitted:missing.length,given,awaiting:missing.length-given,overdue};
 }
 function supplierPromiseStats(rows){
-  const missing=rows.filter(r=>r.status==="missing"),today=todayStart(),by={};
+  const missing=rows.filter(r=>OPEN(r.status)),today=todayStart(),by={};
   missing.forEach(r=>{const g=by[r.company]||(by[r.company]={hasDate:false,overdue:false});if(r.targetDate){g.hasDate=true;if(r.targetDate<today)g.overdue=true}});
   const s=Object.values(by),given=s.filter(x=>x.hasDate).length;
   return{notSubmitted:s.length,given,awaiting:s.length-given,overdue:s.filter(x=>x.overdue).length};
@@ -1159,10 +1361,10 @@ function supplierPromiseStats(rows){
 function aggregate(rows){
   const m={};
   for(const r of rows){
-    const a=m[r.company]||(m[r.company]={company:r.company,parts:0,complete:0,process:0,missing:0,review:0,pastDue:false,models:new Set()});
+    const a=m[r.company]||(m[r.company]={company:r.company,parts:0,complete:0,process:0,missing:0,rejected:0,review:0,stop:0,pastDue:false,models:new Set()});
     a.parts++;a[r.status]++;a.models.add(r.model);if(r.pastDue)a.pastDue=true;
   }
-  return Object.values(m).map(a=>({...a,models:[...a.models].sort((x,y)=>M.get(x).sortOrder-M.get(y).sortOrder),pct:pct(a.complete,a.parts),contact:D.contacts.get(a.company.toUpperCase())||null}));
+  return Object.values(m).map(a=>({...a,open:a.missing+a.rejected,models:[...a.models].sort((x,y)=>M.get(x).sortOrder-M.get(y).sortOrder),pct:pct(a.complete,a.parts),contact:D.contacts.get(a.company.toUpperCase())||null}));
 }
 function computeView(){
   const q=F.q.trim().toLowerCase();
@@ -1181,10 +1383,10 @@ function sortAggregates(agg){
   const key=F.sort,by=(a,b)=>String(a.company).localeCompare(String(b.company),"en",{sensitivity:"base"});
   const dl=a=>Math.min(...UI.viewBase.filter(r=>r.company===a.company).map(r=>{const d=M.deadline(r.model);return d?d.getTime():Infinity}));
   const f={supplier:by,"supplier-desc":(a,b)=>by(b,a),
-    missing:(a,b)=>(b.missing-a.missing)||(b.process-a.process)||by(a,b),
-    progress:(a,b)=>(a.pct-b.pct)||(b.missing-a.missing)||by(a,b),
-    "progress-desc":(a,b)=>(b.pct-a.pct)||(b.missing-a.missing)||by(a,b),
-    status:(a,b)=>((b.missing>0)-(a.missing>0))||(b.pastDue-a.pastDue)||(b.missing-a.missing)||by(a,b),
+    missing:(a,b)=>(b.open-a.open)||(b.process-a.process)||by(a,b),
+    progress:(a,b)=>(a.pct-b.pct)||(b.open-a.open)||by(a,b),
+    "progress-desc":(a,b)=>(b.pct-a.pct)||(b.open-a.open)||by(a,b),
+    status:(a,b)=>((b.open>0)-(a.open>0))||(b.pastDue-a.pastDue)||(b.open-a.open)||by(a,b),
     deadline:(a,b)=>(dl(a)-dl(b))||by(a,b)}[key]||by;
   return agg.sort(f);
 }
@@ -1192,8 +1394,8 @@ function priorityAgg(){
   const by={};
   supplierRowsForView().forEach(r=>{(by[r.company]=by[r.company]||[]).push(r)});
   return Object.entries(by).map(([company,rs])=>{
-    const parts=rs.length,complete=rs.filter(r=>r.status==="complete").length,missing=rs.filter(r=>r.status==="missing").length;
-    const noDate=rs.filter(r=>r.status==="missing"&&!r.targetDate).length;
+    const parts=rs.length,complete=rs.filter(r=>r.status==="complete").length,missing=rs.filter(r=>OPEN(r.status)).length;
+    const noDate=rs.filter(r=>OPEN(r.status)&&!r.targetDate).length;
     const models=[...new Set(rs.map(r=>r.model))].sort((a,b)=>M.get(a).sortOrder-M.get(b).sortOrder);
     return{company,parts,complete,missing,noDate,pastDue:rs.some(r=>r.pastDue),pct:pct(complete,parts),models,nearest:Math.min(...models.map(m=>daysFor(company,m)))};
   }).filter(a=>a.missing>0).sort((a,b)=>(b.pastDue-a.pastDue)||(b.missing-a.missing)||(a.pct-b.pct));
@@ -1502,8 +1704,8 @@ async function graphRefresh(silent){
    20-views-a — shared UI helpers, router, chrome (sidebar/scope), Overview, Model Tracker
    Rendering never attaches listeners: ONE delegated listener lives in 50-boot.
    ===================================================================== */
-const VIEWS=["overview","models","suppliers","followup","directory","reports","history","settings"];
-const VIEW_TITLES={overview:"Overview",models:"Model Tracker",suppliers:"Suppliers",followup:"Follow-up",directory:"Directory",reports:"Reports",history:"History",settings:"Settings"};
+const VIEWS=["overview","models","suppliers","followup","check","directory","reports","history","settings"];
+const VIEW_TITLES={overview:"Overview",models:"Model Tracker",suppliers:"Suppliers",followup:"Follow-up",check:"Check",directory:"Directory",reports:"Reports",history:"History",settings:"Settings"};
 const URGENCY_LABEL={pastdue:"Past due",due14:"Due ≤ 14 days",ontime:"On time or no deadline"};
 
 /* ---------- shared fragments ---------- */
@@ -1515,8 +1717,8 @@ function modelChips(keys,max=3){
   return shown+more;
 }
 function stackBar(c,label){
-  const t=c.total||1,w=k=>(c[k]/t*100).toFixed(2);
-  return `<span class="stack" role="img" aria-label="${esc(label||"")}Submitted ${c.complete}, Working ${c.process}, Not Submitted Yet ${c.missing}${c.review?`, Needs Review ${c.review}`:""}"><i class="s-ok" style="width:${w("complete")}%"></i><i class="s-warn" style="width:${w("process")}%"></i><i class="s-bad" style="width:${w("missing")}%"></i><i class="s-info" style="width:${w("review")}%"></i></span>`;
+  const t=c.total||1,w=k=>((c[k]||0)/t*100).toFixed(2);
+  return `<span class="stack" role="img" aria-label="${esc(label||"")}Submitted ${c.complete}, Working ${c.process}, Not Submitted Yet ${c.missing}${c.rejected?`, Rejected ${c.rejected}`:""}"><i class="s-ok" style="width:${w("complete")}%"></i><i class="s-warn" style="width:${w("process")}%"></i><i class="s-rej" style="width:${w("rejected")}%"></i><i class="s-bad" style="width:${w("missing")}%"></i></span>`;
 }
 function initials(name){const w=clean(name).replace(/[^a-z0-9 ]/gi," ").trim().split(/\s+/).filter(Boolean);if(!w.length)return"?";return(w[0][0]+(w[1]?w[1][0]:w[0][1]||"")).toUpperCase()}
 function avatarHue(name){let h=0;for(const ch of clean(name))h=(h*31+ch.charCodeAt(0))%360;return 250+(h%70)}   // stays inside the violet–blue family
@@ -1567,7 +1769,7 @@ function renderAll(){
   VIEWS.forEach(v=>{const el=$("#view-"+v);if(el)el.hidden=!(UI.view===v&&(has||v==="settings"))});
   const ev=$("#view-empty");if(ev)ev.hidden=!(!has&&UI.view!=="settings");
   if(!has&&UI.view!=="settings"){ev.innerHTML=emptyHTML("📂","No part list yet","Upload the IMDS Remaining master once in Settings. After that the Tracker remembers it and loads it automatically every time.",`<button type="button" class="btn btn-primary" data-action="go" data-view="settings">Upload master</button>`);return}
-  ({overview:renderOverview,models:renderModels,suppliers:renderSuppliers,followup:renderFollowup,directory:renderDirectory,reports:renderReports,history:renderHistory,settings:renderSettings}[UI.view]||renderOverview)();
+  ({overview:renderOverview,models:renderModels,suppliers:renderSuppliers,followup:renderFollowup,check:renderCheck,directory:renderDirectory,reports:renderReports,history:renderHistory,settings:renderSettings}[UI.view]||renderOverview)();
   renderDrawer({keep:true});
 }
 
@@ -1575,9 +1777,9 @@ function renderChrome(){
   $$(".nav-link").forEach(a=>{const on=a.dataset.view===UI.view;a.classList.toggle("active",on);if(on)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   const has=D.records.length>0;
   const vis=has?visibleRecords():[],nSup=new Set(vis.map(r=>r.company)).size;
-  const nAct=new Set(vis.filter(r=>r.status==="missing").map(r=>r.company)).size;
+  const nAct=new Set(vis.filter(r=>OPEN(r.status)).map(r=>r.company)).size;
   const setN=(v,n)=>{const el=$(`.nav-link[data-view="${v}"] .nav-count`);if(el){el.textContent=n?fmt(n):"";el.hidden=!n}};
-  setN("suppliers",nSup);setN("followup",nAct);
+  setN("suppliers",nSup);setN("followup",nAct);setN("check",checkCount());
   {let chk=0;if(has&&dirCount())dirMatchMap().forEach(v=>{if(!v||v.how==="fuzzy")chk++});else if(has&&!dirCount())chk=0;setN("directory",chk)}setN("models",has?M.keys().length:0);
   /* scope bar */
   const chips=[];
@@ -1612,7 +1814,7 @@ function renderOverview(){
   const mood=p===100&&c.total?"🎉":p>=75?"😄":p>=40?"🙂":"😟";
   const nd=nextDeadline();
   let ndHTML;
-  if(nd){const lab=M.label(nd.k),over=nd.d<0,open=M.rows(nd.k).filter(r=>r.status==="missing"||r.status==="review").length;
+  if(nd){const lab=M.label(nd.k),over=nd.d<0,open=M.rows(nd.k).filter(r=>OPEN(r.status)).length;
     ndHTML=`<button type="button" class="kpi kpi-deadline ${over?"is-bad":nd.d<=14?"is-warn":""}" data-action="open-model" data-model="${escAttr(nd.k)}"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">${over?"😠":nd.d<=14?"😟":"🗓️"}</span><span class="kpi-label">${over?"Overdue deadline":"Next deadline"}</span></span><span class="kpi-value num">${over?Math.abs(nd.d)+"d":nd.d+"d"}</span><span class="kpi-sub"><span translate="no">${esc(lab)}</span> · ${esc(M.deadlineShort(nd.k))}</span><span class="kpi-sub">${fmt(open)} part${open===1?"":"s"} still open</span></button>`}
   else ndHTML=`<div class="kpi kpi-deadline"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">🗓️</span><span class="kpi-label">Next deadline</span></span><span class="kpi-value num">—</span><span class="kpi-sub">No open model has a deadline.</span><span class="kpi-sub"><button type="button" class="link-btn" data-action="go" data-view="settings">Set deadlines in Settings</button></span></div>`;
   const hasOverdue=c.pastDue>0;
@@ -1620,7 +1822,7 @@ function renderOverview(){
     <button type="button" class="kpi is-ok" data-action="kpi" data-status="complete"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">${mood}</span><span class="kpi-label">Submitted</span></span><span class="kpi-value num">${p}<small>%</small></span><span class="kpi-sub"><b class="num">${fmt(c.complete)}</b> of <b class="num">${fmt(c.total)}</b> parts</span><span class="kpi-bar"><i style="width:${p}%"></i></span></button>
     <button type="button" class="kpi is-warn" data-action="kpi" data-status="process"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">😐</span><span class="kpi-label">Working</span></span><span class="kpi-value num">${fmt(c.process)}</span><span class="kpi-sub">Under TMMIN judgement</span><span class="kpi-bar"><i style="width:${pct(c.process,c.total)}%"></i></span></button>
     <button type="button" class="kpi is-bad" data-action="kpi" data-status="missing"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">${hasOverdue&&c.missing===c.total?"😈":"😡"}</span><span class="kpi-label">Not Submitted Yet</span></span><span class="kpi-value num">${fmt(c.missing)}</span><span class="kpi-sub">${hasOverdue?`<b class="num">${fmt(c.pastDue)}</b> past target date`:"Supplier action required"}</span><span class="kpi-bar"><i style="width:${pct(c.missing,c.total)}%"></i></span></button>
-    <button type="button" class="kpi is-info" data-action="kpi" data-status="review"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">🧐</span><span class="kpi-label">Needs Review</span></span><span class="kpi-value num">${fmt(c.review)}</span><span class="kpi-sub">${c.review?"Status not recognised":"All statuses recognised"}</span><span class="kpi-bar"><i style="width:${pct(c.review,c.total)}%"></i></span></button>
+    <button type="button" class="kpi is-rej" data-action="kpi" data-status="rejected"><span class="kpi-top"><span class="kpi-emoji" aria-hidden="true">😤</span><span class="kpi-label">Rejected</span></span><span class="kpi-value num">${fmt(c.rejected)}</span><span class="kpi-sub">${c.rejected?"Supplier must resubmit":"No rejected part"}${checkCount()?` · <span class="link-btn" data-action="go" data-view="check">${fmt(checkCount())} in Check</span>`:""}</span><span class="kpi-bar"><i style="width:${pct(c.rejected,c.total)}%"></i></span></button>
     ${ndHTML}`;
   /* model strip (overview shows every model — registry is dynamic) */
   const keys=M.keys();
@@ -1629,7 +1831,7 @@ function renderOverview(){
   /* attention */
   $("#ov-attention").innerHTML=act.length?act.slice(0,5).map(a=>{
     const tier=a.pastDue?"critical":a.pct<30?"high":"monitor",tl=tier==="critical"?"Critical":tier==="high"?"High":"Monitor";
-    return `<li class="att tier-${tier}"><div class="att-main"><button type="button" class="link-btn att-name" data-action="open-supplier" data-supplier="${escAttr(a.company)}">${esc(a.company)}</button><span class="tier tier-${tier}">${tl}</span>${a.pastDue?'<span class="flag-due">Past due</span>':""}<div class="att-meta"><span class="num"><b>${a.missing}</b> of ${a.parts} remaining</span><span class="num">${a.pct}% done</span>${modelChips(a.models,3)}</div></div><button type="button" class="btn btn-secondary btn-sm" data-action="reminder" data-supplier="${escAttr(a.company)}">Remind</button></li>`}).join(""):`<li class="att-empty">${emptyHTML("🎉","No supplier action required",c.process?`${fmt(c.process)} part(s) are still under TMMIN judgement — no reminder needed.`:"Every part in this view is submitted.")}</li>`;
+    return `<li class="att tier-${tier}"><div class="att-main"><button type="button" class="link-btn att-name" data-action="open-supplier" data-supplier="${escAttr(a.company)}">${esc(a.company)}</button><span class="tier tier-${tier}">${tl}</span>${a.pastDue?'<span class="flag-due">Past due</span>':""}<div class="att-meta"><span class="num"><b>${a.open}</b> of ${a.parts} remaining</span><span class="num">${a.pct}% done</span>${modelChips(a.models,3)}</div></div><button type="button" class="btn btn-secondary btn-sm" data-action="reminder" data-supplier="${escAttr(a.company)}">Remind</button></li>`}).join(""):`<li class="att-empty">${emptyHTML("🎉","No supplier action required",c.process?`${fmt(c.process)} part(s) are still under TMMIN judgement — no reminder needed.`:"Every part in this view is submitted.")}</li>`;
   $("#ov-attention-more").hidden=act.length<=5;
   $("#ov-attention-more").textContent=`View all ${act.length} in Follow-up`;
   /* insights */
@@ -1654,7 +1856,7 @@ function renderInsights(c,act){
     spark=`<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="Overall submission progress from ${pctOf(first.overall)}% to ${pctOf(lastS.overall)}% over ${snaps.length} recaps"><path d="${d} L ${last[0].toFixed(1)} ${h-pad} L ${pts[0][0].toFixed(1)} ${h-pad} Z" class="spark-area"/><path d="${d}" class="spark-line"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" class="spark-dot"/></svg><div class="spark-cap num">${pctOf(first.overall)}% → <b>${pctOf(lastS.overall)}%</b> · ${snaps.length} recaps</div>`;
   }else spark=`<div class="spark-empty">Trend appears after two saved recaps. <button type="button" class="link-btn" data-action="save-recap">Save today’s recap</button></div>`;
   const lines=[];
-  const all=UI.viewBase,noDate=all.filter(r=>r.status==="missing"&&!r.targetDate).length;
+  const all=UI.viewBase,noDate=all.filter(r=>OPEN(r.status)&&!r.targetDate).length;
   if(c.missing)lines.push(`<b class="num">${fmt(c.missing)}</b> parts across <b class="num">${fmt(act.length)}</b> supplier${act.length===1?"":"s"} are not submitted yet.`);
   if(noDate)lines.push(`<b class="num">${fmt(noDate)}</b> outstanding part${noDate===1?" has":"s have"} no target date.`);
   if(c.pastDue)lines.push(`<b class="num">${fmt(c.pastDue)}</b> part${c.pastDue===1?" is":"s are"} past the target date.`);
@@ -1675,7 +1877,7 @@ function modelTileHTML(k){
     <span class="mtile-head"><span class="mtile-name" translate="no"><i aria-hidden="true"></i>${esc(M.label(k))}</span><span class="health health-${h.cls}"><span aria-hidden="true">${h.emoji}</span>${esc(h.label)}</span></span>
     <span class="mtile-big"><b class="num">${h.pct}</b><small>% submitted</small></span>
     ${stackBar(c,M.label(k)+": ")}
-    <span class="mtile-counts"><span class="t-ok" title="Submitted"><span aria-hidden="true">✓</span><b class="num">${fmt(c.complete)}</b></span><span class="t-warn" title="Working"><span aria-hidden="true">◐</span><b class="num">${fmt(c.process)}</b></span><span class="t-bad" title="Not Submitted Yet"><span aria-hidden="true">✕</span><b class="num">${fmt(c.missing)}</b></span>${c.review?`<span class="t-info" title="Needs Review"><span aria-hidden="true">?</span><b class="num">${fmt(c.review)}</b></span>`:""}<span class="muted num mtile-total">${fmt(c.total)} part${c.total===1?"":"s"}</span></span>
+    <span class="mtile-counts"><span class="t-ok" title="Submitted"><span aria-hidden="true">✓</span><b class="num">${fmt(c.complete)}</b></span><span class="t-warn" title="Working"><span aria-hidden="true">◐</span><b class="num">${fmt(c.process)}</b></span><span class="t-bad" title="Not Submitted Yet"><span aria-hidden="true">✕</span><b class="num">${fmt(c.missing)}</b></span>${c.rejected?`<span class="t-rej" title="Rejected"><span aria-hidden="true">⊘</span><b class="num">${fmt(c.rejected)}</b></span>`:""}<span class="muted num mtile-total">${fmt(c.total)} part${c.total===1?"":"s"}</span></span>
     <span class="mtile-foot"><span>${dl}</span>${M.deadline(k)?`<span class="muted num">${esc(M.deadlineShort(k))}</span>`:""}</span></button>`;
 }
 function renderModels(){
@@ -1684,7 +1886,7 @@ function renderModels(){
   const mg=$("#models-grid");mg.style.setProperty("--cols-d",String(Math.max(1,Math.ceil(keys.length/Math.ceil(keys.length/4)))));mg.innerHTML=keys.map(modelTileHTML).join("");
   const box=$("#model-detail"),all=F.model==="ALL"||!D.registry.has(F.model),k=F.model;
   const rows=all?visibleRecords():M.rows(k),c=counts(rows),p=pct(c.complete,c.total);
-  const agg=aggregate(rows).sort((a,b)=>(b.missing-a.missing)||(b.process-a.process)||a.company.localeCompare(b.company));
+  const agg=aggregate(rows).sort((a,b)=>(b.open-a.open)||(b.process-a.process)||a.company.localeCompare(b.company));
   const shown=agg.slice(0,all?12:60);
   let sub;
   if(all)sub=`${keys.length} models · ${fmt(c.total)} parts · select a model above to focus the whole tracker on it`;
@@ -1693,9 +1895,9 @@ function renderModels(){
   box.style.setProperty("--mc",all?"var(--violet)":M.color(k));
   box.innerHTML=`<div class="detail-top"><div><h2 class="detail-title">${all?"All models":`<span class="mdot" aria-hidden="true"></span><span translate="no">${esc(M.label(k))}</span>`}</h2><p class="panel-sub">${sub}</p></div>
       <div class="detail-actions">${h?`<span class="health health-${h.cls} big"><span aria-hidden="true">${h.emoji}</span>${esc(h.label)}</span>`:""}<button type="button" class="btn btn-primary btn-sm" data-action="go" data-view="suppliers">Open suppliers</button><button type="button" class="btn btn-secondary btn-sm" data-action="go" data-view="followup">Follow-up</button>${all?"":`<button type="button" class="btn btn-ghost btn-sm" data-action="clear-filter" data-key="model">Show all models</button>`}</div></div>
-    <div class="detail-body"><div class="detail-stats"><div class="dstat big"><span class="num">${p}<small>%</small></span><span>submitted</span></div>${[["complete","Submitted"],["process","Working"],["missing","Not Submitted Yet"],["review","Needs Review"]].map(([s,l])=>`<div class="dstat t-${STATUS[s].cls}"><span class="num">${fmt(c[s])}</span><span>${l}</span></div>`).join("")}</div>
+    <div class="detail-body"><div class="detail-stats"><div class="dstat big"><span class="num">${p}<small>%</small></span><span>submitted</span></div>${[["complete","Submitted"],["process","Working"],["missing","Not Submitted Yet"],["rejected","Rejected"]].map(([s,l])=>`<div class="dstat t-${STATUS[s].cls}"><span class="num">${fmt(c[s])}</span><span>${l}</span></div>`).join("")}</div>
       <div class="detail-list"><h3 class="list-h">${all?"Suppliers needing the most attention":"Suppliers in this model"} <span class="muted num">${agg.length}</span></h3>
-      <table class="tbl compact brk"><caption class="sr-only">Supplier breakdown</caption><thead><tr><th scope="col">Supplier</th><th scope="col">Parts</th><th scope="col" class="r">Done</th></tr></thead><tbody>${shown.map(a=>`<tr><th scope="row"><button type="button" class="link-btn" data-action="open-supplier" data-supplier="${escAttr(a.company)}">${esc(a.company)}</button>${all?`<div class="sup-sub">${modelChips(a.models,3)}</div>`:""}</th><td><div class="parts-cell">${stackBar({total:a.parts,complete:a.complete,process:a.process,missing:a.missing,review:a.review},a.company+": ")}<div class="parts-nums"><span class="pc-total num">${a.parts}</span>${partsCounts(a)}</div></div></td><td class="r num"><b>${a.pct}%</b></td></tr>`).join("")}</tbody></table>${agg.length>shown.length?`<p class="muted small more-note">Showing ${shown.length} of ${agg.length}. <button type="button" class="link-btn" data-action="go" data-view="suppliers">Open all in Suppliers</button></p>`:""}</div></div>`;
+      <table class="tbl compact brk"><caption class="sr-only">Supplier breakdown</caption><thead><tr><th scope="col">Supplier</th><th scope="col">Parts</th><th scope="col" class="r">Done</th></tr></thead><tbody>${shown.map(a=>`<tr><th scope="row"><button type="button" class="link-btn" data-action="open-supplier" data-supplier="${escAttr(a.company)}">${esc(a.company)}</button>${all?`<div class="sup-sub">${modelChips(a.models,3)}</div>`:""}</th><td><div class="parts-cell">${stackBar({total:a.parts,complete:a.complete,process:a.process,missing:a.missing,rejected:a.rejected},a.company+": ")}<div class="parts-nums"><span class="pc-total num">${a.parts}</span>${partsCounts(a)}</div></div></td><td class="r num"><b>${a.pct}%</b></td></tr>`).join("")}</tbody></table>${agg.length>shown.length?`<p class="muted small more-note">Showing ${shown.length} of ${agg.length}. <button type="button" class="link-btn" data-action="go" data-view="suppliers">Open all in Suppliers</button></p>`:""}</div></div>`;
 }
 
 /* =====================================================================
@@ -1707,7 +1909,7 @@ const LINK_RULES="https://bit.ly/ImportantRulesIMDS",LINK_GUIDE="https://bit.ly/
    SUPPLIERS
    ===================================================================== */
 function partsCounts(a){
-  const it=[["complete","ok","✓","Submitted"],["process","warn","◐","Working"],["missing","bad","✕","Not Submitted Yet"],["review","info","?","Needs Review"]];
+  const it=[["complete","ok","✓","Submitted"],["process","warn","◐","Working"],["missing","bad","✕","Not Submitted Yet"],["rejected","rej","⊘","Rejected"]];
   return it.filter(([k])=>a[k]>0).map(([k,cls,g,l])=>`<span class="pc t-${cls}" title="${l}"><span aria-hidden="true">${g}</span><b class="num">${a[k]}</b><span class="sr-only"> ${l}</span></span>`).join("");
 }
 function renderSuppliers(){
@@ -1720,19 +1922,19 @@ function renderSuppliers(){
   const nAdv=["model","supplier","urgency"].filter(k=>F[k]!=="ALL").length;
   $("#filters-badge").textContent=nAdv||"";$("#filters-badge").hidden=!nAdv;
   const chips=[["ALL","All",c.total,""],["complete","Submitted",c.complete,"ok"],["process","Working",c.process,"warn"],["missing","Not Submitted Yet",c.missing,"bad"]];
-  if(c.review||F.status==="review")chips.push(["review","Needs Review",c.review,"info"]);
+  if(c.rejected||F.status==="rejected")chips.push(["rejected","Rejected",c.rejected,"rej"]);
   $("#status-chips").innerHTML=chips.map(([k,l,n,cls])=>`<button type="button" class="status-chip ${cls} ${F.status===k?"active":""}" data-action="status-chip" data-status="${k}" aria-pressed="${F.status===k}">${cls?`<span class="chip-glyph" aria-hidden="true">${STATUS[k].glyph}</span>`:""}${l}<span class="n num">${fmt(n)}</span></button>`).join("");
   $("#supplier-tbody").innerHTML=agg.map(a=>{
     const ct=a.contact,email=ct?(ct.pic||ct.cc||ct.spv||""):"",mood=supplierMood(a),open=UI.drill===a.company;
     const contact=ct?(email?`<span class="contact-ok"><span aria-hidden="true">✓</span> PIC on file</span>`:`<span class="contact-none">No email</span>`):`<span class="contact-none">Not in contact list</span>`;
-    const statusText=a.complete===a.parts?"Submitted":a.missing===a.parts?"Not Submitted Yet":a.review===a.parts?"Needs Review":"Working";
+    const statusText=a.complete===a.parts?"Submitted":a.rejected===a.parts?"Rejected":a.open===a.parts?"Not Submitted Yet":"Working";
     return `<tr class="${open?"selected":""}" data-supplier="${escAttr(a.company)}">
       <th scope="row" class="c-name"><div class="sup-main">${avatar(a.company)}<div class="sup-id"><button type="button" class="link-btn sup-link" data-action="open-supplier" data-supplier="${escAttr(a.company)}" aria-haspopup="dialog" title="${escAttr(a.company)}">${esc(a.company)}</button><div class="sup-sub">${modelChips(a.models,3)}${a.pastDue?`<span class="flag-due" title="Visual urgency flag only — not included in status totals">Past due</span>`:""}</div></div></div></th>
-      <td class="c-parts"><div class="parts-cell">${stackBar({total:a.parts,complete:a.complete,process:a.process,missing:a.missing,review:a.review},a.company+": ")}<div class="parts-nums"><span class="pc-total num">${a.parts} part${a.parts===1?"":"s"}</span>${partsCounts(a)}</div></div></td>
+      <td class="c-parts"><div class="parts-cell">${stackBar({total:a.parts,complete:a.complete,process:a.process,missing:a.missing,rejected:a.rejected},a.company+": ")}<div class="parts-nums"><span class="pc-total num">${a.parts} part${a.parts===1?"":"s"}</span>${partsCounts(a)}</div></div></td>
       <td class="c-status">${moodHTML({...mood,label:statusText+(mood.label.includes("overdue")?" · overdue":"")})}</td>
       <td class="c-pct"><b class="num">${a.pct}%</b><span class="sr-only"> done</span></td>
       <td class="c-contact"><div>${contact}</div><div class="muted ellipsis" title="${escAttr(email)}">${esc(email)}</div></td>
-      <td class="c-act"><button type="button" class="btn btn-secondary btn-sm" data-action="reminder" data-supplier="${escAttr(a.company)}" ${a.missing?"":"disabled"} title="${a.missing?"Draft a reminder for Not Submitted Yet parts":"No Not Submitted Yet parts — no reminder needed"}">Remind</button><button type="button" class="btn btn-ghost btn-sm" data-action="supplier-pdf" data-supplier="${escAttr(a.company)}" title="Download this supplier’s part-level PDF">PDF</button></td></tr>`;
+      <td class="c-act"><button type="button" class="btn btn-secondary btn-sm" data-action="reminder" data-supplier="${escAttr(a.company)}" ${a.open?"":"disabled"} title="${a.open?"Draft a reminder for Not Submitted Yet / Rejected parts":"Nothing for the supplier to do — no reminder needed"}">Remind</button><button type="button" class="btn btn-ghost btn-sm" data-action="supplier-pdf" data-supplier="${escAttr(a.company)}" title="Download this supplier’s part-level PDF">PDF</button></td></tr>`;
   }).join("")||`<tr class="row-empty"><td colspan="6">${emptyHTML("🔎","No suppliers match","Loosen or clear the filters to see more suppliers.",activeFilterCount()?`<button type="button" class="btn btn-secondary btn-sm" data-action="clear-filters">Clear filters</button>`:"")}</td></tr>`;
 }
 
@@ -1767,7 +1969,7 @@ function renderDrawer({keep=false,focus=false,focusRid=null}={}){
   rows.sort((x,y)=>(M.get(x.model).sortOrder-M.get(y.model).sortOrder)||(STATUS[x.status].sev-STATUS[y.status].sev)||((x.targetDate?x.targetDate.getTime():Infinity)-(y.targetDate?y.targetDate.getTime():Infinity))||String(x.partNo).localeCompare(String(y.partNo)));
   const prevScroll=keep?($(".drawer-body",dr)||{}).scrollTop||0:0;
   const filters=[["all","All",c.total,""],["missing","Not Submitted Yet",c.missing,"bad"],["process","Working",c.process,"warn"],["complete","Submitted",c.complete,"ok"]];
-  if(c.review)filters.push(["review","Needs Review",c.review,"info"]);
+  if(c.rejected)filters.splice(2,0,["rejected","Rejected",c.rejected,"rej"]);
   const models=[...new Set(all.map(r=>r.model))].sort((x,y)=>M.get(x).sortOrder-M.get(y).sortOrder);
   dr.innerHTML=`<div class="drawer-head">
       <div class="drawer-id">${avatar(name)}<div><h2 id="drawer-title" tabindex="-1">${esc(name)}</h2><p class="muted">${esc(pic?"PIC · "+pic:"No PIC email on file")}</p></div></div>
@@ -1781,16 +1983,16 @@ function renderDrawer({keep=false,focus=false,focusRid=null}={}){
         <span class="due-left num ${d<0?"t-bad":d<=14?"t-warn":""}">${d===Infinity?"No due date":d<0?Math.abs(d)+"d overdue":d+"d left"}${own?' · <span class="badge plain">supplier</span>':""}</span></div>`}).join("")}
     </div>
     <div class="drawer-actions">
-      <button type="button" class="btn btn-primary btn-sm" data-action="reminder" data-supplier="${escAttr(name)}" ${ca.missing?"":"disabled"}>Send reminder</button>
+      <button type="button" class="btn btn-primary btn-sm" data-action="reminder" data-supplier="${escAttr(name)}" ${ca.missing+ca.rejected?"":"disabled"}>Send reminder</button>
       <button type="button" class="btn btn-secondary btn-sm" data-action="supplier-pdf" data-supplier="${escAttr(name)}">Supplier PDF</button>
       <button type="button" class="btn btn-secondary btn-sm" data-action="supplier-xlsx" data-supplier="${escAttr(name)}">Export Excel</button>
       <a class="btn btn-ghost btn-sm" href="/judgement?q=${encodeURIComponent((all.find(r=>r.vendorCode)||{}).vendorCode||name)}" title="Open this supplier's G-CATS cases in Judgement">Judgement cases →</a>
       <a class="link-pill" href="${LINK_RULES}" target="_blank" rel="noopener">Important rules</a><a class="link-pill" href="${LINK_GUIDE}" target="_blank" rel="noopener">IMDS guide</a></div>
     <div class="drawer-filters" role="group" aria-label="Filter parts by status">${filters.map(([k,l,n,cls])=>`<button type="button" class="status-chip ${cls} ${UI.drillFilter===k?"active":""}" data-action="drill-filter" data-k="${k}" aria-pressed="${UI.drillFilter===k}">${l}<span class="n num">${fmt(n)}</span></button>`).join("")}</div>
     ${base.length<all.length?`<p class="drawer-note">Showing ${fmt(base.length)} of ${fmt(all.length)} parts — the current scope filters apply. <button type="button" class="link-btn" data-action="clear-filters">Clear filters</button></p>`:""}
-    <p class="drawer-note">Working = submitted to TMMIN and under judgement · no reminder needed.</p>
-    <div class="drawer-body"><div class="table-wrap"><table class="tbl compact"><caption class="sr-only">Parts for ${esc(name)}</caption><thead><tr><th scope="col">Model</th><th scope="col">Part number</th><th scope="col">Part name</th><th scope="col">Target date</th><th scope="col">Status</th><th scope="col">Submission plan</th><th scope="col">Flag</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${modelChip(r.model)}</td><td class="mono"><b>${esc(r.partNo||"—")}</b></td><td class="part-name">${esc(r.partName)}</td><td class="num">${datePretty(r.targetDate)}</td><td>${badge(r.status)}${r.status==="review"?`<div class="muted small" title="Raw status from the workbook">“${esc(r.statusRaw)}”</div>`:""}</td><td class="plan-cell">${planCellHTML(r)}</td><td>${r.pastDue?'<span class="flag-due">Past due</span>':""}</td></tr>`).join("")||`<tr><td colspan="7">${emptyHTML("🙂","No parts in this status","")}</td></tr>`}</tbody></table></div></div>`;
+    <p class="drawer-note">Working = submitted to TMMIN and under judgement · no reminder needed. Part not theirs or wrong model? <b>Move to Check</b> on the row<span class="only-touch"> (swipe the row left)</span>.</p>
+    <div class="drawer-body"><div class="table-wrap"><table class="tbl compact"><caption class="sr-only">Parts for ${esc(name)}</caption><thead><tr><th scope="col">Model</th><th scope="col">Part number</th><th scope="col">Part name</th><th scope="col">Target date</th><th scope="col">Status</th><th scope="col">Submission plan</th><th scope="col"><span class="sr-only">Flag and actions</span></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr class="part-row" data-rid="${r.id}"><td class="pr-model">${modelChip(r.model)}</td><td class="mono pr-no"><b>${esc(r.partNo||"—")}</b></td><td class="part-name pr-name">${esc(r.partName)}</td><td class="pr-target"><input type="date" class="promise-input tgt-input" data-action-change="part-target" data-rid="${r.id}" value="${escAttr(dateToISO(r.targetDate))}" aria-label="Target date for part ${escAttr(r.partNo||"")}" title="Change this part only. Changing the model or supplier due date updates every part again."></td><td class="pr-status">${badge(r.status)}</td><td class="plan-cell pr-plan">${planCellHTML(r)}</td><td class="pr-act">${r.pastDue?'<span class="flag-due">Past due</span>':""}<button type="button" class="btn btn-ghost btn-sm row-check" data-action="to-check" data-rid="${r.id}" title="Supplier says it is not theirs, or the model is wrong: move it to the Check tab">Move to Check</button></td></tr>`).join("")||`<tr><td colspan="7">${emptyHTML("🙂","No parts in this status","")}</td></tr>`}</tbody></table></div></div>`;
   dr.hidden=false;dr.removeAttribute("aria-hidden");document.body.classList.add("drawer-open");
   const sc=$("#scrim");if(sc)sc.hidden=false;
   if(keep){const b=$(".drawer-body",dr);if(b)b.scrollTop=prevScroll}
@@ -1799,7 +2001,7 @@ function renderDrawer({keep=false,focus=false,focusRid=null}={}){
 }
 /* Submission-plan cell: only Not Submitted Yet parts get a date input. */
 function planCellHTML(r){
-  if(r.status!=="missing")return'<span class="muted">—</span>';
+  if(!OPEN(r.status))return'<span class="muted">—</span>';
   const iso=getPromiseISO(r),d=getPromiseDate(r);
   let badgeH;
   if(!iso)badgeH='<span class="badge badge-warn plain">Awaiting date</span>';
@@ -1813,7 +2015,7 @@ function planCellHTML(r){
    ===================================================================== */
 function followData(){
   const rows=UI.viewBase,today=todayStart();
-  const missing=rows.filter(r=>r.status==="missing");
+  const missing=rows.filter(r=>OPEN(r.status));
   const isOver=r=>(r.targetDate&&r.targetDate<today)||(()=>{const d=getPromiseDate(r);return d&&d<today})();
   const group=(rs,extra)=>{const m={};rs.forEach(r=>{const g=m[r.company]||(m[r.company]={company:r.company,parts:0,models:new Set(),oldest:null,...extra()});g.parts++;g.models.add(r.model);const t=r.targetDate;if(t&&(!g.oldest||t<g.oldest))g.oldest=t});return Object.values(m).map(g=>({...g,models:[...g.models].sort((a,b)=>M.get(a).sortOrder-M.get(b).sortOrder)}))};
   const overdue=group(missing.filter(isOver),()=>({}));
@@ -1855,7 +2057,7 @@ function renderFollowup(){
   }else{
     sub="Models that still have open parts, soonest deadline first. Deadlines are editable in Settings.";
     const ks=f.dl.slice().sort((a,b)=>M.days(a)-M.days(b));
-    html=tbl([["Model"],["Deadline","r"],["Time left","r"],["Open parts","r"],["Progress"],["Health"]],ks.map(k=>{const h=modelHealth(k),d=M.days(k),open=M.rows(k).filter(r=>r.status==="missing"||r.status==="review").length;return `<tr><th scope="row"><button type="button" class="link-btn model-btn" data-action="open-model" data-model="${escAttr(k)}"><span class="mdot" style="--mc:${M.color(k)}" aria-hidden="true"></span><span translate="no">${esc(M.label(k))}</span></button></th><td class="num r">${esc(M.deadlineShort(k))}</td><td class="num r">${d<0?`<span class="t-bad">${Math.abs(d)}d overdue</span>`:d+" days"}</td><td class="num r">${fmt(open)}</td><td><div class="prog"><span class="prog-bar"><i style="width:${h.pct}%"></i></span><b class="num">${h.pct}%</b></div></td><td><span class="health health-${h.cls}"><span aria-hidden="true">${h.emoji}</span>${esc(h.label)}</span></td></tr>`}).join(""),["No upcoming deadlines","Every model with a deadline is complete, or no deadline is set."]);
+    html=tbl([["Model"],["Deadline","r"],["Time left","r"],["Open parts","r"],["Progress"],["Health"]],ks.map(k=>{const h=modelHealth(k),d=M.days(k),open=M.rows(k).filter(r=>OPEN(r.status)).length;return `<tr><th scope="row"><button type="button" class="link-btn model-btn" data-action="open-model" data-model="${escAttr(k)}"><span class="mdot" style="--mc:${M.color(k)}" aria-hidden="true"></span><span translate="no">${esc(M.label(k))}</span></button></th><td class="num r">${esc(M.deadlineShort(k))}</td><td class="num r">${d<0?`<span class="t-bad">${Math.abs(d)}d overdue</span>`:d+" days"}</td><td class="num r">${fmt(open)}</td><td><div class="prog"><span class="prog-bar"><i style="width:${h.pct}%"></i></span><b class="num">${h.pct}%</b></div></td><td><span class="health health-${h.cls}"><span aria-hidden="true">${h.emoji}</span>${esc(h.label)}</span></td></tr>`}).join(""),["No upcoming deadlines","Every model with a deadline is complete, or no deadline is set."]);
   }
   $("#follow-sub").textContent=sub;
   p.innerHTML=html;
@@ -1915,6 +2117,48 @@ function trackerChartSVG(asc){
   return `<svg class="trend" viewBox="0 0 ${w} ${h}" role="img" aria-label="Overall submission progress across ${n} saved recaps, latest ${pctOf(pts[n-1].overall)} percent">${grid}<path d="${area}" class="t-area"/><path d="${path}" class="t-line"/>${dots}<text x="${padL}" y="${h-8}" class="g-txt">${esc(fmtDateShort(pts[0].ts))}</text><text x="${w-padR}" y="${h-8}" class="g-txt" text-anchor="end">${esc(fmtDateShort(pts[n-1].ts))}</text></svg>
   <div class="legend"><span><i class="lg-auto"></i>Daily auto-recap</span><span><i class="lg-manual"></i>Manual recap</span><span class="muted">Overall submission % across ${n} saved point${n===1?"":"s"}</span></div>`;
 }
+/* ---------------- CHECK TAB ---------------- */
+const CHECK_STATUSES=["NOT SUBMITTED YET","WORKING","ACCEPTED","REJECTED"];
+function renderCheck(){
+  const tabs=$("#check-tabs"),body=$("#check-body");if(!tabs||!body)return;
+  const q=F.q.trim().toLowerCase(),hit=r=>!q||(r.partNo+" "+r.partName+" "+r.company+" "+r.vendorCode+" "+M.label(r.model)).toLowerCase().includes(q);
+  const pending=(D.checks||[]).map((r,i)=>({r,i})).filter(x=>hit(x.r));
+  const stops=stopLogRows().filter(x=>!q||(x.before.partNo+" "+x.before.partName+" "+x.before.company+" "+x.before.model).toLowerCase().includes(q));
+  const tab=UI.checkTab==="log"?"log":"pending";
+  tabs.innerHTML=`<button type="button" class="seg-btn ${tab==="pending"?"on":""}" data-action="check-tab" data-tab="pending" aria-pressed="${tab==="pending"}">Pending check <span class="num">${fmt((D.checks||[]).length)}</span></button><button type="button" class="seg-btn ${tab==="log"?"on":""}" data-action="check-tab" data-tab="log" aria-pressed="${tab==="log"}">Stop run log <span class="num">${fmt(stopLogRows().length)}</span></button>`;
+  if(tab==="log"){body.innerHTML=stopLogHTML(stops);return}
+  if(!pending.length){body.innerHTML=`<section class="panel">${emptyHTML("✅","Nothing to check",q?"No part in Check matches the search.":"When a supplier says a part is not theirs, open the supplier and use “Move to Check” on that part.")}</section>`;return}
+  const sups=[...new Set(D.records.concat(D.checks||[]).map(r=>r.company))].sort((a,b)=>a.localeCompare(b,"en",{sensitivity:"base"}));
+  const models=M.keys().filter(k=>k!==UNASSIGNED);
+  body.innerHTML=`<datalist id="ck-suppliers">${sups.map(x=>`<option value="${escAttr(x)}">`).join("")}</datalist>
+    <section class="panel flush" id="check-pending"><div class="check-bar"><span class="muted small">Pick the correct supplier and/or model, then <b>Return to tracker</b>. Nothing to fix? Return it unchanged. No longer running? <b>Stop run</b>.</span><button type="button" class="btn btn-ghost btn-sm" data-action="check-stop-selected">Stop run for ticked</button></div>
+    <div class="check-list">${pending.map(({r,i})=>{
+      const log=PLOG.checks[r.masterId],from=log?log.from:null,prev=from&&from.status&&!/^(check|cek)$/i.test(from.status)?from.status:"";
+      return `<article class="ck-card" data-ci="${i}">
+        <label class="ck-sel"><input type="checkbox" class="ck-pick" data-i="${i}" aria-label="Select ${escAttr(r.partNo)}"></label>
+        <div class="ck-id"><b class="mono">${esc(r.partNo||"—")}</b><span class="muted">${esc(r.partName||"")}</span>
+          <div class="ck-meta">${modelChip(r.model)}<span>Initial supplier: <b>${esc(from?from.company:r.company)}</b>${(from?from.vendorCode:r.vendorCode)?` <span class="muted mono">${esc(from?from.vendorCode:r.vendorCode)}</span>`:""}</span></div>
+          <p class="ck-why">${log?`${esc(log.reason||"No reason given")} <span class="muted">· ${esc(log.by||"")} · ${esc(log.at?new Date(log.at).toLocaleDateString():"")}</span>`:`<span class="muted">Imported with status “${esc(r.statusRaw||"CHECK")}”.</span>`}</p></div>
+        <div class="ck-fix">
+          <label class="field"><span>Correct supplier</span><input type="text" class="ck-sup" list="ck-suppliers" placeholder="${escAttr(r.company)}" autocomplete="off"></label>
+          <label class="field"><span>Correct model</span><select class="ck-model"><option value="">Keep ${esc(M.label(r.model))}</option>${models.filter(k=>k!==r.model).map(k=>`<option value="${escAttr(k)}">${esc(M.label(k))}</option>`).join("")}</select></label>
+          <label class="field"><span>Status when it returns</span><select class="ck-status"><option value="">${prev?"Previous: "+esc(prev):"Not Submitted Yet"}</option>${CHECK_STATUSES.map(x=>`<option value="${x}">${x.charAt(0)+x.slice(1).toLowerCase()}</option>`).join("")}</select></label>
+        </div>
+        <div class="ck-act"><button type="button" class="btn btn-primary btn-sm" data-action="check-return" data-i="${i}">Return to tracker</button><button type="button" class="btn btn-ghost btn-sm t-bad" data-action="check-stop" data-i="${i}">Stop run</button></div>
+      </article>`}).join("")}</div></section>`;
+}
+/* Stop run log: every logged stop (newest first), plus parts imported as STOP RUN without a log entry. */
+function stopLogRows(){
+  const out=[],seen=new Set(),stoppedIds=new Set((D.stopped||[]).map(r=>r.masterId));
+  for(let i=PLOG.events.length-1;i>=0;i--){const e=PLOG.events[i];if(e.action!=="stop-run")continue;const live=stoppedIds.has(e.id)&&lastStopEvent(e.id)===e;out.push({...e,live});seen.add(e.id)}
+  (D.stopped||[]).filter(r=>!seen.has(r.masterId)).forEach(r=>out.push({id:r.masterId,at:"",by:"",reason:"Imported as STOP RUN",live:true,before:{company:r.company,vendorCode:r.vendorCode,model:M.label(r.model),partNo:r.partNo,partName:r.partName,status:r.statusRaw,targetDate:dateToISO(r.targetDate),email:r.email}}));
+  return out;
+}
+function stopLogHTML(rows){
+  if(!rows.length)return`<section class="panel">${emptyHTML("📒","No part has stopped running","Use “Stop run” in Pending check. The part’s last supplier, model, status and target date are recorded here.")}</section>`;
+  return `<section class="panel flush"><div class="table-wrap"><table class="tbl compact stop-log"><caption class="sr-only">Stop run log, newest first</caption><thead><tr><th scope="col">Stopped</th><th scope="col">Part</th><th scope="col">Last supplier</th><th scope="col">Model</th><th scope="col">Last status</th><th scope="col">Target date</th><th scope="col">PIC</th><th scope="col">Reason</th><th scope="col"><span class="sr-only">Restore</span></th></tr></thead><tbody>${rows.map(e=>{const b=e.before;return `<tr><td class="num">${e.at?esc(new Date(e.at).toLocaleDateString()):"—"}<div class="muted small">${esc(e.by||"")}</div></td><th scope="row" class="mono">${esc(b.partNo||"—")}<div class="muted small">${esc(b.partName||"")}</div></th><td>${esc(b.company||"—")}${b.vendorCode?`<div class="muted small mono">${esc(b.vendorCode)}</div>`:""}</td><td>${esc(b.model||"—")}</td><td>${esc(b.status||"—")}</td><td class="num">${b.targetDate?datePretty(isoToDate(b.targetDate)):"—"}</td><td class="small">${esc(b.email||"—")}</td><td>${esc(e.reason||"")}</td><td>${e.live?`<button type="button" class="btn btn-ghost btn-sm" data-action="check-restore" data-id="${escAttr(e.id)}">Restore</button>`:'<span class="muted small">restored</span>'}</td></tr>`}).join("")}</tbody></table></div></section>`;
+}
+
 function renderHistory(){
   const asc=loadSnapshots().sort((a,b)=>new Date(a.ts)-new Date(b.ts)),desc=asc.slice().reverse();
   const kpi=$("#tracker-kpis"),chart=$("#tracker-chart-wrap"),tb=$("#history-tbody"),sum=$("#history-summary");
@@ -2028,7 +2272,7 @@ function closeModal(id){
   if(!UI.modals.length){document.body.classList.remove("modal-open");const sc=$("#scrim");if(sc)sc.hidden=!UI.drill}
   if(ent&&ent.opener&&document.contains(ent.opener)&&!ent.opener.disabled)ent.opener.focus();
 }
-function closeTopModal(){const t=UI.modals[UI.modals.length-1];if(!t)return false;if(t.id==="modal-confirm")resolveConfirm(false);else closeModal(t.id);return true}
+function closeTopModal(){const t=UI.modals[UI.modals.length-1];if(!t)return false;if(t.id==="modal-confirm")resolveConfirm(false);else if(t.id==="modal-partop")resolveForm(false);else closeModal(t.id);return true}
 let confirmResolver=null;
 function confirmDialog({title,message,confirmLabel="Confirm",danger=false}){
   return new Promise(res=>{
@@ -2050,7 +2294,7 @@ function closeSearchPop(){SP.open=false;SP.active=-1;const p=$("#search-pop"),i=
 function searchResults(q){
   const t=q.trim().toLowerCase(),vis=visibleRecords();
   const sup=new Map();
-  vis.forEach(r=>{if(r.company.toLowerCase().includes(t)){const a=sup.get(r.company)||{company:r.company,parts:0,missing:0};a.parts++;if(r.status==="missing")a.missing++;sup.set(r.company,a)}});
+  vis.forEach(r=>{if(r.company.toLowerCase().includes(t)){const a=sup.get(r.company)||{company:r.company,parts:0,missing:0};a.parts++;if(OPEN(r.status))a.missing++;sup.set(r.company,a)}});
   const suppliers=[...sup.values()].sort((a,b)=>(b.company.toLowerCase().startsWith(t)-a.company.toLowerCase().startsWith(t))||(b.missing-a.missing)||a.company.localeCompare(b.company)).slice(0,5);
   const parts=vis.filter(r=>(r.partNo+" "+r.partName).toLowerCase().includes(t)).sort((a,b)=>(String(b.partNo).toLowerCase().startsWith(t)-String(a.partNo).toLowerCase().startsWith(t))||String(a.partNo).localeCompare(String(b.partNo))).slice(0,5);
   const models=M.keys().filter(k=>M.label(k).toLowerCase().includes(t)).slice(0,3);
@@ -2484,7 +2728,7 @@ function projNames(parts){const p=[...new Set(parts.map(r=>r.model))].sort((a,b)
 
 /* Models named in outgoing mail come from the registry (models that still have open parts; Unassigned is never named to suppliers). */
 function summaryModelLabels(){
-  let keys=M.keys().filter(k=>M.rows(k).some(r=>r.status==="missing"));
+  let keys=M.keys().filter(k=>M.rows(k).some(r=>OPEN(r.status)));
   if(!keys.length)keys=M.keys();
   const named=keys.filter(k=>k!==UNASSIGNED);if(named.length)keys=named;
   return keys.map(k=>maskProj(M.label(k)));
@@ -2555,9 +2799,9 @@ function drawLegend(doc,x,y){
 }
 function supplierRowsForPDF(rows){
   const m=pdfOpts().modelSort,byName=(a,b)=>a.company.localeCompare(b.company,"en",{sensitivity:"base"});
-  return aggregate(rows).sort(m==="outstanding"?(a,b)=>(b.missing-a.missing)||(b.process-a.process)||byName(a,b):m==="progress"?(a,b)=>(a.pct-b.pct)||(b.missing-a.missing)||byName(a,b):(a,b)=>byName(a,b)||b.missing-a.missing||b.process-a.process)
+  return aggregate(rows).sort(m==="outstanding"?(a,b)=>(b.open-a.open)||(b.process-a.process)||byName(a,b):m==="progress"?(a,b)=>(a.pct-b.pct)||(b.open-a.open)||byName(a,b):(a,b)=>byName(a,b)||b.open-a.open||b.process-a.process)
 }
-function pdfStatusFor(a){if(a.parts&&a.complete===a.parts)return "Submitted";if(a.parts&&a.missing===a.parts)return "Not Submitted Yet";return "Working"}
+function pdfStatusFor(a){if(a.parts&&a.complete===a.parts)return "Submitted";if(a.parts&&a.open===a.parts)return "Not Submitted Yet";return "Working"}
 const PDF_TABLE_H=133,PDF_HEADER_H=9,PDF_ROW_H=7.5;
 function pdfRowsPerPage(){return Math.max(1,Math.floor((PDF_TABLE_H-PDF_HEADER_H-1)/PDF_ROW_H))}
 function drawSupplierTablePDF(doc,project,agg,x,y,w,h){
@@ -2581,7 +2825,7 @@ function drawSupplierTablePDF(doc,project,agg,x,y,w,h){
     doc.text(a.company,x+5,yy+rowH*.66,{maxWidth:w*cols[1]-7});
     doc.setTextColor(23,117,72);doc.text(`${a.complete} / ${a.parts}`,x+w*(cols[1]+cols[2])/2,yy+rowH*.66,{align:"center"});
     doc.setTextColor(183,118,0);doc.text(`${a.process} / ${a.parts}`,x+w*(cols[2]+cols[3])/2,yy+rowH*.66,{align:"center"});
-    doc.setTextColor(199,31,50);doc.text(`${a.missing} / ${a.parts}`,x+w*(cols[3]+cols[4])/2,yy+rowH*.66,{align:"center"});
+    doc.setTextColor(199,31,50);doc.text(`${a.open} / ${a.parts}`,x+w*(cols[3]+cols[4])/2,yy+rowH*.66,{align:"center"});
     const status=pdfStatusFor(a),sc=status==="Submitted"?[23,117,72]:status==="Working"?[183,118,0]:[199,31,50],emoji=statusMoodEmoji(status);
     const ex=x+w*cols[4]+3,ey=yy+rowH/2;
     const drew=drawStatusEmoji(doc,emoji,ex,ey,5.0);
@@ -2589,7 +2833,7 @@ function drawSupplierTablePDF(doc,project,agg,x,y,w,h){
     doc.setTextColor(...sc);doc.setFont(undefined,"bold");doc.setFontSize(5.9);doc.text(status,ex+4.4,yy+rowH*.66,{align:"left"});doc.setFont(undefined,"normal");doc.setFontSize(6.15);
     const barX=x+w*cols[5]+2,barW=w*(cols[6]-cols[5])-6;doc.setFillColor(230,232,234);doc.roundedRect(barX,yy+rowH*.36,barW,2.2,1,1,"F");doc.setFillColor(...rgb);doc.roundedRect(barX,yy+rowH*.36,barW*(a.pct/100),2.2,1,1,"F");
     doc.setTextColor(40,40,40);doc.text(`${a.pct}%`,x+w*(cols[6]+cols[7])/2,yy+rowH*.66,{align:"center"});
-    doc.setTextColor(120,120,120);doc.text(a.missing?"Reminder":"—",x+w*(cols[7]+cols[8])/2,yy+rowH*.66,{align:"center"});
+    doc.setTextColor(120,120,120);doc.text(a.open?"Reminder":"—",x+w*(cols[7]+cols[8])/2,yy+rowH*.66,{align:"center"});
     doc.setDrawColor(240,241,242);doc.line(x,yy+rowH,w,yy+rowH);
   });
 }
@@ -2597,7 +2841,7 @@ function drawProjectPage(doc,project,rows,pageNo,totalPages){
   const rgb=pdfColor(project);
   makePDFHeader(doc,`IMDS Supplier Follow-up · ${M.label(project)}`,`Supplier recap · Submitted / Working / Not Submitted Yet`);
   doc.setFillColor(...rgb);doc.roundedRect(7,31,283,16,2.2,2.2,"F");doc.setTextColor(255,255,255);doc.setFontSize(10.5);doc.setFont(undefined,"bold");doc.text(`${M.label(project)}${pageNo>1?" (continued)":""}`,12,38);doc.setFont(undefined,"normal");doc.setFontSize(6.8);doc.text(`Deadline: ${pdfDeadline(project)}`,12,43);
-  let all=aggregate(rows),tot=all.reduce((n,a)=>n+a.parts,0),sub=all.reduce((n,a)=>n+a.complete,0),wk=all.reduce((n,a)=>n+a.process,0),ns=all.reduce((n,a)=>n+a.missing,0),rv=all.reduce((n,a)=>n+a.review,0),pct=tot?Math.round(sub/tot*100):0;
+  let all=aggregate(rows),tot=all.reduce((n,a)=>n+a.parts,0),sub=all.reduce((n,a)=>n+a.complete,0),wk=all.reduce((n,a)=>n+a.process,0),ns=all.reduce((n,a)=>n+a.open,0),rv=all.reduce((n,a)=>n+a.rejected,0),pct=tot?Math.round(sub/tot*100):0;
   doc.setTextColor(40,40,40);doc.setFontSize(7);doc.setFont(undefined,"bold");doc.text(`Overall ${tot} parts`,11,53);doc.setFont(undefined,"normal");doc.setTextColor(23,117,72);doc.text(`Submitted ${sub}`,49,53);doc.setTextColor(183,118,0);doc.text(`Working ${wk}`,91,53);doc.setTextColor(199,31,50);doc.text(`Not Submitted Yet ${ns}`,126,53);if(rv){doc.setTextColor(36,99,166);doc.text(`Needs Review ${rv}`,163,53)}doc.setTextColor(50,50,50);doc.text(`Progress ${pct}%`,200,53);
   const legendItems=[["Submitted",[23,117,72]],["Working",[183,118,0]],["Action Required",[199,31,50]]];let lx=222;
   doc.setFontSize(6.0);
@@ -2636,10 +2880,10 @@ async function saveBlobFile(blob,filename,label){
 }
 function exportSupplierXlsx(supplier){
   if(!XLSX_READY()){toast("The Excel engine did not load. Check the internet connection and try again.","err");return}
-  const order={missing:0,process:1,review:2,complete:3};
+  const order={rejected:0,missing:1,process:2,review:3,complete:4};
   const recs=visibleRecords().filter(r=>r.company===supplier).sort((a,b)=>(order[a.status]??9)-(order[b.status]??9)||String(a.partNo).localeCompare(String(b.partNo)));
   if(!recs.length){toast("This supplier has no parts to export.","info");return}
-  const group={missing:"NOT SUBMITTED",process:"TMMIN WORKING",complete:"ACCEPTED",review:"CHECK"};
+  const group={missing:"NOT SUBMITTED",rejected:"REJECTED",process:"TMMIN WORKING",complete:"ACCEPTED",review:"CHECK"};
   const fmt=d=>d?new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10):"";
   const head=["NO.","MODEL","PART NO.","PART NAME","PART STATUS","STATUS GROUP","TARGET DATE","SUPPLIER PLAN DATE","ID / VER","STATUS DATE","COMMENT","SUPPLIER PLANNED SUBMISSION DATE (FILL IN)"];
   const rows=recs.map((r,i)=>[i+1,M.label(r.model),r.partNo,r.partName||"",r.statusRaw||"",group[r.status]||"",fmt(r.targetDate),r.supplierPromiseDate||"",r.mdSystemIdVersion||"",r.mdSystemLastChanged||"",r.mdSystemComment||"",""]);
@@ -2720,7 +2964,7 @@ function drawExecutiveSummaryPage(doc){
     const boxW=(W-(cnt-1)*GAP)/cnt,y0=Y0+ri*ROW_STEP;
     for(let c=0;c<cnt;c++,idx++){
       const p=projects[idx],rows=D.records.filter(r=>r.project===p);
-      const all=aggregate(rows),tot=all.reduce((n,a)=>n+a.parts,0),sub=all.reduce((n,a)=>n+a.complete,0),wk=all.reduce((n,a)=>n+a.process,0),ns=all.reduce((n,a)=>n+a.missing,0),rv=all.reduce((n,a)=>n+a.review,0),pct=tot?Math.round(sub/tot*100):0;
+      const all=aggregate(rows),tot=all.reduce((n,a)=>n+a.parts,0),sub=all.reduce((n,a)=>n+a.complete,0),wk=all.reduce((n,a)=>n+a.process,0),ns=all.reduce((n,a)=>n+a.open,0),rv=all.reduce((n,a)=>n+a.rejected,0),pct=tot?Math.round(sub/tot*100):0;
       const bx=7+c*(boxW+GAP),rgb=pdfColor(p),col2=bx+boxW*0.5;
       doc.setFillColor(250,250,251);doc.roundedRect(bx,y0,boxW,CARD_H,2,2,"F");
       doc.setDrawColor(226,228,231);doc.roundedRect(bx,y0,boxW,CARD_H,2,2,"S");
@@ -2735,22 +2979,22 @@ function drawExecutiveSummaryPage(doc){
       doc.setTextColor(23,117,72);doc.text(`Submitted ${sub.toLocaleString()}`,bx+4,y0+31.5);
       doc.setTextColor(183,118,0);doc.text(`Working ${wk.toLocaleString()}`,col2,y0+31.5);
       doc.setTextColor(199,31,50);doc.text(`Not Submitted ${ns.toLocaleString()}`,bx+4,y0+36.5);
-      if(rv){doc.setTextColor(36,99,166);doc.text(`Needs Review ${rv.toLocaleString()}`,col2,y0+36.5)}
+      if(rv){doc.setTextColor(163,18,94);doc.text(`incl. Rejected ${rv.toLocaleString()}`,col2,y0+36.5)}
     }
   });
   const allRows=D.records.filter(r=>projects.includes(r.project));
-  const gTot=allRows.length,gSub=allRows.filter(r=>r.status==="complete").length,gMiss=allRows.filter(r=>r.status==="missing").length,gRev=allRows.filter(r=>r.status==="review").length;
-  const gSupCount=new Set(allRows.filter(r=>r.status==="missing").map(r=>r.company)).size;
+  const gTot=allRows.length,gSub=allRows.filter(r=>r.status==="complete").length,gMiss=allRows.filter(r=>OPEN(r.status)).length,gRev=allRows.filter(r=>r.status==="rejected").length;
+  const gSupCount=new Set(allRows.filter(r=>OPEN(r.status)).map(r=>r.company)).size;
   const gPastDueSup=new Set(allRows.filter(r=>r.pastDue).map(r=>r.company)).size;   // suppliers, not parts (the old label counted parts)
   let iy=Y0+ROW_STEP*(nRows-1)+CARD_H+6;
   /* summary band: four evenly spaced figures */
   doc.setFillColor(246,244,250);doc.roundedRect(7,iy-4.4,W,9,1.6,1.6,"F");
-  const stats=[[gMiss.toLocaleString(),`parts remain outstanding${gRev?` · ${gRev.toLocaleString()} need review`:""}`],[gSupCount.toLocaleString(),"suppliers require action"],[gPastDueSup.toLocaleString(),"suppliers past due"],[`${gTot?Math.round(gSub/gTot*100):0}%`,"overall progress"]];
+  const stats=[[gMiss.toLocaleString(),`parts remain outstanding${gRev?` · ${gRev.toLocaleString()} rejected`:""}`],[gSupCount.toLocaleString(),"suppliers require action"],[gPastDueSup.toLocaleString(),"suppliers past due"],[`${gTot?Math.round(gSub/gTot*100):0}%`,"overall progress"]];
   stats.forEach(([n,l],i)=>{const x=10+i*(W/4);doc.setFont(undefined,"bold");doc.setFontSize(9.2);doc.setTextColor(30,30,30);doc.text(n,x,iy+1.4);const w=doc.getTextWidth(n);doc.setFont(undefined,"normal");doc.setFontSize(6.6);doc.setTextColor(85,85,85);doc.text(l,x+w+2,iy+1.2)});
   iy+=11;
   /* One row per supplier; Not Submitted parts only (Working parts need no chase). */
   const byCompany={};
-  allRows.filter(r=>r.status==="missing").forEach(r=>{
+  allRows.filter(r=>OPEN(r.status)).forEach(r=>{
     const g=byCompany[r.company]||(byCompany[r.company]={company:r.company,missing:0,noDate:0,pastDue:false,byProject:{}});
     g.missing++;if(!r.targetDate)g.noDate++;if(r.pastDue)g.pastDue=true;g.byProject[r.project]=(g.byProject[r.project]||0)+1;
   });
@@ -2834,7 +3078,7 @@ function generateSupplierPDF(supplier,opts){
      "Awaiting reply" if no date has been given yet. Submitted/Working
      parts show a plain dash — no plan tracking needed for those. */
   const planFor=r=>{
-    if(r.status!=="missing")return"—";
+    if(!OPEN(r.status))return"—";
     const iso=getPromiseISO(r);
     if(!iso)return"Awaiting reply";
     const dt=getPromiseDate(r),today=new Date();today.setHours(0,0,0,0);
@@ -2875,7 +3119,7 @@ function generateSupplierPDF(supplier,opts){
       /* Highlight full row for parts still Not Submitted Yet, so the items
          needing action are visually obvious at a glance (skip column 1,
          which keeps its own project-colour badge). */
-      if(d.section==="body"&&d.column.index!==1&&body[d.row.index][5]==="Not Submitted Yet"){
+      if(d.section==="body"&&d.column.index!==1&&(body[d.row.index][5]==="Not Submitted Yet"||body[d.row.index][5]==="Rejected")){
         d.cell.styles.fillColor=[253,236,240];
       }
     },
@@ -2950,6 +3194,13 @@ const ACTIONS={
   "toggle-filters":()=>{UI.filtersOpen=!UI.filtersOpen;renderSuppliers()},
   "toggle-nav":()=>{document.body.classList.toggle("nav-open");$("#btn-nav").setAttribute("aria-expanded",String(document.body.classList.contains("nav-open")))},
   "close-modal":(el)=>closeModal(el.dataset.close),
+  "partop-ok":()=>resolveForm(true),"partop-cancel":()=>resolveForm(false),
+  "to-check":(el)=>{const r=D.records[+el.dataset.rid];if(r)moveToCheck([r])},
+  "check-return":(el)=>{const r=(D.checks||[])[+el.dataset.i];if(!r)return;const row=el.closest("[data-ci]");returnFromCheck([r],{company:($(".ck-sup",row).value||"").trim(),model:$(".ck-model",row).value,status:$(".ck-status",row).value})},
+  "check-stop":(el)=>{const r=(D.checks||[])[+el.dataset.i];if(r)stopRun([r])},
+  "check-stop-selected":()=>{const rs=$$("#check-pending .ck-pick:checked").map(c=>(D.checks||[])[+c.dataset.i]).filter(Boolean);if(rs.length)stopRun(rs);else toast("Tick the parts first.","info")},
+  "check-restore":(el)=>{const id=el.dataset.id,r=(D.stopped||[]).find(x=>x.masterId===id);if(r){const ev=lastStopEvent(id);setLocalStatus([r],ev&&ev.before.status||"NOT SUBMITTED YET");resplitLocal()}restoreStopped([id])},
+  "check-tab":(el)=>{UI.checkTab=el.dataset.tab;renderCheck()},
   "history-clear":async()=>{if(!loadSnapshots().length){toast("There is no recap history to clear.","info");return}
     if(await confirmDialog({title:"Clear recap history?",message:"All saved weekly recaps will be removed from this browser. This cannot be undone.",confirmLabel:"Clear history",danger:true})){persistSnapshots([]);renderAll();toast("Recap history cleared","ok")}},
   "confirm-ok":()=>resolveConfirm(true),"confirm-cancel":()=>resolveConfirm(false),
@@ -2987,8 +3238,9 @@ const CHANGE={
     renderAll();renderDrawer({keep:true,focusRid:el.dataset.rid});
     toast(el.value?"Plan date saved":"Plan date removed","ok");
   },
-  "model-deadline":(el)=>{if(setModelMeta(el.dataset.model,{deadline:el.value||""})){if(el.value)DUE.models[el.dataset.model]=el.value;else delete DUE.models[el.dataset.model];saveDueDates({quiet:true});toast(el.value?"Deadline saved for "+M.label(el.dataset.model)+" (whole team)":"Deadline cleared for "+M.label(el.dataset.model),"ok")}},
-  "supplier-due":(el)=>{setSupplierDue(el.dataset.supplier,el.dataset.model,el.value||"");toast(el.value?"Due date for "+el.dataset.supplier+" · "+M.label(el.dataset.model)+" set to "+datePretty(isoToDate(el.value)):"Supplier due date cleared — the model deadline applies","ok")},
+  "model-deadline":(el)=>{if(setModelMeta(el.dataset.model,{deadline:el.value||""})){if(el.value)DUE.models[el.dataset.model]=el.value;else delete DUE.models[el.dataset.model];saveDueDates({quiet:true});applyModelDeadline(el.dataset.model,el.value||"");toast(el.value?"Deadline saved for "+M.label(el.dataset.model)+" (whole team)":"Deadline cleared for "+M.label(el.dataset.model),"ok")}},
+  "part-target":(el)=>{const r=D.records[+el.dataset.rid];if(r)applyTargets([r],el.value||"",r.partNo)},
+  "supplier-due":(el)=>{setSupplierDue(el.dataset.supplier,el.dataset.model,el.value||"");applySupplierDue(el.dataset.supplier,el.dataset.model,el.value||"")},
   "model-color":(el)=>{setModelMeta(el.dataset.model,{color:el.value})},
   "dir-field":(el)=>{if(!setDirField(el.dataset.key,el.dataset.field,el.value)&&!DIR.entries[el.dataset.key])return;
     const v=el.value,bad=(/email/.test(el.dataset.field)||el.dataset.field==="pic_extra")&&emailBad(v);el.classList.add("edited");el.classList.toggle("invalid",bad);if(bad)el.setAttribute("aria-invalid","true");else el.removeAttribute("aria-invalid");
@@ -3096,12 +3348,19 @@ function bindStatic(){
   setConnectionState("NOT_CONNECTED");
   populateFilterOptions();renderAll();
   window.__imds={D,SRC,F,UI,M,counts,classify,normModelKey,afterLoad,DIR,DIR_STATE,contactLookup,dirFor};   // read-only handle for automated tests
-  loadDueDates();
+  loadDueDates();loadPartLog();
   tryAutoReconnect();
 })();
 
 
 document.addEventListener("click",e=>{if(!e.target.closest(".gsearch,#search-pop"))closeSearchPop();});
+/* Phone: swipe a part card left in the supplier drawer to reveal "Move to Check"; swipe right or tap elsewhere to hide it. */
+(()=>{let sx=0,sy=0,row=null;
+  document.addEventListener("touchstart",e=>{const t=e.touches[0];row=e.target.closest&&e.target.closest("tr.part-row");sx=t.clientX;sy=t.clientY;if(!row)$$("tr.part-row.swiped").forEach(r=>r.classList.remove("swiped"))},{passive:true});
+  document.addEventListener("touchend",e=>{if(!row)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)>50&&Math.abs(dy)<40){if(dx<0){$$("tr.part-row.swiped").forEach(r=>{if(r!==row)r.classList.remove("swiped")});row.classList.add("swiped")}else row.classList.remove("swiped")}
+    row=null},{passive:true});
+})();
 document.addEventListener("click",e=>{if(document.body.classList.contains("nav-open")&&(e.target.closest(".nav-link")||!e.target.closest("#sidebar,#btn-nav"))){document.body.classList.remove("nav-open");const b=document.getElementById("btn-nav");if(b)b.setAttribute("aria-expanded","false")}});
 
 })();

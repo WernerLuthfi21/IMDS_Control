@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased: Tracker Check tab, Stop run log, Rejected status, target dates follow the model (2026-11-19)
+
+- **Target dates follow the model.** Changing a model deadline (Settings → Models) asks once, then sets the target date of every part of that model and replaces that model's supplier due dates. Changing a supplier × model due date in the drawer sets it on that supplier's parts; clearing it applies the model deadline again. Each part's Target date is now editable in the drawer for a single exception, until the next model/supplier update. Saved to the shared master (`submission_plan`, kept over Excel imports) and queued for the Excel sync.
+- **Check tab** (new in the sidebar, all models):
+  - It lists parts with status CHECK/CEK or a status the tracker cannot read (formerly "Needs Review"), plus parts moved there with **Move to Check** in the supplier drawer. On a phone, swipe the part left.
+  - Check parts are left out of every count, chase and report until they return.
+  - Each one shows the initial supplier, why it was moved and by whom.
+  - Pick the correct supplier and/or model and press **Return to tracker**. The status from before the move comes back, or you choose one.
+- **Stop run**: from the Check tab, with a required reason. The part leaves the tracker.
+  - The **Stop run log** keeps its last supplier, vendor code, model, status, target date, PIC, reason, who and when.
+  - Restore is one click.
+  - Parts imported as STOP RUN are listed too.
+- **Rejected** is a general status (KPI, chips, filters, bars, PDFs, Excel, e-mails). Rejected parts count as "supplier must act" and are marked "REJECTED, please resubmit" in reminder part lists. Before, they were counted as Not Submitted Yet.
+- Server: `POST /api/imds-master/part-ops` (set-target, to-check, resolve, stop-run, restore), rules in `lib/imds-master/part-log.ts` (unit-tested). The log lives in `imds_tracker_settings` key `part_log`; migration `20261119020000_tracker_part_log.sql` (also covers the due-dates key).
+- Supplier drawer is wider (1040 px) so the new columns fit; on phones its parts are cards.
+
 ## Unreleased: e-mail sign-off and a clearer send screen (2026-11-19)
 
 - Every supplier e-mail now ends with a sign-off: "Best regards," + the sender's full name + "TMMIN - Material Engineering". It is configurable in Settings → E-mail templates (signature text and a `short = full name` list; defaults: Werner → Abdullah Luthfi Werner, Ayu → Eka Tarisa Ayu Putri). New placeholder `{sendername}`.

@@ -4,15 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
 import { DEFAULT_CONFIG, sanitizeConfig } from "@/lib/followup/center";
 import { sanitizeDueDates } from "@/lib/imds-master/due-dates";
+import { sanitizePartLog } from "@/lib/imds-master/part-log";
 
 export const runtime = "nodejs";
-const KEYS = ["directory", "followup_config", "due_dates"] as const;
+const KEYS = ["directory", "followup_config", "due_dates", "part_log"] as const;
 type Key = (typeof KEYS)[number];
 const TABLE_MISSING = /schema cache|does not exist|could not find the table/i;
 const MIGRATION_HINT = "The settings table does not exist yet. Open the Supabase SQL editor and run supabase/migrations/20261110000000_tracker_settings.sql once, then try again.";
-const MAX_BYTES: Record<Key, number> = { directory: 3_000_000, followup_config: 200_000, due_dates: 600_000 };
+const MAX_BYTES: Record<Key, number> = { directory: 3_000_000, followup_config: 200_000, due_dates: 600_000, part_log: 4_000_000 };
 const DUE_HINT = "Due dates cannot be shared yet: run supabase/migrations/20261119010000_tracker_due_dates.sql once in the Supabase SQL editor.";
-const clean = (key: Key, v: unknown) => key === "followup_config" ? sanitizeConfig(v ?? DEFAULT_CONFIG) : key === "due_dates" ? sanitizeDueDates(v) : (v ?? null);
+const clean = (key: Key, v: unknown) => key === "followup_config" ? sanitizeConfig(v ?? DEFAULT_CONFIG) : key === "due_dates" ? sanitizeDueDates(v) : key === "part_log" ? sanitizePartLog(v) : (v ?? null);
 
 /** Versioned settings shared by everyone who uses the Tracker. GET ?key=… ; PUT {key,value,baseVersion}. */
 export async function GET(request: NextRequest) {
@@ -40,6 +41,7 @@ export async function PUT(request: NextRequest) {
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const body = await request.json().catch(() => null) as { key?: Key; value?: unknown; baseVersion?: number } | null;
   if (!body?.key || !KEYS.includes(body.key)) return NextResponse.json({ error: "Unknown settings key." }, { status: 400 });
+  if (body.key === "part_log") return NextResponse.json({ error: "The part log is written only by the Check / Stop run actions." }, { status: 400 });
   const allowed = body.key === "followup_config" ? ["admin", "preparer"] : ["admin", "preparer", "reviewer"];
   if (!allowed.includes(auth.role || "")) return NextResponse.json({ error: body.key === "followup_config" ? "Admin or preparer role is required to change follow-up settings." : "Admin, preparer or reviewer role is required to edit the directory." }, { status: 403 });
   const value = clean(body.key, body.value);
