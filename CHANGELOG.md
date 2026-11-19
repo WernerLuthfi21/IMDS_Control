@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased: register follows Master Data; TSZ element families; faster Judge page (2026-11-19)
+
+- **JudgementRegister v2** (`scripts/build_judgement_register.py`):
+  - same rows and order as Master Data's G-CATS Error Log, with the newest download at the bottom (daily exports re-ordered by Download Date + No.);
+  - G-CATS columns plus our judgement and comments;
+  - calculated Judgement state;
+  - Search sheet;
+  - For TMA sheet (judged by us, waiting for TMA);
+  - Summary, SupplierContacts, Read me;
+  - Century Gothic throughout;
+  - plain `code`.
+- Register payload also carries the G-CATS columns for new daily rows (UpsertRows fills them). Commit queues rows oldest first.
+- **TSZ0001G lookup:** Lead / Cadmium / Mercury / Arsenic and their compounds now find their Appendix 3 family (e.g. 7439-92-1 → #20 → No. 10 ELV (Pb)). Coverage over GADSL CAS went from 140 to 1,002.
+- **Judge page:**
+  - all rows of the year are loaded, not only the newest import batch (a daily file would otherwise have hidden everything else);
+  - pages load in parallel;
+  - the list reads 3 values instead of the whole raw_source (computed field `judge_facts`, migration `20261119040000`, with automatic fallback);
+  - the deck checks cases 4 chunks at a time.
+- Judge page type scale and spacing; form controls that used Instrument Sans now use Century Gothic.
+
 ## Unreleased: imports work for every account; Daily G-CATS Update redesigned; register sync on commit (2026-11-19)
 
 - **Fix "database error, code: 54001"** (stack depth limit exceeded) for every account except the first.

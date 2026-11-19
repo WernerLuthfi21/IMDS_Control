@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildExcelPayload, deliver, flowConfig, transportFor, type RegisterRow } from "./flow";
 import { buildSupplierEmailPayload, type Sender } from "@/lib/followup/payload";
 
-const ROW_COLUMNS = "source_record_key,error_type_label,delivery_part_no,supplier_code,assigned_person,starting_date,judgement_procedure,judge,ok_comment,imds_reject_comment,km_judge,km_comment,last_change_date";
+const ROW_COLUMNS = "source_record_key,error_type_label,delivery_part_no,supplier_code,assigned_person,starting_date,judgement_procedure,judge,ok_comment,imds_reject_comment,km_judge,km_comment,last_change_date,source_year,source_month,source_status,delivery_part_name,raw_source";
 const MAX_ATTEMPTS = 5;
 
 export async function enqueue(supabase: SupabaseClient, actorId: string, job: { kind: "EXCEL_UPSERT"; itemId: string } | { kind: "SUPPLIER_EMAIL"; followupId: string; itemId?: string | null }) {

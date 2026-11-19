@@ -76,13 +76,22 @@ function groupBase(value: unknown) {
  * the group is found from the GADSL substance name of that CAS (e.g. 1336-36-3 → GADSL
  * "Polychlorinated biphenyls" → TSZ0001G "Polychlorinated biphenyls ( PCB ), all members").
  */
+/**
+ * Appendix 3 lists four element families as "<element> and its compounds, all members" with CAS "Various"
+ * (#5 Cadmium, #20 Lead, #21 Mercury, #42 Arsenic). By that wording every substance of the element is a member,
+ * so a GADSL substance whose name contains the element (Lead, Lead monoxide, Tetraethyllead, Mercuric chloride,
+ * Arsenic acid…) belongs to the family. Stems cover the -ic/-ous/-ate forms of the same element only.
+ */
+const ELEMENT_FAMILIES: Record<string, RegExp> = { lead: /lead|plumb/i, cadmium: /cadmium/i, mercury: /mercur/i, arsenic: /arsen/i };
 function groupsByName(names: string[]) {
-  const bases = [...new Set(names.map(groupBase).filter((b) => b.length >= 8))];
+  const bases = [...new Set(names.map(groupBase).filter((b) => b.length >= 4))];
   if (!bases.length) return [] as typeof tsz3Records;
   return tsz3Records.filter((row) => {
     if (!/all members/i.test(String(row.values?.[2] ?? ""))) return false;
     const g = groupBase(row.values?.[2]);
-    return g.length >= 8 && bases.some((b) => b === g || b.startsWith(g + " ") || g.startsWith(b + " "));
+    const family = /and its compounds/i.test(String(row.values?.[2] ?? "")) ? ELEMENT_FAMILIES[g] : undefined;
+    if (family) return names.some((n) => family.test(String(n)));
+    return g.length >= 8 && bases.some((b) => b.length >= 8 && (b === g || b.startsWith(g + " ") || g.startsWith(b + " ")));
   });
 }
 

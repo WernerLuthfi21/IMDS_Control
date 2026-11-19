@@ -19,10 +19,15 @@ export async function POST(request: NextRequest) {
   // that TMA has not judged yet (blank Judge). Power Automate upserts them by `code`; judged values are not touched here.
   const excelReady = !!transportFor("EXCEL_UPSERT", flowConfig());
   let registerQueued = 0, registerError: string | null = null;
-  const { data: items, error: itemsError } = await supabase.from("gcat_error_items").select("id").eq("source_batch_id", body.batchId).limit(20000);
+  const { data: items, error: itemsError } = await supabase.from("gcat_error_items").select("id").eq("source_batch_id", body.batchId)
+    // Oldest first (code = Download Date + No.), so the register gets new rows at the bottom in the master's order,
+    // even when a G-CATS export lists the newest day at the top.
+    .order("source_record_key", { ascending: true }).limit(20000);
   if (itemsError) registerError = itemsError.message;
   else {
-    const rows = (items || []).map((i) => ({ kind: "EXCEL_UPSERT", item_id: i.id as string, created_by: auth.user!.id }));
+    // The queue is sent in created_at order; one millisecond apart keeps the oldest-first order inside a batch insert.
+    const t0 = Date.now();
+    const rows = (items || []).map((i, n) => ({ kind: "EXCEL_UPSERT", item_id: i.id as string, created_by: auth.user!.id, created_at: new Date(t0 + n).toISOString() }));
     for (let i = 0; i < rows.length; i += 500) {
       const { error: qError } = await supabase.from("sync_outbox").insert(rows.slice(i, i + 500));
       if (qError) { registerError = qError.message; break; }

@@ -23,7 +23,8 @@ type Saved = { id: string; judge: "OK" | "NG"; comment: string; procedure: strin
 type Live = { given: DeckAnswers; check: AutoOutput };
 type View = { card: ReviewCard; rec: Candidate["recommendation"]; decided: boolean; procedure: string; draft: boolean; caution: string };
 type NeedFilter = ReviewNeed | "all";
-const CHUNK = 200;
+const CHUNK = 100;
+const PARALLEL = 4;
 const TMC = /contact tmc|report the p\/n and supplier information to tmc/i;
 const TOYOTA_FIELDS = new Set(["destination", "toleranceClass", "usCarpet", "nonEuReq"]);
 /** Needs that wait on someone other than the reviewer. */
@@ -95,14 +96,23 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
   const load = useCallback(async () => {
     const ids = [...new Set(rows.map((r) => r.id))];
     setLoading(true); setError(""); setProgress({ done: 0, total: ids.length });
-    const all: Candidate[] = [];
     try {
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const r = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", ids: ids.slice(i, i + CHUNK) }) });
-        const j = await r.json(); if (!r.ok) throw new Error(j.error || "Could not check the cases.");
-        all.push(...(j.candidates as Candidate[]).filter((c) => c.inPendingQueue));
-        setProgress({ done: Math.min(i + CHUNK, ids.length), total: ids.length });
-      }
+      // Chunks are checked in parallel (a few at a time) instead of one after another; results keep their order.
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+      const results: Candidate[][] = new Array(chunks.length);
+      let next = 0, finished = 0;
+      const worker = async () => {
+        while (next < chunks.length) {
+          const k = next++;
+          const r = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", ids: chunks[k] }) });
+          const j = await r.json(); if (!r.ok) throw new Error(j.error || "Could not check the cases.");
+          results[k] = (j.candidates as Candidate[]).filter((c) => c.inPendingQueue);
+          finished += chunks[k].length; setProgress({ done: finished, total: ids.length });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(PARALLEL, chunks.length) }, worker));
+      const all = results.flat();
       setCands(all); setDone(new Set()); setLive(new Map()); setComments(new Map()); setOrder([]); setStack(null); setNeedFilter("all"); setIndex(0);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not check the cases."); }
     finally { setLoading(false); }

@@ -1793,3 +1793,34 @@ html[data-theme="dark"] .gx .btn-primary{background:var(--accent);border-color:v
 html[data-theme="dark"] .gx .select-field{background:var(--surface-2);color:var(--ink);border-color:var(--line-strong)}
 @media (max-width:1100px){.gx-top{grid-template-columns:1fr}.gx-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:640px){.gx-card{padding:16px}.gx-head{flex-direction:column}.gx-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.gx-split{grid-template-columns:1fr}.gx-bars li{grid-template-columns:minmax(0,1fr) 70px 36px}.gx-steps li{font-size:12px}}
+
+/* ---------- Judge page: one type scale and more breathing room (2026-11-19) ----------
+   Century Gothic everywhere (inputs and form controls in older blocks used Instrument Sans);
+   scale: 30 case id · 17 section · 15 value · 13 body · 11.5 label (caps). Boxes get 16–22px inner padding. */
+.judgement-filters input,.judgement-filters select,.judgement-form-grid input,.judgement-form-grid select,.judgement-form-grid textarea,
+.judgement-mass-inputs input,.judgement-mass-inputs select,.supplier-selfcheck-fields input,.supplier-selfcheck-fields select{font-family:var(--font);font-size:13px}
+.gd-bar strong{font-family:var(--font)}
+.jc-head{padding:14px 20px;gap:10px}
+.jc-type{font-size:13px;padding:5px 12px}.jc-need{font-size:12px;padding:5px 12px}
+.jc-case,.jc-decide{padding:20px 22px;gap:14px}
+.jc-id strong{font-size:30px;letter-spacing:.01em}
+.jc-chip{font-size:12.5px;padding:4px 11px}
+.jc-facts{padding:4px 18px;column-gap:24px;border-radius:14px}
+.jc-facts div{grid-template-columns:118px minmax(0,1fr);padding:11px 0;gap:12px}
+.jc-facts dt{font-size:11.5px;letter-spacing:.06em}
+.jc-facts dd{font-size:15px;line-height:1.35}
+.jc-why{font-size:13px;line-height:1.55}
+.jc-links{gap:6px 18px}.jc-links button{font-size:13px}
+.jc-verdict small,.jc-ask small{font-size:11.5px;letter-spacing:.12em}
+.jc-ask strong{font-size:18px;line-height:1.35;margin-top:4px}
+.jc-opts{gap:10px}
+.jc-opts button{min-height:52px;padding:0 14px;font-size:15px;font-weight:700;border-radius:12px}
+.jc-caution{padding:10px 12px;font-size:12.5px;line-height:1.5}
+.cx-tabs button{min-height:48px;font-size:14px}
+.cx-body{padding:18px 20px;gap:14px;font-size:13px}
+.cx-steps{gap:12px}
+.cx-steps li{grid-template-columns:24px 1fr;gap:10px;line-height:1.4}
+.cx-steps li strong{font-size:14px}
+.cx-steps li small{font-size:12.5px;line-height:1.45;margin-top:2px}
+.cx-ic{width:24px;height:24px}
+.cx-result{padding:12px 14px;gap:4px;line-height:1.45}

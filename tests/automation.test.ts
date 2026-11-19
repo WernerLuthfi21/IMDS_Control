@@ -56,3 +56,16 @@ describe("register key", () => {
     expect(buildExcelPayload({ source_record_key: "fallback:abc:Sheet1:7" }).code).toBe("fallback:abc:Sheet1:7");
   });
 });
+
+import { registerSourceFields } from "@/lib/automation/flow";
+describe("register source fields", () => {
+  it("fills the register's G-CATS columns for a new daily row (FIXTURE)", () => {
+    const f = registerSourceFields({ source_record_key: "code:20261118004", source_year: "2026", source_month: "Nov", source_status: "WORKING",
+      raw_source: { "No. [col 1]": "4", "Download Date [col 2]": "2026/11/18", "Company Name [col 5]": "PT FIXTURE", "CAS No. [col 26]": "***", "Substance Name [col 27]": "Confidential Substances" } });
+    expect(f).toEqual({ Year: "2026", Month: "Nov", "No.": "4", "Download Date": "2026-11-18", "G-CATS Status": "WORKING", "Company Name": "PT FIXTURE", "Substance Name": "Confidential Substances" });
+  });
+  it("adds nothing for a judgement-only row, so the 13 flow columns stay as they were", () => {
+    expect(registerSourceFields({ source_record_key: "code:1" })).toEqual({});
+  });
+});
+

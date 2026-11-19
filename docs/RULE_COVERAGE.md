@@ -118,3 +118,13 @@ Supplier code found in the Purchasing supplier code master and the company name 
 | CAS on neither GADSL 2026 V1 nor TSZ0001G Appendix 3 | Nothing; shown as "no prohibited-substance error expected" | — |
 
 Confirmations are stored in `supplier_confirmations`. The new family `warp` needs migration `20261118030000_supplier_confirmations_warp.sql`. Tests are in `tests/intake.test.ts`.
+
+## Appendix 3 element families (2026-11-19)
+
+- Appendix 3 lists four families as "<element> and its compounds, all members" with CAS "Various": #5 Cadmium, #20 Lead, #21 Mercury, #42 Arsenic.
+- By that wording every substance of the element belongs to the family. A GADSL substance whose name contains the element (stems `lead|plumb`, `cadmium`, `mercur`, `arsen`) is therefore matched to it.
+- This is `lib/reference-data.ts` `groupsByName`, shown in the rule path as "matched by the GADSL substance name".
+- Before this, short names (Lead, Mercury, Cadmium) were skipped and the rule path said "not listed in Appendix 3". Example: 7439-92-1 Lead → #20 → No. 10 ELV (Pb).
+- GADSL CAS with a TSZ0001G group: 140 → 1,002 of 6,503.
+- Tested in `tests/tsz-element-families.test.ts`. Nickel and other substances that are not TSZ0001G groups stay unmatched (no group is invented).
+

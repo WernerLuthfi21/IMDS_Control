@@ -17,7 +17,35 @@ export type RegisterRow = {
   source_record_key: string | null; error_type_label?: string | null; delivery_part_no?: string | null; supplier_code?: string | null;
   assigned_person?: string | null; starting_date?: string | null; judgement_procedure?: string | null; judge?: string | null;
   ok_comment?: string | null; imds_reject_comment?: string | null; km_judge?: string | null; km_comment?: string | null; last_change_date?: string | null;
+  /** Optional G-CATS source fields: when present the register row also shows what TMA's log says (new daily rows). */
+  source_year?: string | null; source_month?: string | null; source_status?: string | null; delivery_part_name?: string | null;
+  raw_source?: Record<string, unknown> | null;
 };
+
+const rawText = (raw: Record<string, unknown> | null | undefined, header: string) => {
+  if (!raw) return "";
+  for (const [k, v] of Object.entries(raw)) {
+    if (k.replace(/\s*\[col \d+\]\s*$/, "").replace(/\s+/g, " ").trim().toLowerCase() !== header) continue;
+    const t = String(v ?? "").replace(/_x000D_/g, " ").replace(/\u00a0/g, " ").trim();
+    if (t && t !== "***" && !/^#(N\/A|VALUE!|REF!)/i.test(t)) return t;
+  }
+  return "";
+};
+/** "2026/11/18" → "2026-11-18" so Excel stores a real date. */
+const isoDay = (t: string) => { const m = /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})/.exec(t); return m ? `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}` : t; };
+
+/** The register's descriptive G-CATS columns (same header names as JudgementRegister.xlsx). Empty when the row has no source data. */
+export function registerSourceFields(row: RegisterRow): Record<string, string> {
+  const raw = row.raw_source || null;
+  if (!raw && !row.source_status && !row.source_year) return {};
+  const out: Record<string, string> = {
+    Year: row.source_year || "", Month: row.source_month || "", "No.": rawText(raw, "no."), "Download Date": isoDay(rawText(raw, "download date")),
+    "G-CATS Status": row.source_status || rawText(raw, "status"), "Company Name": rawText(raw, "company name"),
+    "Delivery Part Name": row.delivery_part_name || rawText(raw, "delivery part name"), "Comment(last time)": rawText(raw, "comment(last time)"),
+    "CAS No.": rawText(raw, "cas no."), "Substance Name": rawText(raw, "substance name"),
+  };
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== ""));
+}
 
 /** Columns AO–AW keyed by the master workbook's header names. `code` is the unique key for "Update a row". */
 export function buildExcelPayload(row: RegisterRow) {
@@ -36,6 +64,7 @@ export function buildExcelPayload(row: RegisterRow) {
     "KM Judge": row.km_judge ?? "",
     "KM Comment": row.km_comment ?? "",
     "Last Change Date": row.last_change_date ?? "",
+    ...registerSourceFields(row),
   };
 }
 

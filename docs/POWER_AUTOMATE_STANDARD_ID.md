@@ -64,6 +64,13 @@ Aksi → **Settings** → Retry policy: **Exponential**, Count `4`, Interval `PT
 
 ## 2. Flow A: website → Judgement Register (pengganti flow "Excel register")
 
+> **Register versi 2026-11-19** (`scripts/build_judgement_register.py`): kolom dan urutan mengikuti sheet
+> "G-CATS Error Log Master Data" (baris terbaru di **bawah**), ditambah sheet **Search**, **For TMA** (sudah kita judge,
+> menunggu TMA) dan **Summary**. Kolom `code` berisi kode polos (`20261118001`, tanpa `code:`), sama dengan yang dikirim
+> website. Pakai **2.3b Office Script UpsertRows**: kolom G-CATS (Year, No., Download Date, G-CATS Status, Company Name,
+> Comment(last time), CAS No., Substance Name…) ikut terisi untuk baris harian baru, dan baris baru ditambahkan di bawah.
+> Mengganti file di SharePoint: unggah dengan nama yang sama (Replace), nama tabel tetap `JudgementRegister`.
+
 ### 2.1 Pemicu
 1. **Create** → **Instant cloud flow** → lewati → cari **When a Teams webhook request is received**.
 2. *Who can trigger the flow*: **Anyone** (website memanggil dari server; keamanannya diperiksa dengan rahasia di 2.2).
