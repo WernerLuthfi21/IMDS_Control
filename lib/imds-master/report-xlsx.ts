@@ -1,9 +1,10 @@
 // Per-supplier Excel list of the parts that still need action. Generated on demand, never stored.
 import ExcelJS from "exceljs";
+import { cleanCell } from "@/lib/imds-master/clean-cell";
 
 export type XlsxPart = { company_name?: string | null; project?: string | null; part_no?: string | null; part_name?: string | null; imds_status?: string | null; imds_id_version?: string | null; md_id_version?: string | null; md_status_update_date?: string | null; submission_plan?: string | null; comment?: string | null };
 
-const safe = (v: unknown) => { const s = String(v ?? ""); return /^[=+\-@\t\r]/.test(s) ? "'" + s : s; };   // spreadsheet formula injection guard
+const safe = (v: unknown) => { const s = cleanCell(v); return /^[=+\-@\t\r]/.test(s) ? "'" + s : s; };   // spreadsheet formula injection guard
 
 export async function buildUnsubmittedXlsx(supplierName: string, supplierCode: string, parts: XlsxPart[]): Promise<Buffer> {
   const wb = new ExcelJS.Workbook(); wb.creator = "IMDS Tracker";

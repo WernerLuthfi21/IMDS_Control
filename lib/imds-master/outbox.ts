@@ -1,3 +1,4 @@
+import { cleanCell } from "@/lib/imds-master/clean-cell";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { postToFlow } from "@/lib/automation/flow";
 import { mapMdStatusToImds } from "./md-current";
@@ -10,8 +11,7 @@ const BATCH_SIZE = Math.min(500, Math.max(1, Number(process.env.POWER_AUTOMATE_T
 const MAX_ATTEMPTS = 5;
 
 function value(row: MasterRecord, key: string): string {
-  const current = row[key];
-  return current === null || current === undefined ? "" : String(current);
+  return cleanCell(row[key]);
 }
 
 function printable(value: unknown): string {

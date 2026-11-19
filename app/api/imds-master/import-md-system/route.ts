@@ -35,6 +35,7 @@ function plain(value: unknown): string | number | boolean | null {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "object") {
     const v = value as Record<string, unknown>;
+    if ("error" in v) return null; // Excel error cell (#N/A, #REF!…): no value, never the JSON text {"error":…}
     if ("result" in v) return plain(v.result);
     if ("text" in v && typeof v.text === "string") return v.text;
     if ("richText" in v && Array.isArray(v.richText)) {
