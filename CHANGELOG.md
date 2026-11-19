@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased: e-mail sign-off and a clearer send screen (2026-11-19)
+
+- Every supplier e-mail now ends with a sign-off: "Best regards," + the sender's full name + "TMMIN - Material Engineering". It is configurable in Settings → E-mail templates (signature text and a `short = full name` list; defaults: Werner → Abdullah Luthfi Werner, Ayu → Eka Tarisa Ayu Putri). New placeholder `{sendername}`.
+- It is added once only: a template that already ends with "regards"/"sincerely" keeps its own. The server adds the same sign-off as a safety net for the Tracker route and for Judgement follow-ups (which had none).
+- Tracker → Follow-up → Send e-mails:
+  - Step 5 is now three labelled choices (Safe test / Manual Outlook drafts / Live send). Batch size, pause, failure stop, "send even if e-mailed recently" and the connection test are folded under "Sending options".
+  - A sticky action bar says in one sentence exactly what the button will do (how many, to whom, which files), and the button says it too ("Send to 3 suppliers").
+  - Preview looks like the e-mail the supplier gets: From / To / CC / Files, full-height message including the sign-off, "Undo my edits".
+  - The browser confirm box is replaced by an in-page confirmation that lists every supplier and address. The old text wrongly said drafts go through Power Automate.
+  - A finish card shows done / skipped / failed and the next step.
+  - Phone layout: supplier rows become cards, so the preview no longer scrolls sideways.
+- Docs: the e-mail flow's Select must map `ContentBytes` = `base64ToBinary(item()?['contentBytes'])`.
+
 ## Unreleased: Tracker supplier e-mail attachments match the Tracker PDF; due dates per supplier × model (2026-11-19)
 
 - **The e-mailed supplier PDF is now the Tracker's own "Supplier PDF".** The browser draws it and the server attaches it. It used to be a plain text PDF built on the server, and the server version is now only a fallback.

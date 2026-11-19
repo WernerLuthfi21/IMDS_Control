@@ -50,3 +50,41 @@ describe("mergeCc", () => {
     expect(mergeCc({ to: ["p@a.com"], cc: [], required: ["req@x.com"] })).toEqual(["req@x.com"]);
   });
 });
+
+import { DEFAULT_SIGNATURE, sanitizeConfig as cleanCfg, withSignature } from "@/lib/followup/center";
+describe("sign-off under every e-mail", () => {
+  it("is on by default with the full sender name placeholder", () => {
+    const c = cleanCfg({});
+    expect(c.signature).toBe(DEFAULT_SIGNATURE);
+    expect(c.signature).toContain("{sendername}");
+    expect(c.senderNames.Werner).toBe("Abdullah Luthfi Werner");
+  });
+  it("is added once; a template that already signs off keeps its own", () => {
+    const sig = "Best regards,\n\nAbdullah Luthfi Werner\nTMMIN - Material Engineering";
+    expect(withSignature("Dear X,\n\nThank you.", sig)).toBe("Dear X,\n\nThank you.\n\n" + sig);
+    expect(withSignature("Dear X,\n\nKind regards,\nAyu", sig)).toBe("Dear X,\n\nKind regards,\nAyu");
+    expect(withSignature("Dear X", "")).toBe("Dear X");
+  });
+  it("an emptied signature stays empty and names are sanitised", () => {
+    const c = cleanCfg({ signature: "", senderNames: { Werner: "  Abdullah Luthfi Werner ", "": "x", Bad: "" } });
+    expect(c.signature).toBe("");
+    expect(c.senderNames).toEqual({ Werner: "Abdullah Luthfi Werner" });
+  });
+});
+
+import { fullSenderName, signOff } from "@/lib/followup/center";
+describe("server-side sign-off (safety net for both e-mail routes)", () => {
+  const cfg = cleanCfg({});
+  it("fills the full name for a known sender, case-insensitive", () => {
+    expect(fullSenderName(cfg.senderNames, "werner")).toBe("Abdullah Luthfi Werner");
+    expect(fullSenderName(cfg.senderNames, "Jasmin")).toBe("Jasmin");
+    expect(signOff("Dear X,\n\nThank you.", cfg, "Werner")).toBe("Dear X,\n\nThank you.\n\nBest regards,\n\nAbdullah Luthfi Werner\nTMMIN - Material Engineering");
+  });
+  it("drops the name line when no sender is known, never sending an empty line", () => {
+    expect(signOff("Hi", cfg, null)).toBe("Hi\n\nBest regards,\n\nTMMIN - Material Engineering");
+  });
+  it("does not sign a body the page already signed", () => {
+    const once = signOff("Hi", cfg, "Werner");
+    expect(signOff(once, cfg, "Werner")).toBe(once);
+  });
+});

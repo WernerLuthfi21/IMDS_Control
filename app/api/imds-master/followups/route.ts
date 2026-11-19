@@ -8,7 +8,7 @@ import { buildSupplierEmailPayload, parseSenders, pickSender, MAX_ATTACHMENT_BYT
 import { gapHoursFromEnv, recentlySent } from "@/lib/followup/guard";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
-import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, type Kind } from "@/lib/followup/center";
+import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, signOff, type Kind } from "@/lib/followup/center";
 import { buildEml, emlFileName } from "@/lib/followup/eml";
 
 export const runtime = "nodejs";
@@ -93,13 +93,15 @@ export async function POST(request: NextRequest) {
   if (!to.length) return NextResponse.json({ error: "No valid recipient e-mail. Add the supplier PIC in Directory first." }, { status: 422 });
   let subject = String(body.subject || "").trim().slice(0, 240);
   if (test && !/^\[TEST\]/i.test(subject)) subject = `[TEST] ${subject}`.slice(0, 240);
-  const messageBody = String(body.messageBody || "").trim().slice(0, 30000);
-  if (!subject || !messageBody) return NextResponse.json({ error: "Subject and message are required." }, { status: 422 });
+  const rawBody = String(body.messageBody || "").trim().slice(0, 30000);
+  if (!subject || !rawBody) return NextResponse.json({ error: "Subject and message are required." }, { status: 422 });
 
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   const config = await loadConfig(supabase);
   const sender = pickSender(senders, body.sender);   // not on the allow-list => the flow's own mailbox sends
+  // The page already adds the sign-off; this only covers an older cached page. Never added twice.
+  const messageBody = signOff(rawBody, config, sender?.name);
   const cc = test ? [] : mergeCc({ to, cc: emailsOf((body.cc || []).join(";")), required: config.requiredCc, senderEmail: draft ? auth.email || undefined : sender?.email });
 
   const gapHours = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
