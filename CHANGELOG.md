@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased: Tracker supplier e-mail attachments match the Tracker PDF; due dates per supplier × model (2026-11-19)
+
+- **The e-mailed supplier PDF is now the Tracker's own "Supplier PDF".** The browser draws it and the server attaches it. It used to be a plain text PDF built on the server, and the server version is now only a fallback.
+- **Supplier PDF fixes:**
+  - Page 1 no longer loses the PIC line and the deadline boxes. A header repaint drew a white page over them, which left a blank gap.
+  - The legend fits on the last table page more often.
+  - Each emoji is embedded once, so the files are much smaller.
+  - The label reads PROTECTED.
+- **Excel error values are cleaned everywhere.** `{"error":"#N/A"}` / `#REF!` no longer reach suppliers: the importers store nothing for Excel error cells, and the e-mail Excel, the server PDF and the Excel sync clean the old values (`lib/imds-master/clean-cell.ts`).
+- **Due dates:**
+  - Each supplier panel can set a due date per model. Empty means the model deadline applies.
+  - Model deadlines are now shared for the whole team; they were browser-only before.
+  - Both are stored under the settings key `due_dates`.
+  - The supplier due date is used in the supplier PDF, the e-mail `{deadlines}` text and the "nearest deadline" per supplier.
+  - Needs migration `20261119010000_tracker_due_dates.sql`. Until it is applied, due dates stay in the browser and the Tracker says so.
+
 ## Unreleased: supplier e-mail HTTP 400 from the Teams-webhook trigger (2026-11-19)
 
 - **Files now travel in a new `files` field. `attachments` is always empty.**

@@ -1,3 +1,4 @@
+import { cleanCell } from "@/lib/imds-master/clean-cell";
 type ReportPart = {
   project?: string | null;
   part_no?: string | null;
@@ -11,7 +12,7 @@ type ReportPart = {
   comment?: string | null;
 };
 
-const ascii = (value: unknown) => String(value ?? "").normalize("NFKD").replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
+const ascii = (value: unknown) => cleanCell(value).normalize("NFKD").replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
 const pdfEscape = (value: string) => value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 
 function wrap(text: string, max = 92): string[] {

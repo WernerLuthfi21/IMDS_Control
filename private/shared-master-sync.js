@@ -839,6 +839,13 @@
         sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: S.send === "test" || undefined, testTo: S.send === "test" ? ($("fu-testto").value || "").trim() : undefined, mode: S.send === "draft" ? "draft" : "send", partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
         attachments: { pdf: $("fu-att-pdf").checked && S.kind !== "recap", xlsx: $("fu-att-xlsx").checked } };
       if (S.kind === "recap") payload.extraPdf = await recapPdf();
+      // Attach the same PDF the "Supplier PDF" button makes, drawn here in the browser (the server's text PDF is only a fallback).
+      else if ($("fu-att-pdf").checked) {
+        try {
+          var sdoc = generateSupplierPDF(g.name, { returnDoc: true });
+          if (sdoc) { var suri = sdoc.output("datauristring"); payload.supplierPdf = { name: "IMDS_" + String(g.name).replace(/[^a-z0-9]+/gi, "_") + ".pdf", base64: suri.slice(suri.indexOf(",") + 1) }; }
+        } catch (pdfError) { /* fall back to the server PDF */ }
+      }
       return api("/api/imds-master/followups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     }
     $("fu-mode").onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-send]"); if (!b) return; S.send = b.getAttribute("data-send"); S.live = S.send === "live"; persist(); draw(); };

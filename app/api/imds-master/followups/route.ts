@@ -53,6 +53,8 @@ type SendBody = {
   sender?: string; force?: boolean; partIds?: string[]; attachments?: { pdf?: boolean; xlsx?: boolean };
   /** A PDF built in the browser (the executive summary for the recap). */
   extraPdf?: { name?: string; base64?: string };
+  /** The supplier PDF exactly as the Tracker's "Supplier PDF" button makes it (built in the browser). */
+  supplierPdf?: { name?: string; base64?: string };
   /** Test send: goes only to `testTo`, no mandatory CC, no recently-sent guard, subject marked [TEST]. */
   test?: boolean; testTo?: string;
   /** "draft": return an Outlook draft (.eml) for the user's own mailbox instead of sending through Power Automate. */
@@ -128,7 +130,14 @@ export async function POST(request: NextRequest) {
   const stem = recap ? `IMDS_Outstanding_ALL_${dateTag}` : `IMDS_Outstanding_${supplierCode || "SUPPLIER"}_${dateTag}`;
   const attachments: Attachment[] = [];
   const wantPdf = body.attachments?.pdf ?? config.attachments.pdf, wantXlsx = body.attachments?.xlsx ?? config.attachments.xlsx;
-  if (!recap && wantPdf && parts.length) attachments.push({ name: `${stem}.pdf`, contentType: "application/pdf", contentBytes: buildSupplierReportPdf(supplierName, supplierCode, parts).toString("base64") });
+  // Prefer the PDF the Tracker itself draws (same layout as the "Supplier PDF" button). The server-built text
+  // PDF is only a fallback for callers that do not send one.
+  const browserPdf = !recap && wantPdf && body.supplierPdf?.base64 ? Buffer.from(String(body.supplierPdf.base64), "base64") : null;
+  if (browserPdf) {
+    if (browserPdf.length < 100 || browserPdf.subarray(0, 4).toString("latin1") !== "%PDF") return NextResponse.json({ error: "The supplier PDF from the Tracker is not a valid PDF. Nothing was sent." }, { status: 422 });
+    if (browserPdf.length > MAX_ATTACHMENT_BYTES) return NextResponse.json({ error: "The supplier PDF is larger than 10 MB. Nothing was sent." }, { status: 413 });
+    attachments.push({ name: `${stem}.pdf`, contentType: "application/pdf", contentBytes: browserPdf.toString("base64") });
+  } else if (!recap && wantPdf && parts.length) attachments.push({ name: `${stem}.pdf`, contentType: "application/pdf", contentBytes: buildSupplierReportPdf(supplierName, supplierCode, parts).toString("base64") });
   if (wantXlsx && parts.length) attachments.push({ name: `${stem}.xlsx`, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", contentBytes: (await buildUnsubmittedXlsx(recap ? "ALL SUPPLIERS" : supplierName, supplierCode, parts)).toString("base64") });
   if (recap && body.extraPdf?.base64) {
     const bytes = Buffer.from(String(body.extraPdf.base64), "base64");

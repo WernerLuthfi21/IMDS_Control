@@ -3,13 +3,16 @@ import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
 import { DEFAULT_CONFIG, sanitizeConfig } from "@/lib/followup/center";
+import { sanitizeDueDates } from "@/lib/imds-master/due-dates";
 
 export const runtime = "nodejs";
-const KEYS = ["directory", "followup_config"] as const;
+const KEYS = ["directory", "followup_config", "due_dates"] as const;
 type Key = (typeof KEYS)[number];
 const TABLE_MISSING = /schema cache|does not exist|could not find the table/i;
 const MIGRATION_HINT = "The settings table does not exist yet. Open the Supabase SQL editor and run supabase/migrations/20261110000000_tracker_settings.sql once, then try again.";
-const MAX_BYTES: Record<Key, number> = { directory: 3_000_000, followup_config: 200_000 };
+const MAX_BYTES: Record<Key, number> = { directory: 3_000_000, followup_config: 200_000, due_dates: 600_000 };
+const DUE_HINT = "Due dates cannot be shared yet: run supabase/migrations/20261119010000_tracker_due_dates.sql once in the Supabase SQL editor.";
+const clean = (key: Key, v: unknown) => key === "followup_config" ? sanitizeConfig(v ?? DEFAULT_CONFIG) : key === "due_dates" ? sanitizeDueDates(v) : (v ?? null);
 
 /** Versioned settings shared by everyone who uses the Tracker. GET ?key=… ; PUT {key,value,baseVersion}. */
 export async function GET(request: NextRequest) {
@@ -24,10 +27,10 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.from("imds_tracker_settings").select("value,version,updated_at").eq("key", key).maybeSingle();
   if (error && TABLE_MISSING.test(error.message)) {
     // Migration not applied yet: the e-mail center still works with the built-in templates; nothing can be saved until it is.
-    return NextResponse.json({ exists: false, tableMissing: true, value: key === "followup_config" ? DEFAULT_CONFIG : null, version: 0, updatedAt: null }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ exists: false, tableMissing: true, value: key === "followup_config" ? DEFAULT_CONFIG : key === "due_dates" ? sanitizeDueDates(null) : null, version: 0, updatedAt: null }, { headers: { "Cache-Control": "private, no-store" } });
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const value = key === "followup_config" ? sanitizeConfig(data?.value ?? DEFAULT_CONFIG) : (data?.value ?? null);
+  const value = clean(key, data?.value);
   return NextResponse.json({ exists: Boolean(data), value, version: data?.version ?? 0, updatedAt: data?.updated_at ?? null }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
@@ -39,7 +42,7 @@ export async function PUT(request: NextRequest) {
   if (!body?.key || !KEYS.includes(body.key)) return NextResponse.json({ error: "Unknown settings key." }, { status: 400 });
   const allowed = body.key === "followup_config" ? ["admin", "preparer"] : ["admin", "preparer", "reviewer"];
   if (!allowed.includes(auth.role || "")) return NextResponse.json({ error: body.key === "followup_config" ? "Admin or preparer role is required to change follow-up settings." : "Admin, preparer or reviewer role is required to edit the directory." }, { status: 403 });
-  const value = body.key === "followup_config" ? sanitizeConfig(body.value) : body.value;
+  const value = clean(body.key, body.value);
   if (!value || typeof value !== "object") return NextResponse.json({ error: "A settings object is required." }, { status: 400 });
   if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_BYTES[body.key]) return NextResponse.json({ error: "Settings are too large." }, { status: 413 });
   const supabase = await createClient();
@@ -51,6 +54,7 @@ export async function PUT(request: NextRequest) {
     if (error) {
       if (/duplicate|unique/i.test(error.message)) return NextResponse.json({ error: "Someone else saved first. Reload to see their version.", conflict: true }, { status: 409 });
       if (TABLE_MISSING.test(error.message)) return NextResponse.json({ error: MIGRATION_HINT, tableMissing: true }, { status: 503 });
+      if (body.key === "due_dates" && /check constraint|violates/i.test(error.message)) return NextResponse.json({ error: DUE_HINT, tableMissing: true }, { status: 503 });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ ok: true, version: 1 });

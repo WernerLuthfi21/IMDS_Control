@@ -443,6 +443,11 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
 .drawer-id{display:flex;gap:12px;align-items:center;min-width:0}.drawer-id h2{font-size:22px;overflow-wrap:anywhere}.drawer-id .avatar{width:44px;height:44px;font-size:15px}
 .drawer-summary{display:flex;justify-content:space-between;gap:var(--s-3);flex-wrap:wrap;align-items:center}
 .drawer-models{display:flex;gap:6px;flex-wrap:wrap}
+.due-box{margin:10px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,var(--surface));display:grid;gap:6px}
+.due-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}.due-head b{font-size:13px}
+.due-row{display:grid;grid-template-columns:minmax(90px,auto) minmax(120px,1fr) 150px minmax(110px,auto);gap:8px;align-items:center}
+.due-row .promise-input{width:100%}.due-left{font-size:12px;font-weight:700;text-align:right}
+@media (max-width:640px){.due-row{grid-template-columns:1fr 1fr}.due-left{text-align:left}}
 .dl-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid color-mix(in srgb,var(--mc) 35%,transparent);background:color-mix(in srgb,var(--mc) 9%,var(--surface))}.dl-pill i{width:8px;height:8px;border-radius:2px;background:var(--mc)}.dl-pill .num{color:var(--muted)}
 .drawer-actions,.drawer-filters{display:flex;gap:var(--s-2);flex-wrap:wrap;align-items:center}
 .drawer-note{font-size:12.5px;color:var(--muted)}
@@ -953,6 +958,55 @@ const M={
   deadlineShort(k){const d=M.deadline(k);return d?datePretty(d):"No deadline set"},
   rows:k=>D.records.filter(r=>r.model===k)
 };
+/* ---- Due dates shared on the server (settings key "due_dates"): per model, and per supplier × model.
+   A supplier due date overrides the model deadline for that supplier only. Never invented: empty = none. ---- */
+const DUE={models:{},suppliers:{},version:0,shared:true,loaded:false};
+function supDueKey(c,m){return String(c||"").trim().toUpperCase()+"|"+String(m||"").trim()}
+function supplierDueISO(c,m){return DUE.suppliers[supDueKey(c,m)]||""}
+function dueFor(c,m){return isoToDate(supplierDueISO(c,m))||M.deadline(m)}
+function daysFor(c,m){const d=dueFor(c,m);if(!d)return Infinity;return Math.ceil((d-todayStart())/86400000)}
+async function dueApi(method,body){
+  const r=await fetch("/api/imds-master/settings"+(method==="GET"?"?key=due_dates":""),{method,credentials:"same-origin",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.error||("HTTP "+r.status));e.conflict=!!j.conflict;e.tableMissing=!!j.tableMissing;throw e}
+  return j;
+}
+async function loadDueDates({render=true}={}){
+  try{
+    const j=await dueApi("GET"),v=j.value||{};
+    DUE.version=j.version||0;DUE.shared=!j.tableMissing;DUE.suppliers=v.suppliers||{};DUE.models=v.models||{};
+    const meta=loadModelMeta();let changed=false,push=false;
+    if(DUE.version>0){
+      // the server is the source of truth for model deadlines once anyone has saved them
+      const keys=new Set([...Object.keys(meta),...Object.keys(DUE.models)]);
+      keys.forEach(k=>{const want=DUE.models[k]||"",have=(meta[k]||{}).deadline;if(want&&have!==want){meta[k]={...(meta[k]||{}),deadline:want};changed=true}else if(!want&&have){meta[k]={...meta[k],deadline:""};changed=true}});
+    }else{
+      // first time: share the deadlines this browser already had
+      Object.entries(meta).forEach(([k,cfg])=>{if(cfg&&cfg.deadline){DUE.models[k]=cfg.deadline;push=true}});
+    }
+    if(changed)saveModelMeta(meta);
+    DUE.loaded=true;
+    if(push&&DUE.shared)saveDueDates({quiet:true});
+    if(render&&D.records&&D.records.length){if(changed)buildRegistry(D.records);renderAll();if(UI.drill)renderDrawer({keep:true})}
+  }catch(e){DUE.loaded=true}
+}
+let dueTimer=null;
+function saveDueDates({quiet=false}={}){
+  clearTimeout(dueTimer);
+  dueTimer=setTimeout(async()=>{
+    try{const j=await dueApi("PUT",{key:"due_dates",value:{models:DUE.models,suppliers:DUE.suppliers},baseVersion:DUE.version});DUE.version=j.version;if(!quiet)toast("Due dates saved for the whole team","ok")}
+    catch(e){
+      if(e.conflict){toast("Someone else changed due dates — their latest version is loaded. Please set yours again.","err");await loadDueDates()}
+      else if(e.tableMissing){DUE.shared=false;toast("Saved in this browser only. "+e.message,"err")}
+      else toast("Due dates were not saved: "+e.message,"err");
+    }
+  },500);
+}
+function setSupplierDue(company,model,iso){
+  const k=supDueKey(company,model);
+  if(iso)DUE.suppliers[k]=iso;else delete DUE.suppliers[k];
+  saveDueDates({quiet:true});renderAll();if(UI.drill)renderDrawer({keep:true});
+}
 function visibleRecords(){return D.records.filter(r=>M.isVisible(r.model))}
 function counts(rows){
   const c={total:rows.length,complete:0,process:0,missing:0,review:0,pastDue:0};
@@ -1141,7 +1195,7 @@ function priorityAgg(){
     const parts=rs.length,complete=rs.filter(r=>r.status==="complete").length,missing=rs.filter(r=>r.status==="missing").length;
     const noDate=rs.filter(r=>r.status==="missing"&&!r.targetDate).length;
     const models=[...new Set(rs.map(r=>r.model))].sort((a,b)=>M.get(a).sortOrder-M.get(b).sortOrder);
-    return{company,parts,complete,missing,noDate,pastDue:rs.some(r=>r.pastDue),pct:pct(complete,parts),models,nearest:Math.min(...models.map(m=>M.days(m)))};
+    return{company,parts,complete,missing,noDate,pastDue:rs.some(r=>r.pastDue),pct:pct(complete,parts),models,nearest:Math.min(...models.map(m=>daysFor(company,m)))};
   }).filter(a=>a.missing>0).sort((a,b)=>(b.pastDue-a.pastDue)||(b.missing-a.missing)||(a.pct-b.pct));
 }
 
@@ -1718,7 +1772,14 @@ function renderDrawer({keep=false,focus=false,focusRid=null}={}){
   dr.innerHTML=`<div class="drawer-head">
       <div class="drawer-id">${avatar(name)}<div><h2 id="drawer-title" tabindex="-1">${esc(name)}</h2><p class="muted">${esc(pic?"PIC · "+pic:"No PIC email on file")}</p></div></div>
       <button type="button" class="icon-btn" data-action="close-drawer" aria-label="Close supplier details">×</button></div>
-    <div class="drawer-summary"><div>${moodHTML(mood)}</div><div class="drawer-models">${models.map(k=>`<span class="dl-pill" style="--mc:${M.color(k)}"><i aria-hidden="true"></i><span translate="no">${esc(M.label(k))}</span><span class="num">${esc(M.deadlineShort(k))}</span></span>`).join("")}</div></div>
+    <div class="drawer-summary"><div>${moodHTML(mood)}</div></div>
+    <div class="due-box" role="group" aria-label="Due dates for ${escAttr(name)}">
+      <div class="due-head"><b>Due dates for this supplier</b><span class="muted small">Leave empty to use the model deadline. Saved for the whole team${DUE.shared?"":" (this browser only until the due-dates migration runs)"}.</span></div>
+      ${models.map(k=>{const own=supplierDueISO(name,k),d=daysFor(name,k);return `<div class="due-row"><span class="dl-pill" style="--mc:${M.color(k)}"><i aria-hidden="true"></i><span translate="no">${esc(M.label(k))}</span></span>
+        <span class="due-model muted small">Model: ${esc(M.deadlineShort(k))}</span>
+        <input type="date" class="promise-input" data-action-change="supplier-due" data-supplier="${escAttr(name)}" data-model="${escAttr(k)}" value="${escAttr(own)}" aria-label="Due date for ${escAttr(name)} on ${escAttr(M.label(k))}">
+        <span class="due-left num ${d<0?"t-bad":d<=14?"t-warn":""}">${d===Infinity?"No due date":d<0?Math.abs(d)+"d overdue":d+"d left"}${own?' · <span class="badge plain">supplier</span>':""}</span></div>`}).join("")}
+    </div>
     <div class="drawer-actions">
       <button type="button" class="btn btn-primary btn-sm" data-action="reminder" data-supplier="${escAttr(name)}" ${ca.missing?"":"disabled"}>Send reminder</button>
       <button type="button" class="btn btn-secondary btn-sm" data-action="supplier-pdf" data-supplier="${escAttr(name)}">Supplier PDF</button>
@@ -1758,7 +1819,7 @@ function followData(){
   const overdue=group(missing.filter(isOver),()=>({}));
   const noDate=group(missing.filter(r=>!r.targetDate),()=>({}));
   const totalBy={};rows.forEach(r=>{totalBy[r.company]=(totalBy[r.company]||0)+1});
-  const outstanding=group(missing,()=>({})).map(g=>({...g,total:totalBy[g.company]||g.parts,pct:pct((totalBy[g.company]||g.parts)-g.parts,totalBy[g.company]||g.parts),nearest:Math.min(...g.models.map(m=>M.days(m)))}));
+  const outstanding=group(missing,()=>({})).map(g=>({...g,total:totalBy[g.company]||g.parts,pct:pct((totalBy[g.company]||g.parts)-g.parts,totalBy[g.company]||g.parts),nearest:Math.min(...g.models.map(m=>daysFor(g.company,m)))}));
   const plans=missing.filter(r=>getPromiseISO(r));
   const dl=M.keys().filter(k=>M.deadline(k)&&!modelDone(k)&&(F.model==="ALL"||F.model===k));
   return{rows,missing,overdue,noDate,outstanding,plans,dl,noDateParts:missing.filter(r=>!r.targetDate).length,overdueParts:missing.filter(isOver).length};
@@ -2417,7 +2478,8 @@ const SENDERS={Aiko:"emd.magang3@toyota.co.id",Ayu:"eka.ayu@toyota.co.id",Jasmin
 /* E-mail text is rendered by the E-mail center (private/shared-master-sync.js) from editable templates. These helpers fill its placeholders. */
 function greeting(){const h=new Date().getHours();return h<11?"Good Morning":h<15?"Good Afternoon":h<18?"Good Evening":"Good Evening"}
 function maskProj(p){return String(p||"").replace(/\b(\d)\d(\d[A-Za-z]*)\b/g,"$1*$2")}
-function projLines(parts,final){return[...new Set(parts.map(r=>r.model))].sort((a,b)=>M.get(a).sortOrder-M.get(b).sortOrder).map(p=>`- ${maskProj(M.label(p))} Project no later than ${M.deadlineLong(p)}`).join("\n")}
+/* One supplier → its own due date per model when set (Settings stays the fallback); several suppliers → model deadline. */
+function projLines(parts,final){const cos=[...new Set(parts.map(r=>r.company))],one=cos.length===1?cos[0]:null;return[...new Set(parts.map(r=>r.model))].sort((a,b)=>M.get(a).sortOrder-M.get(b).sortOrder).map(p=>{const own=one&&supplierDueISO(one,p);return `- ${maskProj(M.label(p))} Project no later than ${own?dateLong(isoToDate(own)):M.deadlineLong(p)}`}).join("\n")}
 function projNames(parts){const p=[...new Set(parts.map(r=>r.model))].sort((a,b)=>M.get(a).sortOrder-M.get(b).sortOrder).map(k=>maskProj(M.label(k)));return p.length>1?p.slice(0,-1).join(", ")+" and "+p[p.length-1]:p[0]||"the requested project"}
 
 /* Models named in outgoing mail come from the registry (models that still have open parts; Unassigned is never named to suppliers). */
@@ -2471,7 +2533,8 @@ function statusMoodEmoji(status){return status==="Submitted"?"😄":status==="Wo
 function drawStatusEmoji(doc,emoji,cx,cy,sizeMm=5.2){
   const url=emojiDataUrl(emoji);
   if(!url)return false;
-  try{doc.addImage(url,"PNG",cx-sizeMm/2,cy-sizeMm/2,sizeMm,sizeMm);return true}catch(e){return false}
+  // alias = one embedded copy per emoji (a 200-part PDF otherwise carried 200 copies of the same picture)
+  try{doc.addImage(url,"PNG",cx-sizeMm/2,cy-sizeMm/2,sizeMm,sizeMm,"emoji-"+Array.from(emoji).map(c=>c.codePointAt(0).toString(16)).join("-"),"FAST");return true}catch(e){return false}
 }
 function makePDFHeader(doc,title,subtitle){
   doc.setFillColor(255,255,255);doc.rect(0,0,297,210,"F");
@@ -2708,7 +2771,7 @@ function drawExecutiveSummaryPage(doc){
     heading(38,true);const y=44,c2=Math.floor((BOTTOM-y-HEAD)/ROW);
     chunk=list.slice(pos,pos+c2);drawPriorityBlock(doc,chunk,y);pos+=chunk.length;
   }
-  doc.setPage(1);doc.setTextColor(140,140,140);doc.setFontSize(6);doc.text("INTERNAL · CONFIDENTIAL",286,26,{align:"right"});
+  doc.setPage(1);doc.setTextColor(140,140,140);doc.setFontSize(6);doc.text("PROTECTED · internal use",286,26,{align:"right"});
 }
 function generateSummaryPDF(opts){
   if(!window.jspdf||!window.jspdf.jsPDF){toast("The PDF engine did not load. Check the internet connection and try again.","err");return}
@@ -2724,11 +2787,11 @@ function generateSummaryPDF(opts){
   if(opts&&opts.returnDoc)return doc;
   savePDF(doc,"IMDS_Supplier_Submission_Summary.pdf","Executive summary PDF")
 }
-function generateSupplierPDF(supplier){
+function generateSupplierPDF(supplier,opts){
   if(!window.jspdf||!window.jspdf.jsPDF){toast("The PDF engine did not load. Check the internet connection and try again.","err");return}
   const rows=D.records.filter(r=>r.company===supplier&&M.get(r.model).showPdf);
-  if(!rows.length){toast("No parts found for this supplier in the models selected for PDF.","err");return}
-  const doc=new jspdf.jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+  if(!rows.length){if(!(opts&&opts.returnDoc))toast("No parts found for this supplier in the models selected for PDF.","err");return}
+  const doc=new jspdf.jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
   const pageW=297,pageH=210,margin=8;
   /* Sort: model/project first, then status severity (Not Submitted → Working
      → Submitted) so the parts needing action surface at the top of each
@@ -2736,7 +2799,7 @@ function generateSupplierPDF(supplier){
   const parts=rows.slice().sort((a,b)=>(M.get(a.model).sortOrder-M.get(b.model).sortOrder)||(STATUS[a.status].sev-STATUS[b.status].sev)||((a.targetDate?.getTime()||Infinity)-(b.targetDate?.getTime()||Infinity))||String(a.partNo).localeCompare(String(b.partNo)));
   const projects=[...new Set(parts.map(r=>r.model))];
   const pic=(D.contacts.get(supplier.toUpperCase())||{}).pic||"Not listed";
-  const deadlineItems=projects.map(p=>({project:M.label(p),label:pdfDeadline(p),days:M.days(p)}));
+  const deadlineItems=projects.map(p=>{const own=supplierDueISO(supplier,p),d=dueFor(supplier,p);return{project:M.label(p),label:own?dateLong(d)+" (supplier due date)":pdfDeadline(p),days:daysFor(supplier,p)}});
   const drawSupplierHeader=(d)=>{
     d.setFillColor(255,255,255);d.rect(0,0,pageW,pageH,"F");
     d.setFillColor(230,0,18);d.roundedRect(margin,8,205,14,1.5,1.5,"F");
@@ -2824,8 +2887,10 @@ function generateSupplierPDF(supplier){
         if(!drew){const rgb=st==="Submitted"?[22,131,75]:st==="Working"?[190,120,0]:[205,35,50];doc.setFillColor(...rgb);doc.circle(cx,cy,1.0,"F");}
       }
     },
-    willDrawPage:function(){
-      drawSupplierHeader(doc);
+    /* Page 1 already has its header, PIC and deadline boxes: repainting the header there (it starts with a
+       white full-page fill) erased them and left a blank gap above the table. Only continuation pages need it. */
+    willDrawPage:function(data){
+      if(data.pageNumber>1)drawSupplierHeader(doc);
     }
   });
   let fy=(doc.lastAutoTable?.finalY||tableStart)+7;
@@ -2833,7 +2898,7 @@ function generateSupplierPDF(supplier){
      the previous version placed the "Past Due" note and the reference
      links on top of each other at nearly the same y, which is what made
      the bottom of the page look garbled. */
-  if(fy>166){doc.addPage();drawSupplierHeader(doc);fy=40}
+  if(fy>174){doc.addPage();drawSupplierHeader(doc);fy=40}
   doc.setFillColor(247,248,250);doc.setDrawColor(225,228,232);doc.roundedRect(margin,fy,281,28,2,2,"FD");
   doc.setTextColor(35,35,35);doc.setFont(undefined,"bold");doc.setFontSize(7.2);doc.text("HOW-TO & REFERENCES",margin+5,fy+7);
   doc.setFont(undefined,"normal");doc.setFontSize(6.3);doc.setTextColor(90,90,90);
@@ -2844,7 +2909,8 @@ function generateSupplierPDF(supplier){
   doc.setTextColor(29,95,150);doc.setFont(undefined,"bold");doc.textWithLink("Important Rules",margin+5,fy+24.5,{url:"https://bit.ly/ImportantRulesIMDS"});
   doc.textWithLink("How to / IMDS Guide",margin+48,fy+24.5,{url:"https://bit.ly/IMDSManualVideoGuide"});
   doc.setTextColor(90,90,90);doc.setFont(undefined,"normal");doc.text("· Submit to IMDS TMMIN ID 142895",margin+105,fy+24.5);
-  doc.setTextColor(145,145,145);doc.setFontSize(5.8);doc.text("INTERNAL · CONFIDENTIAL",289,fy+24.5,{align:"right"});
+  doc.setTextColor(145,145,145);doc.setFontSize(5.8);doc.text("PROTECTED · internal use",289,fy+24.5,{align:"right"});
+  if(opts&&opts.returnDoc)return doc;
   savePDF(doc,`IMDS_${supplier.replace(/[^a-z0-9]+/gi,"_")}.pdf`,"Supplier PDF");
 }
 
@@ -2921,7 +2987,8 @@ const CHANGE={
     renderAll();renderDrawer({keep:true,focusRid:el.dataset.rid});
     toast(el.value?"Plan date saved":"Plan date removed","ok");
   },
-  "model-deadline":(el)=>{if(setModelMeta(el.dataset.model,{deadline:el.value||""}))toast(el.value?"Deadline saved for "+M.label(el.dataset.model):"Deadline cleared for "+M.label(el.dataset.model),"ok")},
+  "model-deadline":(el)=>{if(setModelMeta(el.dataset.model,{deadline:el.value||""})){if(el.value)DUE.models[el.dataset.model]=el.value;else delete DUE.models[el.dataset.model];saveDueDates({quiet:true});toast(el.value?"Deadline saved for "+M.label(el.dataset.model)+" (whole team)":"Deadline cleared for "+M.label(el.dataset.model),"ok")}},
+  "supplier-due":(el)=>{setSupplierDue(el.dataset.supplier,el.dataset.model,el.value||"");toast(el.value?"Due date for "+el.dataset.supplier+" · "+M.label(el.dataset.model)+" set to "+datePretty(isoToDate(el.value)):"Supplier due date cleared — the model deadline applies","ok")},
   "model-color":(el)=>{setModelMeta(el.dataset.model,{color:el.value})},
   "dir-field":(el)=>{if(!setDirField(el.dataset.key,el.dataset.field,el.value)&&!DIR.entries[el.dataset.key])return;
     const v=el.value,bad=(/email/.test(el.dataset.field)||el.dataset.field==="pic_extra")&&emailBad(v);el.classList.add("edited");el.classList.toggle("invalid",bad);if(bad)el.setAttribute("aria-invalid","true");else el.removeAttribute("aria-invalid");
@@ -3029,6 +3096,7 @@ function bindStatic(){
   setConnectionState("NOT_CONNECTED");
   populateFilterOptions();renderAll();
   window.__imds={D,SRC,F,UI,M,counts,classify,normModelKey,afterLoad,DIR,DIR_STATE,contactLookup,dirFor};   // read-only handle for automated tests
+  loadDueDates();
   tryAutoReconnect();
 })();
 
