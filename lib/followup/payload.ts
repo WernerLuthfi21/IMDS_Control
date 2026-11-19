@@ -21,7 +21,10 @@ export type SupplierEmailPayload = {
   body: string;          // plain text
   /** The same text as safe HTML (escaped, line breaks as <br>): map it straight to Outlook's Body, no expression needed. */
   bodyHtml: string;
+  /** Always empty. The standard Teams-webhook trigger treats `attachments` as Teams cards and rejects files with HTTP 400. */
   attachments: Attachment[];
+  /** The files (PDF, Excel): name, contentType, base64 contentBytes. Map these in the flow (Select → Send an email). */
+  files: Attachment[];
   metadata: { partCount: number; projects: string[]; items: number };
 };
 
@@ -35,6 +38,7 @@ export const SUPPLIER_EMAIL_SCHEMA = {
     from: { type: "string" }, senderName: { type: "string" },
     to: { type: "string" }, cc: { type: "string" }, subject: { type: "string" }, body: { type: "string" }, bodyHtml: { type: "string" },
     attachments: { type: "array", items: { type: "object", properties: { name: { type: "string" }, contentType: { type: "string" }, contentBytes: { type: "string" } } } },
+    files: { type: "array", items: { type: "object", properties: { name: { type: "string" }, contentType: { type: "string" }, contentBytes: { type: "string" } } } },
     metadata: { type: "object", properties: { partCount: { type: "integer" }, projects: { type: "array", items: { type: "string" } }, items: { type: "integer" } } }
   }
 } as const;
@@ -61,7 +65,7 @@ export function pickSender(allowed: Sender[], requested?: string | null): Sender
   return want ? allowed.find((s) => s.email === want) ?? null : null;
 }
 
-export type PayloadInput = Omit<SupplierEmailPayload, "type" | "version" | "from" | "senderName" | "to" | "cc" | "attachments" | "followupId" | "logId" | "bodyHtml"> & {
+export type PayloadInput = Omit<SupplierEmailPayload, "type" | "version" | "from" | "senderName" | "to" | "cc" | "attachments" | "files" | "followupId" | "logId" | "bodyHtml"> & {
   followupId?: string; logId?: string; to: string[]; cc: string[]; sender?: Sender | null; attachments?: Attachment[];
 };
 
@@ -79,6 +83,6 @@ export function buildSupplierEmailPayload(i: PayloadInput): SupplierEmailPayload
     from: i.sender?.email ?? "", senderName: i.sender?.name ?? "",
     to: to.join(";"), cc: [...new Set(i.cc.flatMap(emailsOf))].filter((e) => !to.includes(e)).join(";"),
     subject: i.subject.trim().slice(0, 240), body: i.body.trim().slice(0, 30000), bodyHtml: toHtml(i.body.trim().slice(0, 30000)),
-    attachments, metadata: i.metadata
+    attachments: [], files: attachments, metadata: i.metadata
   };
 }

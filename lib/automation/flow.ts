@@ -52,7 +52,10 @@ export async function postToFlow(url: string, secret: string | null, payload: un
     // before the flow runs, so it is a hand-off, not a confirmed send. Only 200/201/204 from a Response action confirm.
     if (res.status === 202) return { ok: true, status: 202, handedOff: true };
     if (res.status >= 200 && res.status < 300) return { ok: true, status: res.status };
-    return { ok: false, status: res.status, error: `Flow answered HTTP ${res.status}` };
+    // Show what the flow/trigger said (first 300 chars) so a 400 explains itself instead of a bare code.
+    let detail = "";
+    try { detail = (await res.text()).replace(/\s+/g, " ").trim().slice(0, 300); } catch { /* no body */ }
+    return { ok: false, status: res.status, error: `Flow answered HTTP ${res.status}${detail ? `: ${detail}` : ""}` };
   } catch (e) {
     return { ok: false, status: 0, error: e instanceof Error ? e.message.slice(0, 200) : "Flow request failed" };
   }
