@@ -49,3 +49,10 @@ describe("test payload and CSV seed", () => {
     expect(csv).toContain("'=HYPERLINK"); expect(csv).toContain('"a,b"');
   });
 });
+
+describe("register key", () => {
+  it("sends TMA's code without the database prefix, so Update a row / UpsertRows match the sheet", () => {
+    expect(buildExcelPayload({ source_record_key: "code:20261118001" }).code).toBe("20261118001");
+    expect(buildExcelPayload({ source_record_key: "fallback:abc:Sheet1:7" }).code).toBe("fallback:abc:Sheet1:7");
+  });
+});

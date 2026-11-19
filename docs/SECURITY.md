@@ -43,4 +43,13 @@ Classification selection is an explicit user attestation. The application does n
 - Exposed `public` tables are protected by Row Level Security policies. The later bulk-preparation RPC is `SECURITY INVOKER`, so it remains subject to the caller's table policies; the migration grants reviewer update access to the register while the judgement guard trigger still restricts KM fields to reviewer/admin.
 - Bulk preparation accepts only `assigned_person`, `starting_date`, and `judgement_procedure`, verifies all selected rows share one exact historical Error Type label, and writes a change log for each row. It cannot update Judge, OK/NG comments or KM review fields.
 - `current_app_role()` and `has_any_role()` are granted only to authenticated users and are used by row policies. Trigger-only functions are revoked from `PUBLIC` and `anon`. Guarded commit/finalization RPCs have explicit role checks and authenticated-only execution grants.
+- **Exception, reviewed 2026-11-19 (migration `20261119030000`):** `current_app_role()` runs as `SECURITY DEFINER`. Reason it cannot run as invoker:
+  - It reads `public.profiles`, whose SELECT policy calls `has_any_role()` → `current_app_role()`.
+  - With Supabase's non-leakproof `auth.uid()`, Postgres evaluates that policy on every row first. As soon as there are two profiles, the loop ends in `stack depth limit exceeded` (SQLSTATE 54001). Storage reports it as "database error, code: 54001" on every upload by other accounts. Reproduced on PG16 before the fix and gone after it.
+
+  Threat review:
+  - The function takes no arguments and returns only the caller's own role (`where id = auth.uid()`).
+  - It cannot be widened to other users, it has a fixed `search_path = public, pg_temp`, and execute is revoked from `PUBLIC`/`anon`.
+  - It writes nothing.
+  - `has_any_role()` stays `SECURITY INVOKER`.
 - Never replace a failed RLS policy with a broad `SECURITY DEFINER` function. Any future definer function must have an explicit threat review, fixed search path, internal role check, least-privilege execute grants and a documented reason it cannot run as invoker.

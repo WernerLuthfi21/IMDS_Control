@@ -263,7 +263,8 @@
 
   // ---- Importing workbooks: shared by the Settings boxes and by dropping a file anywhere on the page ----
   var importing = false, panelNotify = null;
-  function report(kind, text) { try { toast(text, kind === "err" ? "err" : kind === "ok" ? "ok" : "info"); } catch (e) { /* toast unavailable */ } if (panelNotify) panelNotify(kind, text); }
+  function report(kind, text) {
+    if (/54001|stack depth limit/i.test(String(text))) text = "The database role check went into a loop for this account (error 54001), so nothing was imported. An admin runs supabase/migrations/20261119030000_role_helpers_no_rls_recursion.sql once in the Supabase SQL Editor; after that it works for every account."; try { toast(text, kind === "err" ? "err" : kind === "ok" ? "ok" : "info"); } catch (e) { /* toast unavailable */ } if (panelNotify) panelNotify(kind, text); }
   function sleep(ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); }
   function isNetworkError(e) { return e && (e.name === "TypeError" || /failed to fetch|networkerror|load failed/i.test(String(e.message))); }
 

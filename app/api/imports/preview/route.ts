@@ -26,6 +26,9 @@ function plain(value: ExcelJS.CellValue): string | number | boolean | null {
   return String(value);
 }
 
+/** Below Vercel's 4.5 MB request limit with room for the form envelope. */
+const DIRECT_UPLOAD_BYTES = 3.5 * 1024 * 1024;
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Persistent import requires Supabase. Configure .env.local and sign in first. Local demo mode does not persist imported operational data." }, { status: 503 });
@@ -34,16 +37,31 @@ export async function POST(request: NextRequest) {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", auth.user.id).maybeSingle();
   if (!profile || !["admin", "preparer"].includes(profile.role)) return NextResponse.json({ error: "A preparer or admin role is required to import workbooks." }, { status: 403 });
 
-  const body = await request.json().catch(() => null) as { storagePath?: string; fileName?: string; classification?: string } | null;
-  if (!body?.storagePath || !body.fileName) return NextResponse.json({ error: "storagePath and fileName are required after secure upload." }, { status: 400 });
-  if (!canProcessClassification(body.classification)) return NextResponse.json({ error: classificationBlockReason(body.classification) }, { status: 422 });
-  if (!body.fileName.toLowerCase().endsWith(".xlsx")) return NextResponse.json({ error: "Only .xlsx workbooks are accepted." }, { status: 415 });
-  if (!body.storagePath.startsWith(`${auth.user.id}/`)) return NextResponse.json({ error: "Upload path is outside the current user's staging namespace." }, { status: 403 });
-  const { data: storedFile, error: downloadError } = await supabase.storage.from("import-staging").download(body.storagePath);
-  if (downloadError || !storedFile) return NextResponse.json({ error: downloadError?.message || "Staged upload not found." }, { status: 404 });
-  if (storedFile.size > maxImportFileMb * 1024 * 1024) return NextResponse.json({ error: `File exceeds ${maxImportFileMb} MB.` }, { status: 413 });
-  const fileName = body.fileName;
-  const buffer = Buffer.from(await storedFile.arrayBuffer());
+  // Two ways in: small files (the daily G-CATS export is a few KB) come straight in the request, so no Storage step
+  // can fail; large files are uploaded to private Storage first and referenced by path.
+  let fileName = "", classification: string | undefined, buffer: Buffer;
+  if ((request.headers.get("content-type") || "").includes("multipart/form-data")) {
+    const form = await request.formData().catch(() => null);
+    const file = form?.get("file");
+    if (!form || !(file instanceof File)) return NextResponse.json({ error: "Attach the .xlsx file." }, { status: 400 });
+    fileName = file.name; classification = String(form.get("classification") || "");
+    if (!canProcessClassification(classification)) return NextResponse.json({ error: classificationBlockReason(classification) }, { status: 422 });
+    if (!fileName.toLowerCase().endsWith(".xlsx")) return NextResponse.json({ error: "Only .xlsx workbooks are accepted." }, { status: 415 });
+    if (file.size > DIRECT_UPLOAD_BYTES) return NextResponse.json({ error: "This file is too large for a direct upload. Reload the page and drop it again (large files go through secure storage)." }, { status: 413 });
+    buffer = Buffer.from(await file.arrayBuffer());
+  } else {
+    const body = await request.json().catch(() => null) as { storagePath?: string; fileName?: string; classification?: string } | null;
+    if (!body?.storagePath || !body.fileName) return NextResponse.json({ error: "storagePath and fileName are required after secure upload." }, { status: 400 });
+    classification = body.classification;
+    if (!canProcessClassification(body.classification)) return NextResponse.json({ error: classificationBlockReason(body.classification) }, { status: 422 });
+    if (!body.fileName.toLowerCase().endsWith(".xlsx")) return NextResponse.json({ error: "Only .xlsx workbooks are accepted." }, { status: 415 });
+    if (!body.storagePath.startsWith(`${auth.user.id}/`)) return NextResponse.json({ error: "Upload path is outside the current user's staging namespace." }, { status: 403 });
+    const { data: storedFile, error: downloadError } = await supabase.storage.from("import-staging").download(body.storagePath);
+    if (downloadError || !storedFile) return NextResponse.json({ error: downloadError?.message || "Staged upload not found." }, { status: 404 });
+    if (storedFile.size > maxImportFileMb * 1024 * 1024) return NextResponse.json({ error: `File exceeds ${maxImportFileMb} MB.` }, { status: 413 });
+    fileName = body.fileName;
+    buffer = Buffer.from(await storedFile.arrayBuffer());
+  }
   const hash = createHash("sha256").update(buffer).digest("hex");
   const workbook = new ExcelJS.Workbook();
   // ExcelJS expects its own Buffer declaration; the runtime value is a Node Buffer.
@@ -217,13 +235,13 @@ export async function POST(request: NextRequest) {
   const newRecords = sourceKeys.filter(key => !existingByKey.has(key)).length;
   const sameSnapshotRows = sourceKeys.filter(key => existingByKey.get(key) === hash).length;
   const refreshedRecords = sourceKeys.length - newRecords - sameSnapshotRows;
-  const { data: batch, error: batchError } = await supabase.from("import_batches").insert({ file_name: fileName, source_file_hash: hash, source_sheet: sheet.name, header_row: headerRow, total_rows: rows.length, uploaded_by: auth.user.id, metadata: { classification: body.classification, columns: cols, headerCount: headers.length, sourceHash: hash } }).select("id").single();
+  const { data: batch, error: batchError } = await supabase.from("import_batches").insert({ file_name: fileName, source_file_hash: hash, source_sheet: sheet.name, header_row: headerRow, total_rows: rows.length, uploaded_by: auth.user.id, metadata: { classification, columns: cols, headerCount: headers.length, sourceHash: hash } }).select("id").single();
   if (batchError || !batch) return NextResponse.json({ error: batchError?.message || "Failed to create import batch." }, { status: 500 });
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500).map(row => ({ ...row, batch_id: batch.id }));
     const { error } = await supabase.from("import_rows").insert(chunk);
     if (error) { await supabase.from("import_batches").update({ status: "FAILED", validation_errors: [{ error: error.message }] }).eq("id", batch.id); return NextResponse.json({ error: `Staging failed: ${error.message}` }, { status: 500 }); }
   }
-  await supabase.from("audit_events").insert({ actor_id: auth.user.id, action: "IMPORT_STAGED", entity_type: "import_batch", entity_id: batch.id, metadata: { fileName, classification: body.classification, rows: rows.length, sheet: sheet.name, hash } });
+  await supabase.from("audit_events").insert({ actor_id: auth.user.id, action: "IMPORT_STAGED", entity_type: "import_batch", entity_id: batch.id, metadata: { fileName, classification, rows: rows.length, sheet: sheet.name, hash } });
   return NextResponse.json({ preview: { batchId: batch.id, fileName, sheetName: sheet.name, headerRow, rowCount: rows.length, errorRows: warningRows, caseCount: caseCodes.size, newRecords, refreshedRecords, sameSnapshotRows, judgementFieldsDetected, typeCounts: counts, warnings, sampleRows: rows.slice(0, 5).map(r => r.normalized) } }, { headers: { "Cache-Control": "no-store" } });
 }

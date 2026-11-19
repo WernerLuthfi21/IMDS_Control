@@ -22,7 +22,8 @@ export type RegisterRow = {
 /** Columns AO–AW keyed by the master workbook's header names. `code` is the unique key for "Update a row". */
 export function buildExcelPayload(row: RegisterRow) {
   return {
-    code: row.source_record_key,
+    // The register's `code` column holds TMA's code (20261118001); the database key carries a "code:" prefix.
+    code: String(row.source_record_key || "").replace(/^code:/, ""),
     "Error Type": row.error_type_label ?? "",
     "Delivery Part No": row.delivery_part_no ?? "",
     "Supplier Code": row.supplier_code ?? "",

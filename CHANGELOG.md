@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased: imports work for every account; Daily G-CATS Update redesigned; register sync on commit (2026-11-19)
+
+- **Fix "database error, code: 54001"** (stack depth limit exceeded) for every account except the first.
+  - Cause: `current_app_role()` (SECURITY INVOKER) read `profiles`, whose policy calls `has_any_role()` → `current_app_role()` again. With Supabase's `auth.uid()` the policy is evaluated on every profile row, so with two or more users it looped.
+  - It broke Storage uploads (drag & drop in the Tracker and in Daily G-CATS Update) and any RLS check for those users.
+  - Migration `20261119030000_role_helpers_no_rls_recursion.sql` makes the role lookup SECURITY DEFINER, limited to the caller's own role (threat review in `docs/SECURITY.md`).
+  - Reproduced on PG16 before the fix and verified after it.
+- Daily G-CATS files up to 3.5 MB now go straight to the preview route (no Storage step). Larger files still use private Storage.
+- Upload errors are explained in one sentence with the fix (54001, unreadable OneDrive files, role, session, network). This applies on the Daily update page and in the Tracker.
+- **Daily G-CATS Update page rebuilt:**
+  - step bar (Drop → Check → Commit → Register synced);
+  - the preview starts automatically on drop;
+  - theme-aware tiles (no white cards on the dark theme), error-type bars, readable checks, a sticky Commit bar;
+  - a clear finish card;
+  - "Recent imports" with "Preview only / Committed" pills;
+  - SharePoint and connected-file options folded under "Other ways to load the file".
+- **Excel register (Power Automate) card:** connection state, rows waiting/failed, last error, "Send waiting rows", "Retry failed".
+- **Commit now queues every row of the snapshot for the JudgementRegister**, so new rows (not judged yet) appear in the Excel master sheet.
+- Register payload `code` no longer carries the database `code:` prefix, so Update a row / UpsertRows match the sheet's `code` column directly.
+
 ## Unreleased: Tracker Check tab, Stop run log, Rejected status, target dates follow the model (2026-11-19)
 
 - **Target dates follow the model.** Changing a model deadline (Settings → Models) asks once, then sets the target date of every part of that model and replaces that model's supplier due dates. Changing a supplier × model due date in the drawer sets it on that supplier's parts; clearing it applies the model deadline again. Each part's Target date is now editable in the drawer for a single exception, until the next model/supplier update. Saved to the shared master (`submission_plan`, kept over Excel imports) and queued for the Excel sync.
