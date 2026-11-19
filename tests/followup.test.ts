@@ -98,3 +98,10 @@ describe("duplicate-send guard", () => {
   });
   it("env parsing falls back to 24h", () => { expect(gapHoursFromEnv(undefined)).toBe(24); expect(gapHoursFromEnv("6")).toBe(6); expect(gapHoursFromEnv("x")).toBe(24); });
 });
+
+import { toHtml } from "@/lib/followup/payload";
+describe("HTML body for Outlook", () => {
+  it("escapes markup and keeps line breaks", () => {
+    expect(toHtml("Dear <ACME> & team,\nPart A\r\nPart B")).toBe('<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">Dear &lt;ACME&gt; &amp; team,<br>Part A<br>Part B</div>');
+  });
+});

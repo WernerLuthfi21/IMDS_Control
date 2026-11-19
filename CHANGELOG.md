@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased: Tracker + Power Automate fixes (2026-11-19)
+
+- **Faster Excel sync:** new Office Script `docs/power-automate/UpsertRows.ts`, run with the standard "Run script from SharePoint library" action.
+  - One Excel call per batch instead of two per row.
+  - Updates by key and adds missing rows. It never deletes, keeps formula columns, keeps leading-zero codes, and writes `=`-prefixed values as text.
+  - Works for the Tracker (`PartMaster`/`KEY`) and the Judgement Register (`JudgementRegister`/`code`). Tested against a mock workbook.
+  - `POWER_AUTOMATE_TRACKER_BATCH` sets the rows per request (default 25; 200 with the script).
+- **Supplier e-mail flow:**
+  - The payload now also carries `bodyHtml` (escaped, line breaks kept), so Outlook needs no expression.
+  - The guides attach every file through Select; the old `first(...)` only sent one attachment.
+  - The guides set the trigger to "Anyone" with concurrency 1.
+- **Tracker:**
+  - Excel sync counts say "handed to the flow" (HTTP 202 is not a confirmed write).
+  - A missing template config shows a clear message instead of a JSON error.
+  - Sidebar classification label set to PROTECTED.
+
 ## Unreleased: stable keys for rows without a TMA code (2026-11-19)
 
 - **The `code` column is filled only after TMA judges a case.** Rows without a code used to get the key `fallback:<file hash>:<sheet>:<row>`, which changed with every export. Judgements on those rows were lost after the next import, and the Excel flow never found them.

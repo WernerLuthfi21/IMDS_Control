@@ -79,6 +79,8 @@ Pastikan juga migrasi database sudah diterapkan (lihat `DEPLOYMENT_AND_CLAUDE_GU
 Pemicu: tanpa lisensi Premium, **"When a Teams webhook request is received"** (standar) bisa dipakai, seperti flow Anda sekarang. Jika Anda punya Premium, "When an HTTP request is received" juga sama persis. Website cukup `POST` JSON ke URL-nya.
 
 1. make.powerautomate.com > **Create > Instant cloud flow** > nama `IMDS Tracker - Update Super Master` > pemicu di atas.
+   - Di pemicu: *Who can trigger the flow* = **Anyone**. Pilihan lain membuat hanya akun Anda yang berhasil.
+   - Pemicu → **Settings** → *Concurrency control* **On**, *Degree of parallelism* **1**, supaya dua kiriman tidak menulis Excel bersamaan.
 2. **Parse JSON**: Content = `triggerBody()`; Schema = isi `docs/power-automate/tracker-writeback.schema.json` (tempel apa adanya).
 3. **Condition** `Cek Rahasia`: kiri (Expression) `triggerOutputs()?['headers']?['x-imds-secret']`, `is equal to`, kanan = nilai `POWER_AUTOMATE_SECRET`. Semua langkah berikut hanya di cabang **True**. Aktifkan *Secure inputs* pada langkah yang menyentuh rahasia.
 4. Di True: **Apply to each**, pilih `rows` dari Parse JSON. Settings > Concurrency control **On, Degree of Parallelism = 1**.
@@ -92,6 +94,28 @@ Pemicu: tanpa lisensi Premium, **"When a Teams webhook request is received"** (s
 8. **Save**, salin **URL pemicu** > Vercel `POWER_AUTOMATE_TRACKER_URL`, lalu Redeploy.
 9. Tambahkan rekan sebagai **co-owner** flow (flow berjalan atas nama pemilik).
 
+### 5b. Versi cepat (disarankan): Office Script `UpsertRows`
+
+Langkah 4–7 di atas memanggil Excel dua kali per baris. Upload MD System dengan ribuan baris berarti ribuan panggilan,
+sehingga muncul throttling (429), "file locked", dan flow berjam-jam. Office Script menulis satu batch dengan **satu** panggilan.
+"Run script" adalah aksi **standard** (bukan Premium).
+
+1. Buka master di **Excel for the web** → tab **Automate** → **New script**. Hapus isinya, tempel seluruh isi
+   `docs/power-automate/UpsertRows.ts`, lalu **Save** dengan nama `UpsertRows`.
+2. Agar rekan (co-owner) juga bisa memakai script, pindahkan script ke SharePoint. Di OneDrive Anda, buka
+   *Documents > Office Scripts*, lalu **pindahkan** `UpsertRows.osts` ke satu folder di SharePoint tim (misalnya `IMDS/Scripts`).
+3. Di flow, ganti langkah 4–6 (Apply to each, List rows, Condition, Update/Add) dengan **satu** aksi
+   **Excel Online (Business) → Run script from SharePoint library**:
+   - Workbook: master Anda
+   - Script library: folder `IMDS/Scripts` · Script: `UpsertRows`
+   - `tableName` = `PartMaster` · `keyColumn` = `KEY` · `rowsJson` = `string(body('Parse_JSON')?['rows'])`
+4. Di Vercel tambahkan `POWER_AUTOMATE_TRACKER_BATCH` = `200` (default 25), lalu Redeploy. Kiriman per batch jadi
+   lebih sedikit dan setiap batch hanya satu panggilan Excel.
+5. Hasil script (`{"updated":..,"added":..,"skipped":..}`) terlihat di Run history.
+
+Script yang sama bisa dipakai untuk Judgement Register: `tableName` = `JudgementRegister`, `keyColumn` = `code`,
+`rowsJson` = `string(triggerBody())`. Script tidak pernah menghapus baris dan tidak menimpa kolom rumus (misalnya *Judgement state*).
+
 Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Dengan pemicu Teams webhook, balasan 202 hanya berarti diterima, bukan sudah tertulis; status sebenarnya terlihat di **Run history**.
 
 ## 6. Flow C: kirim email beruntun per supplier
@@ -99,12 +123,14 @@ Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Den
 1. Instant cloud flow `IMDS Tracker - Supplier Follow-up`, pemicu sama seperti Flow A.
 2. **Parse JSON**: Content `triggerBody()`; Schema = `docs/power-automate/supplier-email.schema.json`.
 3. **Condition** rahasia (sama seperti Flow A langkah 3), lalu di True:
-4. **Office 365 Outlook > Send an email (V2)** (atau *Send an email from a shared mailbox (V2)* bila `from` terisi):
-   - To = `to`, CC = `cc`, Subject = `subject`, Body = `body`.
-   - Attachments Name = `first(body('Parse_JSON')?['attachments'])?['name']`
-   - Attachments Content = `base64ToBinary(first(body('Parse_JSON')?['attachments'])?['contentBytes'])`
+4. **Data Operations > Select** (lampiran): From = `body('Parse_JSON')?['attachments']`. Map `Name` → `item()?['name']`, `ContentBytes` → `item()?['contentBytes']`.
+   (Versi lama memakai `first(...)`, sehingga hanya lampiran pertama yang terkirim. Pakai Select agar PDF **dan** Excel ikut.)
+5. **Office 365 Outlook > Send an email (V2)** (atau *Send an email from a shared mailbox (V2)* bila `from` terisi):
+   - To = `to`, CC = `cc`, Subject = `subject`, Body = `bodyHtml` (HTML aman, baris baru sudah benar).
+   - Attachments: klik *Switch to input entire array*, isi `body('Select')`.
    - Jika ingin pengirim dari daftar `FOLLOWUP_SENDERS`: tambahkan Condition `empty(body('Parse_JSON')?['from'])`; **True** = Send an email (V2); **False** = Send an email from a shared mailbox (V2) dengan Mailbox Address = `from`. (Akun Anda harus punya hak *Send As* pada mailbox itu.)
-5. Simpan, salin URL > Vercel `POWER_AUTOMATE_EMAIL_URL`, Redeploy.
+6. Pemicu: *Who can trigger* = **Anyone**; Settings → Concurrency **On / 1**.
+7. Simpan, salin URL > Vercel `POWER_AUTOMATE_EMAIL_URL`, Redeploy.
 
 Pengiriman beruntun: tombol **Send all sequentially** di Tracker > Follow-up mengirim satu supplier, menunggu balasan, lalu lanjut ke berikutnya. Supplier yang sudah diemail dalam `FOLLOWUP_MIN_GAP_HOURS` terakhir dilewati dan dilaporkan.
 
@@ -115,7 +141,7 @@ Gejala "Power Automate is not ready" di Follow-up → Send e-mails berarti salah
 1. **Buat flow** (power automate.com → My flows → New flow → Instant cloud flow, nama `IMDS Tracker - Supplier Follow-up`). Pemicu yang tersedia tanpa Premium: **When a Teams webhook request is received** (jangan pakai *When an HTTP request is received*; itu Premium).
 2. **Parse JSON**: Content = `triggerBody()`, Schema = isi `docs/power-automate/supplier-email.schema.json` (Generate from sample bila perlu).
 3. **Condition** rahasia: `triggerOutputs()?['headers']?['x-imds-secret']` *is equal to* nilai rahasia Anda (string acak panjang, buat sendiri). **No** = tambahkan aksi *Terminate* (Status: Cancelled). Jangan pakai *Response*: itu Premium.
-4. Di **Yes**: **Office 365 Outlook → Send an email (V2)** dengan To = `to`, CC = `cc`, Subject = `subject`, Body = `body`; lampiran (jika ada) lihat Flow C di atas. Tidak perlu *Response* (Premium): pemicu langsung membalas 202 ke website, dan website menganggap 2xx sebagai diterima. Karena itu "Handed to Power Automate" tidak membuktikan e-mail terkirim; cek *Run history* flow.
+4. Di **Yes**: **Select** lampiran lalu **Office 365 Outlook → Send an email (V2)** dengan To = `to`, CC = `cc`, Subject = `subject`, Body = `bodyHtml`, Attachments = `body('Select')` (lihat Flow C di atas). Tidak perlu *Response* (Premium): pemicu langsung membalas 202 ke website, dan website menganggap 2xx sebagai diterima. Karena itu "Handed to Power Automate" tidak membuktikan e-mail terkirim; cek *Run history* flow.
 5. **Save**, buka pemicu, salin **HTTP POST URL**.
 6. Di **Vercel → Project → Settings → Environment Variables** (Production) isi:
    - `POWER_AUTOMATE_EMAIL_URL` = URL dari langkah 5

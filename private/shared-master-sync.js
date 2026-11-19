@@ -440,7 +440,7 @@
       } catch (e) { panel.querySelector("#sm-state").textContent = e.message; }
       try {
         var s = await api("/api/imds-master/sync");
-        panel.querySelector("#sm-sync").textContent = (s.configured ? "Excel sync via Power Automate" : "Excel sync not configured (updates stay safely queued)") + " · " + s.queue.pending + " pending / " + s.queue.failed + " failed / " + s.queue.sent + " sent";
+        panel.querySelector("#sm-sync").textContent = (s.configured ? "Excel sync via Power Automate" : "Excel sync not configured (updates stay safely queued)") + " · " + s.queue.pending + " waiting / " + s.queue.failed + " failed / " + s.queue.sent + " handed to the flow (check its Run history)";
       } catch (e) { panel.querySelector("#sm-sync").textContent = "Excel sync: " + e.message; }
     }
     panelNotify = say;
@@ -451,7 +451,7 @@
     });
     panel.querySelector("#sm-refresh").onclick = function () { refreshSharedMaster(false); loadState(); };
     panel.querySelector("#sm-sync-now").onclick = async function () {
-      try { var r = await api("/api/imds-master/sync", { method: "POST" }); say(r.failed ? "err" : "ok", r.configured ? "Excel sync: " + r.sent + " sent, " + r.failed + " failed, " + r.pending + " pending." : "Excel sync is not configured yet. " + r.pending + " update batch(es) remain safely queued."); loadState(); }
+      try { var r = await api("/api/imds-master/sync", { method: "POST" }); say(r.failed ? "err" : "ok", r.configured ? "Excel sync: " + r.sent + " batch(es) handed to the flow, " + r.failed + " failed, " + r.pending + " waiting. Excel changes within a minute; if not, open the flow's Run history." : "Excel sync is not configured yet. " + r.pending + " update batch(es) remain safely queued."); loadState(); }
       catch (e) { say("err", e.message); }
     };
     window.__imdsSmReload = loadState;
@@ -962,6 +962,7 @@
     async function load() {
       try {
         var g = await api("/api/imds-master/settings?key=followup_config");
+        if (!g || !g.value || !Array.isArray(g.value.templates)) throw new Error("The e-mail templates could not be loaded from the server. Reload the page; if this stays, apply the tracker settings migration (Settings → E-mail templates).");
         cfg = g.value; version = g.version; mailCfg = Object.assign({}, cfg, { __missingTable: !!g.tableMissing, __version: g.version });
         if (!builtin) builtin = JSON.parse(JSON.stringify(cfg));
         cur = Math.max(0, cfg.templates.findIndex(function (t) { return t.id === cfg.defaults.followup; }));
