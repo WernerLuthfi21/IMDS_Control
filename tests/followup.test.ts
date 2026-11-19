@@ -61,7 +61,10 @@ describe("payload v2", () => {
   const base = { source: "tracker" as const, supplierCode: "T007", supplierName: "ADYAWINSA", subject: " S ", body: " B ", metadata: { partCount: 3, projects: ["737D"], items: 3 } };
   it("is a superset of the legacy shapes (flows built earlier keep working)", () => {
     const p = buildSupplierEmailPayload({ ...base, followupId: "f1", to: ["a@x.co.id", "b@x.co.id"], cc: ["a@x.co.id", "c@x.co.id"], attachments: [{ name: "r.pdf", contentType: "application/pdf", contentBytes: "JVBERg==" }] });
-    for (const k of ["type", "followupId", "to", "cc", "subject", "body", "attachments", "supplierCode", "supplierName"]) expect(p).toHaveProperty(k);
+    for (const k of ["type", "followupId", "to", "cc", "subject", "body", "attachments", "files", "supplierCode", "supplierName"]) expect(p).toHaveProperty(k);
+    // Teams-webhook trigger rejects non-card `attachments` with HTTP 400: files travel in `files`, `attachments` stays empty.
+    expect(p.attachments).toEqual([]);
+    expect(p.files.map((f) => f.name)).toEqual(["r.pdf"]);
     expect(p.to).toBe("a@x.co.id;b@x.co.id"); expect(p.cc).toBe("c@x.co.id"); expect(p.subject).toBe("S"); expect(p.version).toBe(2);
   });
   it("sender fields are empty unless a sender is supplied", () => {

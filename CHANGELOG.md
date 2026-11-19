@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: supplier e-mail HTTP 400 from the Teams-webhook trigger (2026-11-19)
+
+- **Files now travel in a new `files` field. `attachments` is always empty.**
+  - Cause: the standard "When a Teams webhook request is received" trigger reads a JSON field named `attachments` as Teams cards. It rejected PDF and Excel files with HTTP 400 before the flow ran.
+  - In the flow: Select → From `body('Parse_JSON')?['files']`. The schema in `docs/power-automate/supplier-email.schema.json` has the new field.
+- **Clearer errors:** when a flow answers with an error, the website now shows the first 300 characters of the response next to the status code.
+
 ## Unreleased: Tracker + Power Automate fixes (2026-11-19)
 
 - **Faster Excel sync:** new Office Script `docs/power-automate/UpsertRows.ts`, run with the standard "Run script from SharePoint library" action.

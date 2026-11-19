@@ -189,11 +189,11 @@ In the Yes branch add **Office 365 Outlook → Send an email (V2)**:
 - CC: `cc` from the request (it may be blank).
 - Subject: `subject` from the request.
 - Body: `body` from the request.
-- Attachment Name: `first(triggerBody()?['attachments'])?['name']`
+- Attachment Name: `first(triggerBody()?['files'])?['name']`
 - Attachment Content: use the Expression:
 
 ```text
-base64ToBinary(first(triggerBody()?['attachments'])?['contentBytes'])
+base64ToBinary(first(triggerBody()?['files'])?['contentBytes'])
 ```
 
 The website sends one supplier per HTTP request. The PDF contains only that supplier's outstanding parts. The website's **Send all sequentially** button sends one supplier, waits for the response, then proceeds to the next supplier; it is not a single blast email.

@@ -108,6 +108,23 @@ Tambahkan **When an HTTP request is received** dan tempel skema ini. Skema ini d
         }
       }
     },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "contentBytes": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "metadata": {
       "type": "object",
       "properties": {
@@ -142,7 +159,7 @@ Jika tidak: **Response 401**, lalu **Terminate**.
 ### 3.3 Lampiran
 
 Tambahkan **Select** (Data Operations):
-- From: `triggerBody()?['attachments']`
+- From: `triggerBody()?['files']` (file dikirim di `files`; `attachments` selalu kosong karena pemicu Teams webhook menolak file di `attachments` dengan HTTP 400)
 - Map: `Name` = `item()?['name']`, `ContentBytes` = `item()?['contentBytes']`
 
 ### 3.4 Kirim

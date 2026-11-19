@@ -107,7 +107,7 @@ Concurrency control **On**, Degree of parallelism **1**.
 1. Pemicu sama seperti 2.1 (flow baru, URL baru). Di Vercel: `POWER_AUTOMATE_EMAIL_URL`.
 2. **Parse JSON**: `triggerBody()`. Schema: isi `docs/power-automate/supplier-email.schema.json`.
 3. Cek rahasia seperti 2.2.
-4. **Select** (lampiran): From `body('Parse_JSON')?['attachments']`. Map `Name` → `item()?['name']`, `ContentBytes` → `item()?['contentBytes']`.
+4. **Select** (lampiran): From `body('Parse_JSON')?['files']`. Map `Name` → `item()?['name']`, `ContentBytes` → `item()?['contentBytes']`.
 5. Office 365 Outlook → **Send an email (V2)**:
    - To `to`, CC `cc`, Subject `subject`, Body `bodyHtml` (HTML aman, baris baru sudah `<br>`)
    - Attachments: *switch to input entire array* → `body('Select')`
