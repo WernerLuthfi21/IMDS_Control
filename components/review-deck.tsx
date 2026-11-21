@@ -10,15 +10,10 @@ import { CaseContext } from "@/components/case-context";
 import { Decks, Piles, PILE_LABEL, type PileKind, type PileTop } from "@/components/miko-table";
 import type { PileCounts } from "@/lib/judgement/piles";
 import type { NeedCounts } from "@/lib/judgement/overview";
-<<<<<<< HEAD
 import { buildStacks, type Stack } from "@/lib/judgement/stacks";
 import type { CommentHistory } from "@/lib/judgement/comment-history";
 import { Flashcard, TOYOTA_FIELDS, WAITING, reducedMotion, type Candidate, type View } from "@/components/judge-flashcard";
-=======
-import { buildStacks, toneOf, type Stack } from "@/lib/judgement/stacks";
-import { checkComment, lastComment, typeKey, type CommentHistory } from "@/lib/judgement/comment-history";
 import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
->>>>>>> feat/ui-confirm-dialog
 
 type Row = { id: string; source_record_key: string; error_type_label: string; delivery_part_no: string | null; supplier_code: string | null; case_id: string | null; km_judge?: string | null };
 type Saved = { id: string; judge: "OK" | "NG"; comment: string; procedure: string; actor?: string | null; date?: string | null };

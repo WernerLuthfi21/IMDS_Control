@@ -1735,8 +1735,6 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 @media(max-width:700px){.sc-id{grid-template-columns:1fr}}
 .callout-warning{border-color:var(--amber);background:var(--amber-bg);color:var(--ink)}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 /* data face: codes and numbers line up (A1a) */
 .mono,.rule-code,.jx-dest-code,code,samp{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
@@ -1750,7 +1748,6 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .jc-rec span{display:inline-block;margin-right:6px;font-weight:700;font-size:var(--text-md)}
 .jc-rec.ok span{color:var(--green)}.jc-rec.ok{border-color:var(--green)}
 .jc-rec.ng span{color:var(--red)}.jc-rec.ng{border-color:var(--red)}
-=======
 /* Confirmation dialog (components/ui/confirm-dialog.tsx) */
 .cfm{width:min(480px,calc(100vw - 32px));padding:0;border:0;border-radius:var(--r-3);background:var(--surface);color:var(--ink);box-shadow:var(--e-3);border-top:1px solid var(--line)}
 .cfm::backdrop{background:rgba(10,24,17,.45)}
@@ -1763,8 +1760,5 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .cfm-type b{font-family:var(--f-mono,ui-monospace,monospace);color:var(--ink)}
 .cfm-type input{min-height:36px;padding:0 10px;border:1px solid var(--line-strong);border-radius:var(--r-2);background:var(--surface-2);color:var(--ink);font-family:var(--f-mono,ui-monospace,monospace);font-size:var(--text-md,13px)}
 .cfm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
->>>>>>> feat/ui-confirm-dialog
-=======
 /* icon tints (no hex in components) */
 .ic-amber{color:var(--amber)}.ic-muted{color:var(--muted)}.ic-blue{color:var(--blue)}.ic-green{color:var(--green)}
->>>>>>> feat/ui-a1c-tsx-tokens
