@@ -565,71 +565,61 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--violet);min-heigh
 
 
 /* ==========================================================================
-   SHELL BRIDGE (2026-11-21) — the Tracker wears the same chrome as the Judgement app:
-   Fieldbook surfaces and text, the forest sidebar, the full-width top bar, no glass, no purple glow.
-   Violet stays the Tracker's accent (active nav edge, links, charts) so you still know where you are.
+   SHELL BRIDGE (2026-11-21) — integrated with the Judgement app, Tracker character kept.
+   Same structure as the app shell: full-height sidebar (same width, brand block, back button, nav item
+   size, user row), full-width 60px top bar, 24px page title, flat tiles, status = dot + word.
+   Own character: violet. The sidebar is deep plum (the app's is forest), surfaces keep the Tracker's
+   violet-tinted palette, the active nav edge and accents are violet. Judgement = green, Tracker = purple.
    ========================================================================== */
 :root{
-  --bg:#F0EBDD;--bg-2:#E7E1D0;--surface:#FAF8F0;--surface-2:#F4F0E4;--ink:#193528;--muted:#56665B;--faint:#5F6E63;
-  --line:#DAD2BE;--line-strong:#C5BB9F;
-  --ok:#2F7049;--ok-soft:#E2ECDF;--ok-ink:#2F7049;--warn:#7A5310;--warn-soft:#F5E9CC;--warn-ink:#7A5310;--bad:#A63F3F;--bad-soft:#F4E1DD;--info:#45708F;--info-soft:#E0E8EF;
-  --glass:var(--surface);--glass-strong:var(--surface);--glass-edge:var(--line);--glass-edge-2:var(--line);
-  --sh-1:0 1px 2px rgba(16,39,29,.08);--sh-2:0 2px 6px rgba(16,39,29,.08),0 10px 24px -14px rgba(16,39,29,.28);
   --sidebar-w:238px;
-  --forest:#0D241A;--on-forest:#E3F6EA;--on-forest-2:#B5E4C6;--forest-line:rgba(255,255,255,.26);--forest-fill:rgba(255,255,255,.1);--tracker-edge:#A78BFA;--on-forest-strong:#FFFFFF;--mark-bg:#FFFFFF;--mark-ink:#14532D;--nav-on:#FAF8F0;--nav-on-ink:#193528;--nav-on-count:#E7E1D0;
+  --side-bg:#1C1233;--on-side:#EEE7FB;--on-side-2:#C9B8F2;--side-line:rgba(255,255,255,.24);--side-fill:rgba(255,255,255,.09);
+  --side-strong:#FFFFFF;--mark-bg:#FFFFFF;--mark-ink:#5B21B6;--nav-on:#F7F5FA;--nav-on-ink:#211A2B;--nav-on-count:#E9DDFB;--tracker-edge:#A78BFA;
+  --glass:var(--surface);--glass-strong:var(--surface);--glass-edge:var(--line);
 }
-:root[data-theme="dark"]{
-  --bg:#10271D;--bg-2:#0D241A;--surface:#173226;--surface-2:#1B3A2C;--ink:#EEE9DB;--muted:#B3C1B5;--faint:#9FB0A3;
-  --line:#2B4A3A;--line-strong:#3A5C4A;
-  --ok:#8FD1A6;--ok-soft:#1C3B2B;--ok-ink:#8FD1A6;--warn:#E6BC6A;--warn-soft:#3A2F17;--warn-ink:#E6BC6A;--bad:#F0A29C;--bad-soft:#3D2321;--info:#9DC0DD;--info-soft:#1B3141;
-  --lilac:#2A2540;
-  --sh-1:0 1px 2px rgba(0,0,0,.3);--sh-2:0 2px 6px rgba(0,0,0,.3),0 18px 40px -20px rgba(0,0,0,.6);
-}
-body::before,:root[data-theme="dark"] body::before{display:none}
+:root[data-theme="dark"]{--side-bg:#120B22;--glass:var(--surface);--glass-strong:var(--surface);--glass-edge:var(--line)}
 .glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface);border-color:var(--line);box-shadow:var(--sh-1)}
 
-/* sidebar: identical to the app sidebar */
-.sidebar{border:0;box-shadow:none;background:var(--forest);color:var(--on-forest);padding:18px 13px 12px;gap:14px}
+/* sidebar: same structure and sizes as the app sidebar, in plum */
+.sidebar{border:0;box-shadow:none;background:var(--side-bg);color:var(--on-side);padding:18px 13px 12px;gap:14px}
 @media (min-width:1025px){.sidebar{position:sticky;top:0;height:100vh;margin:0;border-radius:0}}
 @media (max-width:1024px){.sidebar{border-radius:0}}
 .brand{padding:0 4px 4px;gap:10px}
 .brand-mark{width:34px;height:34px;border-radius:8px;background:var(--mark-bg);color:var(--mark-ink);display:grid;place-items:center;font:700 var(--text-sm)/1 var(--f-ui);letter-spacing:-.5px;box-shadow:0 4px 12px -4px rgba(0,0,0,.35);transform:none}
 .brand-mark i{display:none}
 .brand-text{font-family:var(--f-ui);line-height:1.2}
-.brand-text b{font-size:var(--text-md);font-weight:700;letter-spacing:.3px;color:var(--on-forest-strong)}
-.brand-text span{font-size:var(--text-xs);font-weight:400;letter-spacing:.2px;color:var(--on-forest-2);text-transform:uppercase}
-.back-menu{min-height:38px;margin:0;border:1px solid var(--forest-line);border-radius:8px;background:var(--forest-fill);color:var(--on-forest-strong);font-weight:700}
+.brand-text b{font-size:var(--text-md);font-weight:700;letter-spacing:.3px;color:var(--side-strong)}
+.brand-text span{font-size:var(--text-xs);font-weight:400;letter-spacing:.2px;color:var(--on-side-2);text-transform:uppercase}
+.back-menu{min-height:38px;margin:0;border:1px solid var(--side-line);border-radius:8px;background:var(--side-fill);color:var(--side-strong);font-weight:700}
 .back-menu:hover{background:rgba(255,255,255,.16)}
-.nav-group-label{display:block;padding:8px 10px 6px;font:600 var(--text-xs)/1 var(--f-ui);letter-spacing:1px;text-transform:uppercase;color:var(--on-forest-2)}
-.nav-link{min-height:42px;border-radius:8px;color:var(--on-forest);font-size:var(--text-md);font-weight:400}
+.nav-link{min-height:42px;border-radius:8px;color:var(--on-side);font-size:var(--text-md);font-weight:400}
 .nav-link:hover{background:rgba(255,255,255,.08)}
 .nav-link.active{background:var(--nav-on);color:var(--nav-on-ink);font-weight:700;box-shadow:inset 3px 0 0 var(--tracker-edge)}
+.nav-link.active svg{color:var(--violet)}
 .nav-link.active::before{display:none}
-.nav-link .nav-count,.nav-link .nav-count.warn{background:rgba(255,255,255,.14);color:var(--on-forest-strong)}
+.nav-link .nav-count,.nav-link .nav-count.warn{background:rgba(255,255,255,.14);color:var(--side-strong)}
 .nav-link.active .nav-count{background:var(--nav-on-count);color:var(--nav-on-ink)}
 .side-foot{padding:0}
-.user-row{border:1px solid var(--forest-line);border-radius:8px;background:var(--forest-fill);color:var(--on-forest-strong)}
-.ur-copy b{color:var(--on-forest-strong)}.ur-copy small{color:var(--on-forest-2)}
-.ur-avatar{background:var(--nav-on);color:var(--nav-on-ink)}
-.ur-btn{color:var(--on-forest-2)}.ur-btn:hover{background:rgba(255,255,255,.12);border-color:transparent;color:var(--on-forest-strong)}
-.confidential{color:var(--on-forest-2)}
+.user-row{border:1px solid var(--side-line);border-radius:8px;background:var(--side-fill);color:var(--side-strong)}
+.ur-copy b{color:var(--side-strong)}.ur-copy small{color:var(--on-side-2)}
+.ur-avatar{background:var(--nav-on);color:var(--mark-ink)}
+.ur-btn{color:var(--on-side-2)}.ur-btn:hover{background:rgba(255,255,255,.12);border-color:transparent;color:var(--side-strong)}
+.confidential{color:var(--on-side-2)}
 
 /* top bar: full width, like the app */
 .shell{padding:0}
 .topbar{top:0;height:60px;margin:0;border-radius:0;border:0;border-bottom:1px solid var(--line);box-shadow:none;background:var(--surface);padding:0 26px}
 main{padding:27px 29px 32px}
-.btn-primary{background:var(--violet-solid)}
-/* page header and tiles: same hierarchy as the app (page title 24px, flat tiles, no 3D art, no emoji) */
-.hero{min-height:0;grid-template-columns:1fr;padding:20px 24px;background:var(--surface);border-top:1px solid rgba(255,255,255,.07)}
+
+/* page header and tiles: same hierarchy as the app (24px page title, flat tiles, status = dot + word) */
+.hero{min-height:0;padding:20px 24px;background:var(--surface)}
 .hero h1{font-size:var(--text-2xl);letter-spacing:-.02em;line-height:1.15;font-weight:700}
 .hero-line{font-size:var(--text-base);color:var(--ink)}
-.cube-stage{display:none}
+.cube-stage{min-height:0;height:96px;transform:scale(.42);transform-origin:right center}
 .kpis{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface);border-color:var(--line)}
 .kpi-emoji,.mood-emoji,.ftab-emoji,.empty-emoji,.qa-ic,.health>span[aria-hidden="true"]{display:none}
 .kpi-label::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:currentColor;vertical-align:1px}
 .kpi-value{font-size:var(--text-3xl)}
-.qa-btn:hover{border-color:var(--violet);background:var(--surface)}
-
 </style>
 </head>
 <body>

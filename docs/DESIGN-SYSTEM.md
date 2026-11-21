@@ -73,9 +73,11 @@ weights and JetBrains Mono for data since 2026-11-21. Its colours stay its own (
   error-type decks and the case card use the theme tokens (`--surface`, `--surface-2`, `--line`, `--ink`,
   `--muted`); state colour shows as a small dot or a 3px edge; "selected" is one accent outline. Counts and part
   numbers use the mono face. Evidence lines use the body font (mono is for codes, not sentences).
-- **Tracker**: the same chrome as the app — forest sidebar with the "IMDS / G-CATS" brand block, full-width top
-  bar, Fieldbook surfaces and text in both themes, no glass, no purple glow, no 3D cubes, no emoji status icons
-  (status is a coloured dot + the word). Violet remains the Tracker's accent: the active-nav edge, links, charts.
+- **Tracker**: integrated, own character. Same structure as the app shell — full-height sidebar (same width,
+  brand block "IMDS / G-CATS · IMDS Tracker", back button, nav item size, user row), full-width 60px top bar,
+  24px page title, flat tiles, status as a dot + the word (no emoji). Its colour stays violet: plum sidebar, the
+  Tracker's violet-tinted surfaces, violet active-nav edge and accents; the cube mascot stays small (like Miko).
+  **Judgement = green, Tracker = purple** — same layout, two characters.
 
 ## Design-debt audit
 
