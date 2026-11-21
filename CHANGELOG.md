@@ -2,6 +2,15 @@
 
 ## 2026-11-21
 
+### Desktop automation foundation (branch: feature/desktop-automation-platform)
+- Add the initial Supabase schema for devices, Windows user sessions, hybrid automation jobs, attempts,
+  append-only execution events, desktop leases and isolated hashed agent credentials.
+- Add RLS read policies for internal roles; keep all writes server-only. Supplier users cannot read automation data.
+- Document the trust boundary between the GCATS cloud control plane and office Windows desktop agents.
+- No agent runtime, enrollment API, job execution, New SMS or SMS BR adapter is enabled by this foundation migration.
+
+## 2026-11-21
+
 ### One surface system: Judge board and Tracker look like one app
 - Judge board: the felt-table skin, always-light paper cards, 3D orbs and yellow glows are replaced by the theme
   tokens (flat tiles, state as a dot or edge, one accent outline for "selected"); the case card follows light/dark;

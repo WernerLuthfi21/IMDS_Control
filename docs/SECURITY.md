@@ -89,6 +89,33 @@ Same-origin check on public POSTs, honeypot field, input length/charset validati
 ### Not implemented
 Authenticator-app (TOTP) MFA and SSO. Supabase supports TOTP MFA; add it as a follow-up if required. Forgot-password is the primary recovery path.
 
+## Desktop automation security boundary (foundation)
+
+The desktop-agent schema is deliberately server-write-only at this stage:
+
+- Authenticated GCATS users can read device/session/job/attempt/event data only through explicit RLS policies.
+  Supplier accounts are excluded from these policies.
+- `automation_agent_credentials` has RLS enabled and no authenticated-user policy. Store only a cryptographic
+  hash of a high-entropy device token; issue and rotate the raw token through a one-time enrollment flow that is
+  not part of this migration.
+- Agent credentials, service-role credentials and any application login secrets must never be placed in
+  `NEXT_PUBLIC_*`, browser responses, logs, screenshots or Git.
+- A Windows SID and Windows session ID bind an execution to the actual interactive Windows account. Do not infer
+  the operator from Outlook profiles or mailbox configuration.
+- A Windows service in Session 0 must not automate the interactive desktop. UI automation runs only in the
+  intended unlocked user session. One physical device may hold only one active desktop lease at a time.
+- If the session locks, disconnects or logs out, pause/defer GUI work. Do not switch to another user's session or
+  disrupt an employee's manual desktop work.
+- Events may contain step names, timestamps, app/workflow versions and checksums, but never passwords, tokens,
+  PDF unlock passwords, or the contents of restricted drawings. Respect the existing CONFIDENTIAL/UNKNOWN
+  prohibition and approved evidence storage rules.
+- New SMS and SMS BR access remains local to an authorized office endpoint. Cloud infrastructure must not be
+  treated as having intranet access.
+
+Before enabling agent writes, implement and test device enrollment/revocation, token hashing and rotation,
+constant-time credential verification, replay/idempotency protection, lease expiry, role checks, rate limits,
+audit events and session ownership checks.
+
 ## Browser security headers (2026-11-21)
 
 `lib/security/headers.ts`, applied to every route in `next.config.ts` (tested in `tests/security-headers.test.ts`
