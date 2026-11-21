@@ -29,7 +29,7 @@ export type BulkCandidate = {
   /** What a person still has to give, as one flashcard. */
   card: ReviewCard;
   /** Questions the engine answered from the row or the masters, as "question — answer" (shown as evidence). */
-  evidence: string[];
+  evidence?: string[];
 };
 function stable(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
