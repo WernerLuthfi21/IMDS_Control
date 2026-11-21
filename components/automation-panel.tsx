@@ -109,7 +109,7 @@ export function AutomationPanel() {
       {shown.map((c) => { const r = results[c.id]; const ok = c.hasContact && c.followup !== "SENT";
         return <tr key={c.id}><td><input type="checkbox" aria-label={`Select ${c.delivery_part_no}`} disabled={!ok || running} checked={picked.has(c.id)} onChange={() => toggle(c.id)}/></td>
           <td className="mono">{c.delivery_part_no}</td><td className="mono">{c.supplier_code}</td><td>{c.error_type_label}</td>
-          <td>{r ? <span title={r.note}>{r.state === "SENT" ? <CheckCircle2 size={13}/> : r.state === "FAILED" ? <AlertTriangle size={13}/> : <Mail size={13}/>} {r.state}{r.note && r.state !== "SENT" ? ` — ${r.note}` : ""}</span> : !c.hasContact ? "No supplier PIC" : c.followup === "SENT" ? "Already sent" : c.followup ?? "Ready"}</td>
+          <td>{r ? <span title={r.note}>{r.state === "SENT" ? <CheckCircle2 size={13}/> : r.state === "FAILED" ? <AlertTriangle size={13}/> : <Mail size={13}/>} {r.state === "SENT" ? "Handed off" : r.state === "FAILED" ? "Failed" : r.state === "SKIPPED" ? "Skipped" : r.state === "sending" ? "Handing off…" : "Waiting"}{r.note && r.state !== "SENT" ? ` — ${r.note}` : ""}</span> : !c.hasContact ? "No supplier PIC" : c.followup === "SENT" ? "Already handed off" : c.followup ?? "Ready"}</td>
           <td><button className="btn btn-sm" type="button" onClick={() => setPreview(preview === c.id ? null : c.id)}>{preview === c.id ? "Hide" : "Preview"}</button></td></tr>; })}
       {!shown.length && <tr><td colSpan={6}>No matching open records.</td></tr>}
     </tbody></table></div>
@@ -119,6 +119,6 @@ export function AutomationPanel() {
       <a className="btn btn-sm" href="/api/automation/export" download><Download size={13}/> Download register CSV (one-time Excel seed)</a>
       <span className="muted" style={{ fontSize: 12 }}>Paste it into the Excel table once; later saves update it automatically.</span>
     </div>
-    <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>“Sent” means the flow or mailbox accepted the request. It is not proof that the supplier read it. Confirm in the flow’s Run history.</p>
+    <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>“Handed off” means the flow or mailbox accepted the request. It is not proof that the supplier read it. Confirm in the flow’s Run history.</p>
   </section>;
 }
