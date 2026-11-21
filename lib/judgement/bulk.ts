@@ -8,7 +8,7 @@ import { FOUR_PHTHALATES, fourPhthalateTotal } from "@/lib/judgement/material-gr
 import { normalizeCas } from "@/lib/reference-data";
 import type { PartMemory } from "@/lib/judgement/memory";
 import { escalationKey, needsTmc, tmcRecommendation, type Escalation } from "@/lib/judgement/escalation";
-import { classifyCase, type ReviewCard } from "@/lib/judgement/review";
+import { classifyCase, evidenceOf, type ReviewCard } from "@/lib/judgement/review";
 
 export type BulkSourceItem = {
   id: string; source_record_key: string; error_type_label: string;
@@ -28,6 +28,8 @@ export type BulkCandidate = {
   tmc: { key: string; status: Escalation["status"]; answer: "OK" | "NG" | null } | null;
   /** What a person still has to give, as one flashcard. */
   card: ReviewCard;
+  /** Questions the engine answered from the row or the masters, as "question — answer" (shown as evidence). */
+  evidence?: string[];
 };
 function stable(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
@@ -108,7 +110,7 @@ export async function evaluateBulkCandidate(supabase: SupabaseClient, item: Bulk
     procedureText: auto.procedureText, signature, eligible, draftFlow: Boolean(auto.flow?.draft) && !tmcDecided, ...(auto.flow?.caution ? { caution: auto.flow.caution } : {}),
     inPendingQueue: isWorking(item.source_status) && !item.judge,
     prohibited, prohibitedStatus: !prohibited ? "NOT_PROHIBITED" : connected ? "CONNECTED" : "NEEDS_REVIEW",
-    reviewReason, tmc,
+    reviewReason, tmc, evidence: evidenceOf(auto),
     card: classifyCase(auto, { eligible, tmcOpen: Boolean(tmc && !tmcDecided), facts: {
       "CAS": facts.cas, "Substance": facts.substanceName, "Content": facts.substanceContentPct ? facts.substanceContentPct + " %" : "",
       "Material": facts.materialName, "IMDS mass": facts.imdsMass ? facts.imdsMass + " g" : "", "Drawing mass": facts.drawingMass ? facts.drawingMass + " g" : "",
@@ -155,3 +157,4 @@ export async function loadBulkContext(supabase: SupabaseClient, items: BulkSourc
   ]);
   return { confirmations, siblings };
 }
+

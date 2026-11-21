@@ -96,3 +96,15 @@ describe("batched supplier confirmations pick the same row as the single query",
     expect(pickConfirmation(all, { supplier_code: "9999", delivery_part_no: "P1" }, "substance", "50-00-0")).toBeNull();
   });
 });
+
+describe("WARP master hit waits on the Purchasing question (shown as 'Recommended OK')", () => {
+  it("asks purchasingWarp, keeps the recommendation, no final outcome yet", async () => {
+    const { classifyCase, evidenceOf } = await import("@/lib/judgement/review");
+    const r = runAutoWorkflow({ errorType: "WARP Part number", facts: { ...blank, companyName: "PT 3M INDONESIA" }, supplierCode: "5010" });
+    expect(r.recommendation.state).toBe("OK");
+    expect(r.flow?.next?.id).toBe("purchasingWarp");
+    expect(r.flow?.outcome).toBeNull();
+    expect(classifyCase(r, { eligible: false, tmcOpen: false, facts: {} }).need).toBe("purchasing");
+    expect(evidenceOf(r)[0]).toMatch(/Purchasing master\? — Yes/);
+  });
+});

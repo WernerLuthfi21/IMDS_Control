@@ -62,3 +62,8 @@ export function classifyCase(auto: AutoOutput, opts: { eligible: boolean; tmcOpe
   if (auto.steps.some((s) => s.status === "MANUAL")) return card("missing", auto.steps.find((s) => s.status === "MANUAL")?.detail || r.reason);
   return card("manual", r.reason || "Needs a person.");
 }
+
+/** The automatic answers of a run, for the card's evidence list (at most five): "question — answer". */
+export function evidenceOf(auto: AutoOutput): string[] {
+  return (auto.flow?.trail ?? []).filter((t) => t.auto).map((t) => `${t.question} — ${t.answer}`).slice(0, 5);
+}
