@@ -3,7 +3,7 @@ import { UUID, validIds } from "@/lib/judgement/ids";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { enqueue, dispatch } from "@/lib/automation/outbox";
-import { evaluateBulkCandidate, type BulkSourceItem } from "@/lib/judgement/bulk";
+import { evaluateBulkCandidate, loadBulkContext, type BulkSourceItem } from "@/lib/judgement/bulk";
 import { loadPartMemory, partKey } from "@/lib/judgement/memory";
 import { loadEscalations } from "@/lib/judgement/escalation";
 import { AUTO_KINDS, DEFAULT_AUTOJUDGE, RULESET, RULESET_LABEL, SYSTEM_ACTOR, decideAuto, sanitizeAutoJudge, type AutoJudgeConfig } from "@/lib/judgement/autojudge";
@@ -112,12 +112,12 @@ export async function POST(request: NextRequest) {
   let rows: Row[];
   try { rows = await loadRows(supabase, ids); } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Could not read the cases." }, { status: 500 }); }
   const memory = (await loadPartMemory(supabase, rows.map((r) => r.delivery_part_no || ""))).map;
-  const escalations = (await loadEscalations(supabase, rows.map((r) => r.delivery_part_no || ""))).map;
+  const [escalations, ctx] = await Promise.all([loadEscalations(supabase, rows.map((r) => r.delivery_part_no || "")).then((r) => r.map), loadBulkContext(supabase, rows)]);
 
   if (action === "compare") {
     // Shadow report: what the engine would decide on cases people already judged.
     const results = await inBatches(rows.filter((r) => r.judge && r.assigned_person !== SYSTEM_ACTOR), async (row) => {
-      const c = await evaluateBulkCandidate(supabase, { ...row, judge: null, source_status: "WORKING" }, memory.get(partKey(row.delivery_part_no)), escalations);
+      const c = await evaluateBulkCandidate(supabase, { ...row, judge: null, source_status: "WORKING" }, memory.get(partKey(row.delivery_part_no)), escalations, ctx);
       const decided = c.eligible && (c.recommendation.state === "OK" || c.recommendation.state === "NG");
       return { id: row.id, kind: c.kind, human: row.judge, engine: decided ? c.recommendation.state : null, agree: decided ? c.recommendation.state === row.judge : null };
     });
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
   const timestamp = new Date().toISOString();
   const results = await inBatches(rows, async (row) => {
-    const c = await evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no)), escalations);
+    const c = await evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no)), escalations, ctx);
     const d = decideAuto(c, config);
     if (d.action !== "FINAL") return { id: row.id, kind: c.kind, action: d.action, decision: "decision" in d ? d.decision : null, reason: d.reason };
     const before = { assigned_person: row.assigned_person, starting_date: row.starting_date, judgement_procedure: row.judgement_procedure, judge: row.judge, ok_comment: row.ok_comment, imds_reject_comment: row.imds_reject_comment };

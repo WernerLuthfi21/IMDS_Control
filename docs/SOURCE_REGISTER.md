@@ -82,3 +82,8 @@ G-CATS Manual Flow, G-CATS Manual Operation, G-CATS judgment Ver.5.1.10. Appendi
 `data/reference/*.json`: identical (only a Japanese note in the #27 CAS cell differs). The CAS search failures came from the
 lookup, not the data: GADSL family rows (GADSL # / REF #) were ignored. Fixed; see `RULE_COVERAGE.md` "CAS → Appendix 3".
 
+## Master Data used as a regression check (2026-11-21)
+
+- `Master Data All IMDS Project_new.xlsx` → `G-CATS Error Log Master Data` (label "Public", rows 5–5,519, columns 1–50 plus judge / comment / procedure) is replayed through the engine outside the repository; the workbook and extracted rows are not committed. Results are in `docs/RULE_COVERAGE.md` → *Automation check against the Master Data*.
+- Historical judgements are precedent only (source hierarchy 4): they validate a rule, they never create one. The four-phthalate sum, the No.8 mass maths and the TOYOTA "No" were accepted only because the Manual Flow Ver.7 question already exists and the replay showed 0 contradictions; WARP master-only OK was withdrawn because it contradicted 59 historical judgements.
+

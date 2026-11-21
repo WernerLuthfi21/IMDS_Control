@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import families from "@/data/reference/gcats-v5110-cas-families.json";
 import t1 from "@/data/reference/gcats-v5110-t1-flows.json";
 import { annex14Records, annex17Records, popsRecords } from "@/lib/reference-data";
@@ -72,6 +73,16 @@ class Ctx {
   /** A yes/no the row text can confirm: auto "Yes" when the text matches, otherwise a person answers. */
   textYes(id: string, text: string, value: string, re: RegExp): "Y" | "N" | undefined {
     if (value && re.test(value)) return this.auto(text, `${value} from the row → Yes`, "Y") as "Y";
+    return this.ask(id, text) as "Y" | "N" | undefined;
+  }
+  /**
+   * Like textYes, but a name that is present and does not match answers No from the row too.
+   * Only for questions whose No branch never ends in OK/NG directly (it continues, asks the supplier or TMC).
+   */
+  textYesNo(id: string, text: string, value: string, re: RegExp): "Y" | "N" | undefined {
+    const v = String(value ?? "").trim();
+    if (v && re.test(v)) return this.auto(text, `${v} from the row → Yes`, "Y") as "Y";
+    if (this.a[id] === undefined && v && !/^\*+$/.test(v)) return this.auto(text, `${v} from the row → No`, "N") as "N";
     return this.ask(id, text) as "Y" | "N" | undefined;
   }
   get parts() { return [this.f.deliveryPartName, this.f.componentPartName].filter(Boolean).join(" / "); }
@@ -198,9 +209,9 @@ const DEFS: Record<string, Def> = {
     return jp === "N" ? ok(c, NON_REG) : c.out("OK", NOT_PROHIBIT, `Flow result: Judge OK — "${NOT_PROHIBIT}" Report the P/N and supplier information to TMC first.`);
   } },
   hfc: { id: "hfc", title: "No.14 Prohibited substance: Hydrofluorocarbons (HFC's), saturated", page: 27, source: SRC7, run: (c) => {
-    const ac = c.textYes("airCon", 'Is the Component Part name or Delivery Part name an "AIR CONDITIONER"?', c.parts, /air ?con/i); if (!ac) return;
+    const ac = c.textYes("airCon", 'Is the Component Part name or Delivery Part name an "AIR CONDITIONER"?', c.parts, /air ?con|\ba\/c\b|hvac|evaporat|condenser|cooler unit/i); if (!ac) return;
     if (ac === "N") return supplierStep(c, () => contactTmc(c, "Supplier confirms HFC is contained outside an air conditioner."));
-    const ref = c.textYes("refrigerant", 'Is the Component Part "REFRIGERANT"?', c.f.componentPartName, /refrigerant/i); if (!ref) return;
+    const ref = c.textYesNo("refrigerant", 'Is the Component Part "REFRIGERANT"?', c.f.componentPartName, /refrigerant/i); if (!ref) return;
     return ref === "Y" ? ok(c, NOT_PROHIBIT) : contactTmc(c, "Air conditioner part, but the component is not the refrigerant (no branch for this in the Ver.7 chart).");
   } },
   pfoa: { id: "pfoa", title: "No.14 Prohibited substance: PFOA", page: 28, source: SRC7, run: (c) => {
@@ -226,7 +237,12 @@ const DEFS: Record<string, Def> = {
     const t = c.below("thr", "Is the substance content below 0.1wt%?", 0.1); if (!t) return;
     if (t === "Y") {
       if (!four) return ok(c, "Below 0.1wt%.");
-      const total = c.ask("total", "Is the total content of the four CAS (85-68-7, 117-81-7, 84-74-2, 84-69-5) in the same material below 0.1wt%?"); if (!total) return;
+      const totalQ = "Is the total content of the four CAS (85-68-7, 117-81-7, 84-74-2, 84-69-5) in the same material below 0.1wt%?";
+      const sum = c.f.fourPhthalateTotal;
+      const below = sum && c.a.total === undefined ? new Decimal(sum.pct).lessThan(0.1) : undefined;
+      const total = below === undefined ? c.ask("total", totalQ)
+        : c.auto(totalQ, `${sum!.pct}% (sum of ${sum!.rows} row${sum!.rows === 1 ? "" : "s"} of this material) → ${below ? "Yes" : "No"}`, below ? "Y" : "N");
+      if (!total) return;
       if (total === "Y") return ok(c, "Below 0.1wt%.");
     }
     return supplierStep(c, () => contactTmc(c, "Supplier confirms the phthalate is contained at or above 0.1wt%."));
@@ -358,12 +374,25 @@ for (const f of (t1 as { flows: T1Flow[] }).flows) {
 
 // ---------- Other G-CATS error types (Appendix I / Manual Flow Ver.7) ----------
 const SRC5_I = "G-CATS judgment Ver.5.1.10, Appendix I";
+/** (A) component part mass vs (B) total material mass from the G-CATS row: more than ±1 % of (A)? Decimal maths. */
+function massDeviationOver1(c: Ctx): "Y" | "N" | undefined {
+  if (c.a.massDev1 !== undefined) return undefined;
+  const a = String(c.f.componentMass ?? "").replace(",", "."), b = String(c.f.totalMaterialMass ?? "").replace(",", ".");
+  if (!a || !b) return undefined;
+  try {
+    const A = new Decimal(a), B = new Decimal(b);
+    if (!A.isFinite() || !B.isFinite() || A.lessThanOrEqualTo(0)) return undefined;
+    const pct = A.minus(B).abs().times(100).div(A);
+    const over = pct.greaterThan(1);
+    return c.auto("Does [component part mass] − [total material mass] differ by more than ±1%?", `(A) ${a} g − (B) ${b} g = ${pct.toFixed(2)} % of (A) from the row → ${over ? "Yes" : "No"}`, over ? "Y" : "N") as "Y" | "N";
+  } catch { return undefined; }
+}
 DEFS.massDev = { id: "massDev", title: "No.8 Mass deviation", page: null, source: `${SRC5_I} No.8`, run: (c) => {
-  const q = c.ask("massDev1", "Does [component part mass] − [total material mass] differ by more than ±1%? (read both masses in the IMDS data)"); if (!q) return;
+  const q = massDeviationOver1(c) ?? c.ask("massDev1", "Does [component part mass] − [total material mass] differ by more than ±1%? (read both masses in the IMDS data)"); if (!q) return;
   return q === "Y" ? ng(c, "[component part mass] - [total material mass] > +/- 1%") : contactTmc(c, "G-CATS flagged a mass deviation, but it is within ±1%.");
 } };
 DEFS.notSpec = { id: "notSpec", title: "No.9 Not specified substances", page: 4, source: `${SRC7}, No.9 (p.4)`, run: (c) => {
-  const t = c.textYes("toyotaPart", "Is the (material) name TOYOTA?", c.f.materialName, /toyota/i); if (!t) return;
+  const t = c.textYesNo("toyotaPart", "Is the (material) name TOYOTA?", c.f.materialName, /toyota/i); if (!t) return;
   if (t === "Y") return ok(c, "Component is ‘TOYOTA supplied part’");
   const m = c.ask("imdsCommittee", 'Is the material "IMDS-Committee", "Stahl und Eisen Liste" or "ILI-Metals"?'); if (!m) return;
   if (m === "Y") return ok(c, "Material is IMDS Committee data");

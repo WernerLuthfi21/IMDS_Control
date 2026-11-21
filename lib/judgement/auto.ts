@@ -251,13 +251,17 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
     const supplierSays = input.answers?.supplierCodeOk;
     if (supplierSays === "Y" || supplierSays === "N") steps.push({ id: "warp-supplier", title: "Supplier confirmation (self-check)", status: "DONE", detail: supplierSays === "Y" ? "Supplier confirmed the supplier code is correct." : "Supplier says the supplier code is wrong and will correct IMDS." });
     let recommendation: AutoRecommendation;
-    if (w.found && w.nameMatches !== false) {
-      recommendation = { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Supplier code is registered in the Purchasing supplier code master (G-CATS Appendix I No.21)." };
-    } else if (supplierSays === "N" && purchasing !== "Y") {
+    if (supplierSays === "N" && purchasing !== "Y") {
       recommendation = { state: "NG", comment: "Supplier code is incorrect.", reason: "The supplier confirmed in its self-check that the supplier code is wrong (Appendix I No.21)." };
     } else if (purchasing === "Y" || purchasing === "N") {
       steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "DONE", detail: purchasing === "Y" ? "Purchasing confirmed the supplier code / WARP registration." : "Purchasing says the supplier code is incorrect." });
       recommendation = purchasing === "Y" ? { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Purchasing Div. confirmed the supplier code." } : { state: "NG", comment: "Supplier code is incorrect.", reason: "Purchasing Div. says the supplier code is incorrect." };
+    } else if (w.found && w.nameMatches !== false) {
+      // The master only says the code exists. In the Master Data, Purchasing still rejected the code for the
+      // specific part in about 1 of 10 such cases (e.g. codes 5015, 5300, 5022: OK for most parts, NG for some),
+      // so a person confirms with Purchasing. MANUAL keeps it out of automatic finalisation; it can be confirmed in bulk.
+      steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "MANUAL", detail: "Code is registered in the Purchasing master. Confirm with Purchasing that it is the right code for this part (registered codes were still rejected for some parts in the Master Data)." });
+      recommendation = { state: "OK", comment: "Confirmed by Purchasing Div.", reason: "Supplier code is registered in the Purchasing supplier code master (G-CATS Appendix I No.21). Purchasing confirms it for this part before saving." };
     } else {
       steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "NEEDS_INPUT", detail: "Ask Purchasing whether the supplier code / WARP registration is correct." });
       recommendation = { state: "HOLD", comment: "", reason: "Purchasing Div. must confirm the supplier code (Appendix I No.21)." };

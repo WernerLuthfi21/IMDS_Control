@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAutoWorkflow, detectKind, type AutoOutput } from "@/lib/judgement/auto";
 import { extractRowFacts } from "@/lib/judgement/row-facts";
-import { familyOfKind, loadConfirmation } from "@/lib/intake/confirmations";
+import { familyOfKind, loadConfirmation, loadConfirmationsFor, pickConfirmation, type StoredConfirmation } from "@/lib/intake/confirmations";
+import { FOUR_PHTHALATES, fourPhthalateTotal } from "@/lib/judgement/material-group";
 import { normalizeCas } from "@/lib/reference-data";
 import type { PartMemory } from "@/lib/judgement/memory";
 import { escalationKey, needsTmc, tmcRecommendation, type Escalation } from "@/lib/judgement/escalation";
@@ -36,11 +37,20 @@ function stable(value: unknown): string {
   }
   return JSON.stringify(value) ?? "null";
 }
-export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem, memory?: PartMemory, escalations?: Map<string, Escalation>): Promise<BulkCandidate> {
+/** Loaded once per request so evaluating a batch does not query the database per case. */
+export type BulkContext = { confirmations?: StoredConfirmation[] | null; siblings?: Map<string, BulkSourceItem[]> };
+export async function evaluateBulkCandidate(supabase: SupabaseClient, item: BulkSourceItem, memory?: PartMemory, escalations?: Map<string, Escalation>, ctx?: BulkContext): Promise<BulkCandidate> {
   const facts = extractRowFacts(item.raw_source);
   const kind = detectKind(item.error_type_label);
   const family = familyOfKind(kind);
-  const stored = family ? await loadConfirmation(supabase, item, family, normalizeCas(facts.cas || "")) : null;
+  const casN = normalizeCas(facts.cas || "");
+  const stored = !family ? null : ctx?.confirmations ? pickConfirmation(ctx.confirmations, item, family, casN) : await loadConfirmation(supabase, item, family, casN);
+  if (FOUR_PHTHALATES.has(casN) && ctx?.siblings) {
+    const sib = ctx.siblings.get(String(item.delivery_part_no ?? "").trim().toUpperCase()) ?? [];
+    const sum = fourPhthalateTotal({ raw: item.raw_source, partNo: item.delivery_part_no, supplierCode: item.supplier_code },
+      sib.filter((s) => s.id !== item.id).map((s) => ({ raw: s.raw_source, partNo: s.delivery_part_no, supplierCode: s.supplier_code })));
+    if (sum) facts.fourPhthalateTotal = sum;
+  }
   // Supplier answers first, then what Toyota already answered for this part (destination, class, Toyota-owned flow answers).
   const remembered: Record<string, string> = {};
   for (const [field, entry] of Object.entries(memory ?? {})) if (entry) remembered[field] = entry.value;
@@ -118,4 +128,30 @@ export function groupBulkCandidates(candidates: BulkCandidate[]) {
     comment: items[0].recommendation.comment, reason: items[0].recommendation.reason,
     procedureText: items[0].procedureText, items, count: items.length
   })).sort((a, b) => b.count - a.count);
+}
+
+/** One query for every row of the parts whose case needs the phthalate total (same material, other rows). */
+export async function loadPhthalateSiblings(supabase: SupabaseClient, items: BulkSourceItem[]): Promise<Map<string, BulkSourceItem[]>> {
+  const parts = [...new Set(items.filter((i) => FOUR_PHTHALATES.has(normalizeCas(extractRowFacts(i.raw_source).cas || "")))
+    .map((i) => String(i.delivery_part_no ?? "").trim()).filter(Boolean))];
+  const map = new Map<string, BulkSourceItem[]>();
+  for (let i = 0; i < parts.length; i += 100) {
+    const { data, error } = await supabase.from("gcat_error_items")
+      .select("id,source_record_key,error_type_label,delivery_part_no,supplier_code,source_status,judge,raw_source")
+      .in("delivery_part_no", parts.slice(i, i + 100)).limit(5000);
+    if (error || !data) return map;
+    for (const r of data as unknown as BulkSourceItem[]) {
+      const k = String(r.delivery_part_no ?? "").trim().toUpperCase();
+      map.set(k, [...(map.get(k) ?? []), r]);
+    }
+  }
+  return map;
+}
+/** Everything a batch evaluation needs from the database, fetched up front. */
+export async function loadBulkContext(supabase: SupabaseClient, items: BulkSourceItem[]): Promise<BulkContext> {
+  const [confirmations, siblings] = await Promise.all([
+    loadConfirmationsFor(supabase, items.map((i) => i.delivery_part_no)),
+    loadPhthalateSiblings(supabase, items)
+  ]);
+  return { confirmations, siblings };
 }
