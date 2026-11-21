@@ -1736,6 +1736,7 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .callout-warning{border-color:var(--amber);background:var(--amber-bg);color:var(--ink)}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 /* data face: codes and numbers line up (A1a) */
 .mono,.rule-code,.jx-dest-code,code,samp{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
@@ -1763,3 +1764,7 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .cfm-type input{min-height:36px;padding:0 10px;border:1px solid var(--line-strong);border-radius:var(--r-2);background:var(--surface-2);color:var(--ink);font-family:var(--f-mono,ui-monospace,monospace);font-size:var(--text-md,13px)}
 .cfm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
 >>>>>>> feat/ui-confirm-dialog
+=======
+/* icon tints (no hex in components) */
+.ic-amber{color:var(--amber)}.ic-muted{color:var(--muted)}.ic-blue{color:var(--blue)}.ic-green{color:var(--green)}
+>>>>>>> feat/ui-a1c-tsx-tokens

@@ -61,7 +61,7 @@ export function JudgementStudio() {
       </form>
     </section>
     <section className="panel">
-      <div className="panel-header"><div><div className="panel-title">Evaluation trace</div><div className="panel-subtitle">Branch-by-branch explanation and source attribution.</div></div><ClipboardCheck size={16} color="#67839a"/></div>
+      <div className="panel-header"><div><div className="panel-title">Evaluation trace</div><div className="panel-subtitle">Branch-by-branch explanation and source attribution.</div></div><ClipboardCheck size={16} className="ic-muted"/></div>
       <div className="panel-body">
         {!result&&!loading&&<div className="empty-state"><FileSearch size={26}/><strong>No evaluation executed</strong><span>Select an Error Type and provide the available source evidence to see the decision path.</span></div>}
         {loading&&<div className="empty-state"><LoaderCircle size={24} className="spin"/><strong>Evaluating rule</strong><span>Running deterministic checks against the current source-supported branches.</span></div>}
