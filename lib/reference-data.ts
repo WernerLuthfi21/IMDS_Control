@@ -77,12 +77,12 @@ function groupBase(value: unknown) {
  * "Polychlorinated biphenyls" → TSZ0001G "Polychlorinated biphenyls ( PCB ), all members").
  */
 function groupsByName(names: string[]) {
-  const bases = [...new Set(names.map(groupBase).filter((b) => b.length >= 8))];
+  const bases = [...new Set(names.map(groupBase).filter((b) => b.length >= 3))];
   if (!bases.length) return [] as typeof tsz3Records;
   return tsz3Records.filter((row) => {
-    if (!/all members/i.test(String(row.values?.[2] ?? ""))) return false;
+    if (!/all members|compounds|substances/i.test(String(row.values?.[2] ?? ""))) return false;
     const g = groupBase(row.values?.[2]);
-    return g.length >= 8 && bases.some((b) => b === g || b.startsWith(g + " ") || g.startsWith(b + " "));
+    return g.length >= 3 && bases.some((b) => b === g || b.startsWith(g + " ") || g.startsWith(b + " "));
   });
 }
 
