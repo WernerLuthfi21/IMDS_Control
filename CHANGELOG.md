@@ -2,12 +2,28 @@
 
 ## 2026-11-21
 
-### Security headers on every route; "Handed off" wording
-- Enforced Content-Security-Policy and `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
-  COOP and (production) HSTS for all routes (`lib/security/headers.ts`, `next.config.ts`). The Tracker gets only the
-  extra hosts it already uses. Details and next steps (nonce, SRI for Tracker CDN scripts) in `docs/SECURITY.md`.
-- Supplier follow-up results say **Handed off** instead of "SENT": HTTP 2xx from the flow is a hand-off, not
-  delivery (CLAUDE.md).
+### Judge flashcard in its own file
+- `components/judge-flashcard.tsx` holds the flashcard (decision, evidence, comment, keyboard); `review-deck.tsx`
+  keeps the deck state and data (512 → 360 lines). No behaviour change.
+
+### Judge card A3: evidence and "recommended, not final"
+- Each card lists what the engine answered from the row or a master ("Answered from the row", JetBrains Mono),
+  e.g. the mass-deviation maths, the four-phthalate sum, the Purchasing master lookup.
+- A recommendation that still needs a person (e.g. WARP code found in the Purchasing master) shows a dashed
+  "Recommended OK — not final" line above the question, and the card asks Purchasing's Y/N directly instead of
+  landing in "missing". Nothing becomes final without that answer.
+
+### Design system A1b: one type scale in the Judgement CSS
+- All 558 font sizes in `app/globals.css` now use the eight `--text-*` steps (30 sizes → 8; nothing below 11px).
+  Sizes map to the nearest step; 8–10.5px become 11px.
+- Font weights 650/750/800/850/900 map to 600/700 (9 weights → 4). Hero `clamp()` headings are unchanged.
+
+### Design system A1a: self-hosted fonts, data face, type-scale tokens, UI audit script
+- `scripts/audit-ui.mjs` (dev only) prints the design-debt numbers for Judgement and the Tracker.
+- Questrial (Century Gothic fallback) and JetBrains Mono are self-hosted with `next/font`; the runtime Google
+  Fonts import is gone from `app/globals.css`.
+- Codes and numbers (`.mono`, `code`, rule codes, destination codes) use JetBrains Mono with tabular digits.
+- Type-scale tokens `--text-xs … --text-3xl` and line-height tokens added; `docs/DESIGN-SYSTEM.md` → Type.
 
 ### Judge: more cases decided from the row, reliably, and faster bulk evaluation
 - No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.

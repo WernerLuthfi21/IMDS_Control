@@ -266,10 +266,12 @@ export function runAutoWorkflow(input: AutoInput): AutoOutput {
       steps.push({ id: "warp-purchasing", title: "Purchasing Div. confirmation", status: "NEEDS_INPUT", detail: "Ask Purchasing whether the supplier code / WARP registration is correct." });
       recommendation = { state: "HOLD", comment: "", reason: "Purchasing Div. must confirm the supplier code (Appendix I No.21)." };
     }
+    // A master hit only recommends OK: until Purchasing answers, the flow waits on that question.
+    const awaitingPurchasing = steps.some((s) => s.id === "warp-purchasing" && s.status !== "DONE");
     const flow: FlowRun = { flowId: "warp21", title: "No.21 WARP Part number", page: null, implemented: true, source: "G-CATS judgment Ver.5.1.10, Appendix I No.21", draft: false,
       trail: [{ question: "Supplier code in Purchasing master?", answer: w.found ? (w.nameMatches === false ? "Yes, name differs" : "Yes") : "No", auto: true }],
-      next: recommendation.state === "HOLD" ? { id: "purchasingWarp", text: "Does Purchasing Div. confirm the supplier code / WARP registration?", options: [["Y", "Yes · confirmed"], ["N", "No · code incorrect"]] } : null,
-      outcome: recommendation.state === "HOLD" ? null : { state: recommendation.state, comment: recommendation.comment, reason: recommendation.reason } };
+      next: awaitingPurchasing ? { id: "purchasingWarp", text: "Does Purchasing Div. confirm the supplier code / WARP registration?", options: [["Y", "Yes · confirmed"], ["N", "No · code incorrect"]] } : null,
+      outcome: awaitingPurchasing ? null : { state: recommendation.state, comment: recommendation.comment, reason: recommendation.reason } };
     const procedureText = recommendation.state === "HOLD" ? "" : `No.21 WARP: ${w.reason}${supplierSays ? ` Correct supplier code? ${supplierSays === "Y" ? "YES" : "NO"} (supplier self-check).` : ""}${purchasing ? ` Purchasing Div.: ${purchasing === "Y" ? "confirmed" : "code incorrect"}.` : ""}`;
     return { kind, steps, flow, procedureText, recommendation, needs: { destination: false, toleranceClass: false, supplierConfirmation: false }, massBands: null, engineInput, engine: pick(result) };
   }
