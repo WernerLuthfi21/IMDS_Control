@@ -15,7 +15,7 @@
 | 11 ELV (Cd) | Human review and source flow reference | Manual review required |
 | 12 ELV (Hg) | Human review and source flow reference | Manual review required |
 | 13 ELV (Cr6+) | Human review and source flow reference | Manual review required |
-| 14 Prohibited substance | CAS → GADSL → TSZ → family flow workflow | HOLD / manual; no universal threshold |
+| 14 Prohibited substance | CAS → GADSL → GADSL family (GADSL # / REF #, PFAS parents) → TSZ → family flow workflow | HOLD / manual; no universal threshold |
 | 15–18 specific prohibited substances | Substance-family route and evidence task | Manual review required |
 | 19 | Numeric Error Type always HOLD | Owner reconciliation required due source conflict |
 | 20–23 | Manual verification tasks | Source-listed; manual |
@@ -118,3 +118,23 @@ Supplier code found in the Purchasing supplier code master and the company name 
 | CAS on neither GADSL 2026 V1 nor TSZ0001G Appendix 3 | Nothing; shown as "no prohibited-substance error expected" | — |
 
 Confirmations are stored in `supplier_confirmations`. The new family `warp` needs migration `20261118030000_supplier_confirmations_warp.sql`. Tests are in `tests/intake.test.ts`.
+
+## CAS → Appendix 3 (TSZ0001G) link
+
+`lookupSubstance()` in `lib/reference-data.ts`, in this order (first that matches wins; `tszLinks[].matchedBy`):
+
+1. **cas**: the CAS is written in the Appendix 3 "CAS No." cell.
+2. **gadsl-family**: the GADSL family of the CAS (member row REF # → family row with the same GADSL #) has the same name
+   as an Appendix 3 group (e.g. 26027-38-3 → GADSL #160 "4-Nonylphenol, branched and linear, ethoxylated, all members"
+   → TSZ0001G #73). PFAS families nest by the GADSL text "identified in rows X to Y"; the Appendix 3 PFAS groups match on
+   their second line (PFOA → #26, PFOS → #27, PFHxS → #28, PFCAs → #76).
+3. **member-name**: GADSL "Diorganotin compounds" is split into Appendix 3 #59 (dibutyltin) and #60 (dioctyltin) by the
+   member's substance name.
+4. **substance-name**: last resort, the member's own name against an "all members" group; always flagged for confirmation.
+
+"selected" groups that name their CAS (or whose TSZ0001G table rows are in Appendix 3, e.g. Table 9 phthalates) match by
+CAS only. A link carries a **caution** (the step stays `MANUAL`, so it is never auto-final) when Appendix 3 points to a
+TSZ0001G table that is not in the uploaded appendices (Tables 4, 5, 6, 7, 8, 11) or the carbon range differs (#76 C9–C14
+vs GADSL C9–C21). Coverage over all 7,066 GADSL rows with a CAS: 635 linked before, 3,018 after (2026-11-21). GADSL
+families that are not in TSZ0001G (cobalt, nickel, "Hazardous Substances including SoC", …) stay unlinked on purpose.
+

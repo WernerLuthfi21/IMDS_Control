@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased: CAS search follows GADSL families into Appendix 3 (2026-11-21)
+
+- A CAS that is a member of a GADSL family now reaches the Appendix 3 (TSZ0001G) group of that family, e.g. 26027-38-3
+  → GADSL #160 → TSZ0001G #73 "4-Nonylphenol, branched and linear, ethoxylated" (shown as "not listed in Appendix 3"
+  before). Lead / mercury / arsenic / cadmium compounds, azo dyes, HCFC / HBFC, SCCP / MCCP, organotins and PFAS
+  (PFOA, PFOS, PFHxS, PFCAs via the GADSL row hierarchy) are linked too: 635 → 3,018 of 7,066 GADSL CAS rows.
+- Each link says how it was found (CAS in Appendix 3, GADSL family, member name). Links that need a check (TSZ0001G
+  table not in the appendices, different carbon range) carry a caution and are never finalised automatically.
+- Rule path and Substance References show the GADSL family. Tests: `tests/gadsl-family-link.test.ts`.
+
 ## Unreleased: Tracker supplier e-mail attachments match the Tracker PDF; due dates per supplier × model (2026-11-19)
 
 - **The e-mailed supplier PDF is now the Tracker's own "Supplier PDF".** The browser draws it and the server attaches it. It used to be a plain text PDF built on the server, and the server version is now only a fallback.
