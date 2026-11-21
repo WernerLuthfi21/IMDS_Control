@@ -13,6 +13,7 @@ import { buildCommentHistory } from "@/lib/judgement/comment-history";
 import { summarizeRegister, type NeedCounts } from "@/lib/judgement/overview";
 import { isWorking, pileCounts, pileOf } from "@/lib/judgement/piles";
 import type { ReviewNeed } from "@/lib/judgement/review";
+import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
 
 const SYSTEM_ACTOR = "Auto-judgement (System)";
 function remember(row: { id: string; delivery_part_no: string | null }, field: string, value: string) {
@@ -293,7 +294,12 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   async function applyBulkGroup(group: BulkGroup) {
     const labels = group.items.slice(0, 5).map((item) => item.partNo || item.sourceRecordKey).join(", ");
     const extra = group.count > 5 ? ` and ${group.count - 5} more` : "";
-    if (!window.confirm(`Review confirmed: ${group.count} cases have identical source facts and rule results. Apply the recommended ${group.decision} judgement to all?\n\n${labels}${extra}\n\nReason: ${group.reason}`)) return;
+    if (!(await confirmAction({
+      title: `Apply ${group.decision} to ${group.count} case${group.count === 1 ? "" : "s"}?`,
+      body: `These cases have identical source facts and rule results. Reason: ${group.reason}`,
+      items: [labels + extra], confirmLabel: `Apply ${group.decision} to ${group.count}`, tone: "danger",
+      typeToConfirm: group.count >= TYPE_TO_CONFIRM_FROM ? String(group.count) : undefined
+    }))) return;
     setBulkBusy(true); setBulkError(""); setBulkNotice("");
     try {
       const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "apply", ids: group.items.map((item) => item.id), signature: group.signature, decision: group.decision }) });
@@ -313,7 +319,11 @@ export function JudgementWorkspace({ rows: initialRows, year, role, actorName, s
   }
 
   async function undoBulk() {
-    if (!undoItems.length || !window.confirm(`Undo the last bulk action for ${undoItems.length} case(s)? This is available only while those records remain unchanged.`)) return;
+    if (!undoItems.length || !(await confirmAction({
+      title: `Undo the last bulk action for ${undoItems.length} case${undoItems.length === 1 ? "" : "s"}?`,
+      body: "Available only while those records remain unchanged since the bulk action.",
+      confirmLabel: "Undo"
+    }))) return;
     setBulkBusy(true); setBulkError("");
     try {
       const response = await fetch("/api/judgement/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "undo", items: undoItems }) });

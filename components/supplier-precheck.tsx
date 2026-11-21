@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { DropZone } from "@/components/drop-zone";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Inbox, LoaderCircle, Lock, WandSparkles } from "lucide-react";
+import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
 
 type Submission = { id: string; supplier_code: string; delivery_part_no: string; mds_status: string | null; workflow_status: string; review_comment?: string | null; reviewed_at?: string | null; source_verified_by_human?: boolean; attachment_path?: string | null; attachment_name?: string | null; created_at: string };
 type Extracted = { supplierCode?: string; supplierName?: string; deliveryPartNo?: string; deliveryPartName?: string; mdsId?: string; mdsVersion?: string; mdsStatus?: string; preliminaryMds?: boolean | null };
@@ -45,7 +46,11 @@ export function SupplierPrecheck({ role, supplierCode }: { role: string; supplie
   async function updateReview(id: string, status: "INTERNAL_REVIEW" | "NEED_SUPPLIER_ACTION" | "CLEARED_FOR_IMDS" | "REJECTED") {
     setError(""); setSuccess("");
     if (status === "CLEARED_FOR_IMDS") {
-      const verified = window.confirm("Confirm that you personally checked the original IMDS source and confirmed the MDS is Internally released, final (not preliminary), and has the expected supplier / part / IMDS ID / Version. The supplied sample MDS PDF must not be parsed automatically.");
+      const verified = await confirmAction({
+        title: "Clear this MDS for IMDS?",
+        body: "Confirm that you personally checked the original IMDS source and confirmed the MDS is internally released, final (not preliminary), and has the expected supplier / part / IMDS ID / version. The supplied sample MDS PDF is never parsed automatically.",
+        confirmLabel: "I checked it — clear for IMDS"
+      });
       if (!verified) return;
     }
     const comment = status === "INTERNAL_REVIEW" ? "Review started." : window.prompt("Enter the review note that the supplier / next reviewer will see:", status === "CLEARED_FOR_IMDS" ? "Original MDS checked in IMDS. Internally released and final version confirmed." : "Please provide the missing information or correction.");

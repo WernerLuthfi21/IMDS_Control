@@ -68,6 +68,7 @@ everything; hierarchy comes from size and weight.
 | Miko | `components/cat-mascot.tsx`, `components/cat-stage.tsx` | States below |
 | Drop zone | `components/drop-zone.tsx` | One upload pattern for the whole app |
 | Auto-judge card | `components/autojudge-card.tsx` | Switches are staged; saving is an explicit approval |
+| Confirm dialog (`confirmAction`) | `components/ui/confirm-dialog.tsx` | Every bulk / irreversible action; typed count from 50 items; never `window.confirm` |
 | Error / not-found pages | `app/error.tsx`, `app/not-found.tsx` | `.state-page` |
 
 ### Miko's states

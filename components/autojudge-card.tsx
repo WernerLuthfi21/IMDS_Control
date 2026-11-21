@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Bot, LoaderCircle, Play, Power, Scale, Settings2, ShieldCheck } from "lucide-react";
 import type { CatMood } from "@/components/cat-mascot";
 import { CatStage } from "@/components/cat-stage";
+import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
 
 type Kind = "mass" | "sms" | "app44" | "pb" | "elv" | "other" | "substance" | "warp";
 type Config = { enabled: boolean; shadow: boolean; kinds: Record<Kind, boolean>; approvedBy: string | null; approvedAt: string | null; ruleSet?: string | null };
@@ -69,7 +70,12 @@ export function AutoJudgeCard({ pendingIds, judgedIds, onFinal, openSettings = f
   }
   async function run() {
     if (!pendingIds.length || busy) return;
-    if (live && !window.confirm(`Auto-judge ${pendingIds.length.toLocaleString("en-US")} pending case(s)?\n\nCases the engine can decide completely, in the switched-on rule families, are saved as FINAL by "${info?.systemActor}". Everything else stays in your queue. Every decision is audited and can be reopened.`)) return;
+    if (live && !(await confirmAction({
+      title: `Auto-judge ${pendingIds.length.toLocaleString("en-US")} pending case${pendingIds.length === 1 ? "" : "s"}?`,
+      body: `Cases the engine can decide completely, in the switched-on rule families, are saved as FINAL by "${info?.systemActor}". Everything else stays in your queue. Every decision is audited and can be reopened.`,
+      confirmLabel: "Auto-judge now", tone: "danger",
+      typeToConfirm: pendingIds.length >= TYPE_TO_CONFIRM_FROM ? String(pendingIds.length) : undefined
+    }))) return;
     setBusy("run"); setError(""); setResults([]); setCompare(null); setProgress({ done: 0, total: pendingIds.length });
     const all: RunResult[] = [];
     try {
