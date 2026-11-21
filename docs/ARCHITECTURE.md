@@ -65,6 +65,31 @@ Command palette: Ctrl/⌘ K (modules, part / CAS / supplier search, theme).
 Routes check identity and role; RLS enforces record access. The service-role key is used only in server routes that
 must create accounts or accept the Excel reverse sync.
 
+## Desktop automation (foundation)
+
+The desktop automation platform extends the existing `automation/*` Power Automate area; it does not replace
+`sync_outbox`, `lib/automation/outbox.ts` or the Supplier Follow-up workflow.
+
+- **Control plane**: GCATS web app (Next.js) creates on-demand, scheduled or rule-triggered jobs and exposes
+  queue, device, session and execution-trace views.
+- **Data plane**: Supabase tables `automation_devices`, `automation_user_sessions`, `automation_jobs`,
+  `automation_job_attempts`, `automation_job_events` and `automation_desktop_locks`.
+- **Credential boundary**: `automation_agent_credentials` stores only a one-way token hash and has RLS enabled
+  with no authenticated-user policy. Device credentials are never returned to the browser.
+- **Windows runtime (planned)**: a machine-level service handles device health and coordination; a separate
+  per-Windows-user session process performs interactive UI automation. Session 0 must not drive the desktop.
+  A device-wide desktop lease prevents concurrent GUI jobs on the same physical desktop.
+- **Network**: agents initiate outbound HTTPS polling/heartbeat requests; no inbound office-network listener is
+  required. Job claims and mutations must be implemented in trusted server routes after validating either the
+  signed-in user or the device credential.
+- **Traceability**: each job has an immutable trace identifier, idempotency key, attempts and ordered events.
+  Never log passwords, agent tokens, SMS BR PDF passwords, or protected document contents.
+- **Scope guard**: New SMS and SMS BR are intranet/desktop workflows. No cloud worker is assumed to have access
+  to those systems. PDF processing stays on an approved office endpoint unless policy explicitly permits otherwise.
+
+The first migration adds read-only UI-facing RLS policies. No agent enrollment, claim, heartbeat or execution route
+is considered implemented until its authentication, replay protection, lease handling and tests are added.
+
 ## Trust boundaries
 
 - No service-role key or Microsoft secret reaches the browser.
