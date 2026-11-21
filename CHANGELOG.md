@@ -34,6 +34,10 @@
   extra hosts it already uses. Details and next steps (nonce, SRI for Tracker CDN scripts) in `docs/SECURITY.md`.
 - Supplier follow-up results say **Handed off** instead of "SENT": HTTP 2xx from the flow is a hand-off, not
   delivery (CLAUDE.md).
+### One confirmation dialog for bulk and irreversible actions
+- `components/ui/confirm-dialog.tsx` replaces all six `window.confirm` calls (Auto-judge run, bulk apply, bulk undo,
+  confirm decided cards, supplier e-mail hand-off, clear MDS for IMDS). Themed, focus-trapped, Esc cancels, shows
+  the count and consequence; from 50 items the person types the count before the button unlocks.
 
 ### Judge: more cases decided from the row, reliably, and faster bulk evaluation
 - No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.

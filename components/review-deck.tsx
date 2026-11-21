@@ -10,9 +10,15 @@ import { CaseContext } from "@/components/case-context";
 import { Decks, Piles, PILE_LABEL, type PileKind, type PileTop } from "@/components/miko-table";
 import type { PileCounts } from "@/lib/judgement/piles";
 import type { NeedCounts } from "@/lib/judgement/overview";
+<<<<<<< HEAD
 import { buildStacks, type Stack } from "@/lib/judgement/stacks";
 import type { CommentHistory } from "@/lib/judgement/comment-history";
 import { Flashcard, TOYOTA_FIELDS, WAITING, reducedMotion, type Candidate, type View } from "@/components/judge-flashcard";
+=======
+import { buildStacks, toneOf, type Stack } from "@/lib/judgement/stacks";
+import { checkComment, lastComment, typeKey, type CommentHistory } from "@/lib/judgement/comment-history";
+import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
+>>>>>>> feat/ui-confirm-dialog
 
 type Row = { id: string; source_record_key: string; error_type_label: string; delivery_part_no: string | null; supplier_code: string | null; case_id: string | null; km_judge?: string | null };
 type Saved = { id: string; judge: "OK" | "NG"; comment: string; procedure: string; actor?: string | null; date?: string | null };
@@ -260,7 +266,12 @@ export function ReviewDeck({ rows, canEdit, active = true, history, onSaved, onO
     const list = decidedHere.filter((c) => !working.has(c.id));
     if (!list.length || !canEdit) return;
     const ok = list.filter((c) => views.get(c.id)!.rec.state === "OK").length;
-    if (!window.confirm(`Confirm ${list.length} decided card${list.length === 1 ? "" : "s"} (${ok} OK · ${list.length - ok} NG) with the recommended result and comment?\nEach is saved with its own rule trace.`)) return;
+    if (!(await confirmAction({
+      title: `Confirm ${list.length} decided card${list.length === 1 ? "" : "s"}?`,
+      body: `${ok} OK · ${list.length - ok} NG, each with its recommended comment. Each is saved with its own rule trace.`,
+      confirmLabel: `Confirm ${list.length}`,
+      typeToConfirm: list.length >= TYPE_TO_CONFIRM_FROM ? String(list.length) : undefined
+    }))) return;
     setError(""); setBulk({ label: "Confirming", done: 0, total: list.length });
     const failed: string[] = []; let n = 0;
     for (const c of list) {

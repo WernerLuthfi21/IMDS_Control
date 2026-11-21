@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Circle, Download, Mail, RefreshCw, Send } from "lucide-react";
 import { renderFollowup } from "@/lib/automation/render";
+import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
 
 type Status = { configured: { excel: boolean; email: boolean; secret: boolean }; transport?: { excel: string | null; email: string | null }; counts: Record<string, number>; lastError: string | null; failed?: { id: string; kind: string; error: string | null; attempts: number; at: string }[] };
 type Cand = { id: string; source_record_key: string; delivery_part_no: string | null; supplier_code: string; error_type_label: string; hasContact: boolean; followup: string | null };
@@ -57,7 +58,12 @@ export function AutomationPanel() {
   }
   async function sendSelected() {
     const ids = sendable.filter((c) => picked.has(c.id)).map((c) => c.id);
-    if (!ids.length || !window.confirm(`Send ${ids.length} supplier e-mail(s) one by one?`)) return;
+    if (!ids.length || !(await confirmAction({
+      title: `Hand off ${ids.length} supplier e-mail${ids.length === 1 ? "" : "s"}?`,
+      body: "Each e-mail is handed to the Power Automate flow one by one. A hand-off is not proof of delivery; check the flow's run history.",
+      confirmLabel: `Hand off ${ids.length}`,
+      typeToConfirm: ids.length >= TYPE_TO_CONFIRM_FROM ? String(ids.length) : undefined
+    }))) return;
     setRunning(true); setMsg("");
     setResults(Object.fromEntries(ids.map((id) => [id, { id, state: "wait" } as Result])));
     for (const id of ids) { // strictly sequential: the next e-mail starts only after the previous one was answered
