@@ -1,3 +1,0 @@
-import { JudgementStudio } from "@/components/judgement-studio";
-import { Network, ShieldCheck } from "lucide-react";
-export default function JudgementPage(){return <><div className="page-heading"><div><div className="eyebrow">INTELLIGENCE / DETERMINISTIC RULES</div><h1 className="page-title">Judgement Studio</h1><div className="page-subtitle">Run source-linked evaluations with reproducible branch traces and manual escalation.</div></div><span className="status status-green"><ShieldCheck size={12}/> HUMAN-IN-THE-LOOP</span></div><div className="notice-strip"><Network size={15}/><span><strong>Versioned rule engine.</strong> The current rules are draft/partial until their process owner approves source versions and missing branches.</span></div><JudgementStudio/></>}

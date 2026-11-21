@@ -1,26 +1,23 @@
 # Rule coverage and activation status
 
-| Error Type / family | Current implementation | Activation status |
-|---|---|---|
-| 1 Region | Manual verification task and source-trace note | Source-listed; manual |
-| 2 Supplier Code | Supplier code verification workflow | Source-listed; manual |
-| 3 Part number | SMS/source part number verification workflow | Source-listed; manual |
-| 4 preliminary IMDS | Preliminary/final check; supplier pre-check readiness | Source-listed; manual confirmation |
-| 5 Material module nor Semi-component | Component-only submission instruction | Source-listed; manual confirmation |
-| 6 SMS Mass | Supplier confirmation branches and source comments | Draft for process-owner approval |
-| 7 Mass tolerance range | Drawing-mass + MA–MF lookup in TSZ2900G Rev.9; calculate TSZ Min/Max and 10% buffer (Min × 0.9, Max × 1.1); route outside-buffer cases to supplier A/B confirmation | Recommendation-only / draft for process-owner approval; controlled revision and applicability still require confirmation |
-| 8 Mass deviation | Holds for approved percentage basis | Manual review; denominator/rounding unresolved |
-| 9 Not specified substance | 10% and multi-material branches | Draft for process-owner approval; denominator/material basis must be verified |
-| 10 ELV (Pb) | Application ID, destination and policy evidence guardrails; Application 71 manual branch | Manual review; exact policy row and destination evidence required |
-| 11 ELV (Cd) | Human review and source flow reference | Manual review required |
-| 12 ELV (Hg) | Human review and source flow reference | Manual review required |
-| 13 ELV (Cr6+) | Human review and source flow reference | Manual review required |
-| 14 Prohibited substance | CAS → GADSL → GADSL family (GADSL # / REF #, PFAS parents) → TSZ → family flow workflow | HOLD / manual; no universal threshold |
-| 15–18 specific prohibited substances | Substance-family route and evidence task | Manual review required |
-| 19 | Numeric Error Type always HOLD | Owner reconciliation required due source conflict |
-| 20–23 | Manual verification tasks | Source-listed; manual |
-| MCCP draft workbook flow | Data preserved as draft reference | Not activated |
-| Battery (Pb), Battery (Cd), Tokusetsu Part number, SCCP historical labels | Preserved independently from official numeric catalogue | Historical-only; owner mapping required |
+Source of truth: `detectKind()` in `lib/judgement/auto.ts` (which rule family an Error Type belongs to) and
+`selectFlow()` / `DEFS` in `lib/judgement/flows.ts` (which Manual Flow chart runs). Every flow is drawn on
+**Rules → Flow charts**. A family is finalised automatically only when an admin / rule approver switched it on in
+Auto-judge (see *Auto-judgement* below); everything else needs a person.
+
+| Error Type | Rule family (`kind`) | What the engine does | Details |
+|---|---|---|---|
+| 6 SMS Mass | `sms` | Supplier confirmation A/B with the source comments | — |
+| 7 Mass tolerance range | `mass` | TSZ2900G Rev.9 class MA–MF, Min/Max and ±10 % buffer (Decimal.js); raw-material branch (Manual Flow Ver.7 No.7) | *Type 7* below |
+| 8 Mass deviation · 9 Not specified substances · 20 Supplied is not SMS | `other` | Manual Flow Ver.7 charts `massDev`, `notSpec`, `notSms` | *Substance and ELV flows* |
+| 10 ELV (Pb) | `pb` | Pb TOYOTA Policy Table by Application ID + destination; Application 71 chart; undated policy cells go to TMC | *Substance and ELV flows* |
+| 11 ELV (Cd) · 12 ELV (Hg) · 13 ELV (Cr6+) | `elv` | Manual Flow Ver.7 charts | *Substance and ELV flows* |
+| 14–18 Prohibited substance | `substance` | CAS → GADSL → GADSL family (GADSL # / REF #, PFAS parents) → TSZ group → family chart (POPs, REACH XVII / XIV, phthalate, PFOA, DBT, DOT, SCCP, …); without a dedicated chart: general supplier step (draft, never auto-final). No universal threshold | *Substance and ELV flows* |
+| 19 | — | **Always HOLD** (TMC pile) until the Version 6 Section II / Appendix I conflict is reconciled. The MCCP chart exists but is draft | `SOURCE_REGISTER.md` |
+| 21 WARP Part number | `warp` | Supplier code against the Purchasing master | *No.21 WARP* below |
+| Application 44 error | `app44` | Supplier confirmation A/B | — |
+| 1–5, 22–23 and any type without a G-CATS rule | `manual` | No encoded rule: TMC pile, "ask TMC and record the answer" | — |
+| Battery (Pb), Battery (Cd), Tokusetsu Part number, SCCP historical labels | — | Kept as historical labels; never mapped to an official Error Type without owner approval | `SOURCE_REGISTER.md` |
 
 ## Type 7 tolerance calculation and historical evidence
 
@@ -53,7 +50,7 @@ Default: OFF with shadow mode on. "Accuracy check" compares the engine with deci
 
 Toyota-owned answers (vehicle destination, mass tolerance class from the drawing, `usCarpet`, `nonEuReq`) are stored once per delivery part in `judgement_memory` and reused by the single-case check, bulk preview and auto-judge. The UI shows "Remembered from <who> on <date>"; picking a new answer replaces it. Supplier answers stay in `supplier_confirmations`.
 
-## Automatic row workflow (feat/judgement-auto-workflow)
+## Automatic row workflow
 
 | Step | Automated | Source |
 |---|---|---|
@@ -137,4 +134,3 @@ CAS only. A link carries a **caution** (the step stays `MANUAL`, so it is never 
 TSZ0001G table that is not in the uploaded appendices (Tables 4, 5, 6, 7, 8, 11) or the carbon range differs (#76 C9–C14
 vs GADSL C9–C21). Coverage over all 7,066 GADSL rows with a CAS: 635 linked before, 3,018 after (2026-11-21). GADSL
 families that are not in TSZ0001G (cobalt, nickel, "Hazardous Substances including SoC", …) stay unlinked on purpose.
-

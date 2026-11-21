@@ -1,8 +1,70 @@
-# Panduan setup lengkap: IMDS Tracker + Master Sheet Excel + Power Automate
+# Panduan setup lengkap: aplikasi, Supabase, Vercel, Tracker, Master Sheet Excel, Power Automate
 
-Dokumen ini adalah urutan kerja tunggal. Ikuti dari atas ke bawah. Detail tambahan ada di `POWER_AUTOMATE_ALL_FLOWS.md` dan `POWER_AUTOMATE_IMDS_MASTER_SETUP.md`.
+Dokumen ini adalah urutan kerja tunggal. Ikuti dari atas ke bawah. Semua flow Power Automate dirangkum di `POWER_AUTOMATE_ALL_FLOWS.md`; tanpa lisensi Premium pakai `POWER_AUTOMATE_STANDARD_ID.md`.
 
 > **Status jujur.** Kode website sudah lulus unit test dan build. **Flow di tenant Microsoft Anda dan alur upload ke Supabase belum pernah saya jalankan.** Uji berurutan di Bagian 7 sebelum dipakai massal. Paket flow siap-impor (.zip) **tidak disediakan**: formatnya tidak bisa saya uji di tenant Anda, jadi dibuat klik-per-klik dengan skema siap-tempel di folder `docs/power-automate/`.
+
+## 0. Aplikasi, Supabase dan Vercel
+
+### 0.1 Komponen
+
+| Bagian | Isi |
+|---|---|
+| Kode | GitHub private `WernerLuthfi21/IMDS_Control`, cabang `main` |
+| Website | Vercel, `https://imds-gcats-control.vercel.app` (build otomatis dari `main`) |
+| Database, login, file | Supabase `toyota-imds-gcats-control`, ref `thjntzkidfsydaiiwbyn`, region `ap-southeast-1` |
+
+Publishable key Supabase memang untuk browser. **Jangan** menaruh service-role key, client secret Microsoft, token atau
+password di variabel `NEXT_PUBLIC_*`, di repo, atau di chat.
+
+### 0.2 Menjalankan di komputer sendiri (Windows PowerShell)
+
+Butuh Node.js 22.16.0+ dan npm 11.21.1+.
+
+```powershell
+npm install -g npm@11.21.1
+npm install
+Copy-Item .env.example .env.local   # isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+npm run dev                          # buka http://localhost:3000 di browser
+```
+
+Tanpa Supabase hanya halaman referensi (Rules, Substance References) yang bisa dicoba; register, import, akun dan Tracker butuh Supabase.
+
+### 0.3 Migrasi database: jangan dijalankan buta
+
+Semua perubahan skema ada di `supabase/migrations/`. Sebelum `db push`, jalankan `npx supabase migration list --linked`
+dan cocokkan daftar remote dan lokal. Jangan push bila tidak cocok, dan **jangan pernah reset database remote**.
+
+Migrasi yang harus diterapkan **sebelum import G-CATS berikutnya**: `20261119000000_rekey_uncoded_gcat_rows.sql`
+(kunci stabil untuk baris tanpa `code` TMA; aman dijalankan ulang, tidak menghapus apa pun). Lihat `CHANGELOG.md` 2026-11-19.
+
+### 0.4 Admin pertama
+
+User baru otomatis `viewer`. Jadikan admin lewat Supabase → SQL Editor:
+
+```sql
+update public.profiles p set role = 'admin'
+from auth.users u
+where p.id = u.id and lower(u.email) = lower('EMAIL_KERJA_ANDA');
+```
+
+Setelah itu semua akses lain diberikan dari website (Settings → Team & access). Pengaturan Auth Supabase yang wajib
+(matikan sign-up publik, SMTP, URL redirect, template email) ada di `docs/SECURITY.md`.
+
+### 0.5 Deploy ke production
+
+1. Perubahan dikerjakan di cabang baru dan dibuka sebagai Pull Request. Vercel membuat Preview untuk setiap PR, dan CI
+   menjalankan typecheck, lint, unit test, build, E2E dan audit kontras.
+2. **Werner yang menekan Merge**, dengan pilihan **Create a merge commit**. Proyek Vercel memakai paket Hobby: deploy
+   production hanya dibangun dari commit milik pemilik proyek; commit dari akun lain berstatus **Blocked**.
+3. Tunggu Vercel → Deployments sampai **Ready**, lalu buka website dan tekan Ctrl + Shift + R.
+4. Bila tetap **Blocked**: dari akun Werner, edit satu baris `CHANGELOG.md` langsung di GitHub dan commit ke `main`.
+
+### 0.6 Mengubah aplikasi dengan Claude
+
+Buka repo di Claude Code. Claude membaca `CLAUDE.md` (aturan wajib) dan dokumen di `docs/`. Minta perubahan yang spesifik,
+dengan tes, dan tanpa mengubah database tanpa migrasi SQL. Contoh: *"Baca CLAUDE.md. Perbaiki [fitur]. Tambah tes.
+Jangan memakai file CONFIDENTIAL atau rahasia environment."*
 
 ## 1. Cara kerja (gambaran)
 
@@ -72,7 +134,7 @@ Vercel > Project > Settings > Environment Variables > tambahkan (Production), la
 
 Catatan: URL flow berisi tanda tangan rahasia. Jangan tempel di chat atau repo. `POWER_AUTOMATE_EXCEL_URL` hanya untuk Judgement; **jangan dipakai untuk Tracker**.
 
-Pastikan juga migrasi database sudah diterapkan (lihat `DEPLOYMENT_AND_CLAUDE_GUIDE_ID.md`; periksa versi remote dulu, jangan reset). Bucket storage `import-staging` harus ada (dibuat oleh migrasi awal).
+Pastikan juga migrasi database sudah diterapkan (lihat bagian 0.3; periksa versi remote dulu, jangan reset). Bucket storage `import-staging` harus ada (dibuat oleh migrasi awal).
 
 ## 5. Flow A: Tracker → Excel Master
 
@@ -184,11 +246,11 @@ Semua e-mail ke supplier sekarang lewat **satu tempat**. Tombol *Remind*, *Send 
 
 ## 7. Flow B: Excel Master → website (edit manual di Excel)
 
-Detail lengkap: `POWER_AUTOMATE_IMDS_MASTER_SETUP.md` bagian D. Ringkas:
+Detail lengkap: `POWER_AUTOMATE_ALL_FLOWS.md` Lampiran C. Ringkas:
 1. Pemicu SharePoint **When a file is created or modified (properties only)** pada master. Concurrency On/1.
 2. **Delay** 45 detik, lalu **List rows present in a table** (`PartMaster`, Pagination 5000).
 3. **HTTP** (aksi ini Premium; tanpa Premium lewati Flow B, edit dilakukan di Tracker saja): `POST https://<APP_BASE_URL>/api/imds-master/sync-from-excel`, header `Content-Type: application/json` dan `x-imds-secret: <POWER_AUTOMATE_SECRET>`, body `{"type":"imds_master_snapshot","source":"sharepoint_excel","rows": <body('List_rows_present_in_a_table')?['value']>}`.
-4. Tulis balik `assignedKeys` ke kolom KEY (lihat dokumen detail).
+4. Tulis balik `assignedKeys` ke kolom KEY (lihat Lampiran C).
 
 Tanpa Premium: edit **di Tracker** (otomatis ke Excel via Flow A). Edit manual di Excel tidak bisa dikirim balik ke website tanpa aksi HTTP.
 

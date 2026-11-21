@@ -29,7 +29,7 @@ Only explicitly authorized PROTECTED/INTERNAL/PUBLIC sources may enter the appli
 - Historical workbook uses 19 distinct Error Type labels. These labels are not a substitute for the official numeric Error Type catalogue, which lists 23 entries.
 - The workbook contains about 459 distinct historical judgement procedure strings. The suggestion endpoint groups these by exact Error Type and ranks independent same-part, same-supplier and same-CAS context matches.
 - `Judge` and `KM Judge` historical columns include values beyond exact `OK` / `NG`. Nonstandard values are preserved as original source labels and are not coerced into active judgements.
-- The `code` column is the preferred source identity. `No.` is a repeating sequence and is not an identity key. For rows without code, importer uses a conservative source fallback.
+- The `code` column is the source identity; TMA fills it only after judging a case. In every coded Master Data row (4,841 of 4,841, checked 2026-11-19) `code` = Download Date (YYYYMMDD) + `No.` padded to 3 digits, so an uncoded row is keyed with that same value (`lib/judgement/source-key.ts`). `No.` alone repeats daily and is never a key. Rows where date or `No.` cannot be read keep the cautious file/sheet/row fallback.
 
 ## Material source conflict
 

@@ -1,2 +1,0 @@
-import { ImportWorkbook } from "@/components/import-workbook";
-export default function DailyUpdatePage(){return <><div className="page-heading"><div><div className="eyebrow">WORK / SOURCE REFRESH</div><h1 className="page-title">Daily G-CATS Update</h1><p className="page-subtitle">Bring in the newest Error Check Log, reconcile stable source records and preserve website judgement edits.</p></div><span className="quiet-badge">DAILY SNAPSHOT</span></div><ImportWorkbook/></>}
