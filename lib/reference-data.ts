@@ -22,6 +22,8 @@ function textHasCas(text: unknown, cas: string) {
 }
 
 
+const firstLineOf = (v: unknown) => String(v ?? "").split(/\n/)[0].replace(/\s+/g, " ").trim();
+
 function normalizeSubstanceName(value: unknown) {
   return String(value ?? "").normalize("NFKC").toLocaleLowerCase("en")
     .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
@@ -69,8 +71,99 @@ export function lookupSubstanceByName(rawName: string) {
 
 /** "Polychlorinated biphenyls ( PCB ), all members" -> "polychlorinated biphenyls". */
 function groupBase(value: unknown) {
-  return normalizeSubstanceName(String(value ?? "").split(/\n/)[0].replace(/\([^)]*\)/g, " ").replace(/,?\s*all members.*$/i, "").replace(/\s+and its .*$/i, ""));
+  return normalizeSubstanceName(String(value ?? "").split(/\n/)[0].replace(/\([^)]*\)/g, " ").replace(/,?\s*all members?\b.*$/i, "").replace(/\s+and its .*$/i, ""));
 }
+
+type TszRow = (typeof tsz3Records)[number];
+/** How a CAS reached an Appendix 3 group. `caution` set = a person must confirm (never auto-final). */
+export type TszLink = { tszNo: string; matchedBy: "cas" | "gadsl-family" | "member-name" | "substance-name"; family: string; caution: string };
+
+// ---- GADSL family structure (GADSL # column) ------------------------------------------------
+// Member rows carry only REF #; the family row has GADSL # = REF # and the family name, e.g.
+// 26027-38-3 → REF 160 → "4-Nonylphenol, branched and linear, ethoxylated, all members". PFAS
+// families nest: "… identified in rows 179 to 181" makes #178 the parent of #179–#181.
+let familyHeads: Map<string, GadslRecord> | null = null;
+let familyParents: Map<string, string[]> | null = null;
+function families() {
+  if (!familyHeads || !familyParents) {
+    familyHeads = new Map(); familyParents = new Map();
+    for (const r of gadslRecords) { const n = String(r.gadslNumber || "").trim(); if (n && !familyHeads.has(n)) familyHeads.set(n, r); }
+    for (const [n, head] of familyHeads) {
+      const m = /identified in rows\s+(\d+)\s+to\s+(\d+)/i.exec(String(head.substance || ""));
+      if (!m) continue;
+      for (let k = Number(m[1]); k <= Number(m[2]); k++) if (String(k) !== n && familyHeads.has(String(k))) push(familyParents, String(k), n);
+    }
+  }
+  return { heads: familyHeads, parents: familyParents };
+}
+/** Family rows of a GADSL record, nearest first (own family, then parents). */
+export function gadslFamilyChain(record: GadslRecord): GadslRecord[] {
+  const { heads, parents } = families();
+  const out: GadslRecord[] = []; const seen = new Set<string>();
+  const queue = [String(record.referenceNumber || record.gadslNumber || "").trim()].filter(Boolean);
+  while (queue.length) {
+    const n = queue.shift()!;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    const head = heads.get(n);
+    if (!head) continue;
+    out.push(head);
+    queue.push(...(parents.get(n) ?? []));
+  }
+  return out;
+}
+
+const tableNo = (row: TszRow) => /see tsz0001g table\s*(\d+)/i.exec(String(row.values?.[3] ?? ""))?.[1] ?? "";
+/** "selected" groups that name their CAS (or whose TSZ table rows are in Appendix 3) match by CAS only. */
+function casOnly(row: TszRow) {
+  const name = String(row.values?.[2] ?? ""), cell = String(row.values?.[3] ?? "");
+  if (!/\bselected\b/i.test(name)) return false;
+  const t = tableNo(row);
+  if (t) return tsz3Records.some((r) => String(r.values?.[1] ?? "").startsWith(`Table ${t} -`));
+  return !/various/i.test(cell);
+}
+/** Appendix 3 PFAS groups are "Per and Poly- fluoroalkyl substances (PFAS)\n<specific group>": match on the second line. */
+function a3Key(row: TszRow) {
+  const lines = String(row.values?.[2] ?? "").replace(/_x000D_/g, "").split(/\n/).map((l) => l.trim()).filter(Boolean);
+  return lines.length > 1 && /\(PFAS\)/.test(lines[0]) ? { pfas: true, key: lines[1] } : { pfas: false, key: lines[0] ?? "" };
+}
+const carbonRange = (text: string) => { const m = /\(C(\d+)\s*-\s*C(\d+)\)/.exec(text); return m ? `C${m[1]}–C${m[2]}` : ""; };
+
+function familyLinks(family: GadslRecord): Array<{ row: TszRow; caution: string }> {
+  const fname = String(family.substance || "");
+  const fbase = groupBase(fname);
+  const out: Array<{ row: TszRow; caution: string }> = [];
+  for (const row of tsz3Records) {
+    if (/^Table \d+ -/.test(String(row.values?.[1] ?? "")) || casOnly(row)) continue;
+    const { pfas, key } = a3Key(row);
+    let hit = false; let caution = "";
+    if (!pfas) {
+      const kb = groupBase(key);
+      hit = kb.length >= 3 && (normalizeSubstanceName(key) === normalizeSubstanceName(fname) || kb === fbase);
+    } else {
+      const acronym = /^([A-Z][A-Za-z]{2,6})\b/.exec(key)?.[1] ?? "";
+      hit = Boolean(acronym) && (new RegExp("^\\s*" + acronym + "\\b").test(fname) || fname.includes(`(${acronym})`));
+      const a = carbonRange(key), b = carbonRange(fname);
+      if (hit && a && b && a !== b) caution = `Appendix 3 covers ${a}; the GADSL family covers ${b}. Check the chain length before judging.`;
+    }
+    if (!hit) continue;
+    const t = tableNo(row);
+    if (t) caution = [caution, `Appendix 3 lists this group in TSZ0001G Table ${t} (not in the uploaded appendices). Confirm the CAS is in that table.`].filter(Boolean).join(" ");
+    out.push({ row, caution });
+  }
+  return out;
+}
+/** Appendix 3 splits GADSL "Diorganotin compounds" into dibutyltin and dioctyltin groups: decided by the member name. */
+function diorganotinLinks(record: GadslRecord, chain: GadslRecord[]) {
+  if (!chain.some((f) => /^diorganotin/i.test(normalizeSubstanceName(f.substance)))) return [] as TszRow[];
+  const name = normalizeSubstanceName(record.substance);
+  return tsz3Records.filter((row) => {
+    const k = normalizeSubstanceName(row.values?.[2]);
+    return (k.includes("dibutyltin") && /dibutyl\s?\w*\s?tin|dibutyl stann|stannane dibutyl/.test(name))
+      || (k.includes("dioctyltin") && /dioctyl\s?\w*\s?tin|dioctyl stann|stannane dioctyl/.test(name));
+  });
+}
+
 /**
  * Appendix 3 "all members" groups list no CAS ("Various"). When the CAS itself is not listed,
  * the group is found from the GADSL substance name of that CAS (e.g. 1336-36-3 → GADSL
@@ -89,9 +182,29 @@ function groupsByName(names: string[]) {
 export function lookupSubstance(rawCas: string) {
   const cas = normalizeCas(rawCas);
   const active = [...byGadslCas(cas)];
-  const byCas = tsz3Records.filter((row) => textHasCas(row.values?.[3], cas));
-  const byName = byCas.length ? [] : groupsByName(active.map((row) => String(row.substance || "")));
-  const tsz = byCas.length ? byCas : byName;
+  // 1) CAS named in the Appendix 3 cell. 2) The GADSL family of the CAS (GADSL # / REF #, PFAS parents).
+  // 3) Diorganotin split by member name. 4) Last resort: the member's own substance name.
+  const links: Array<{ row: TszRow; link: TszLink }> = [];
+  const add = (row: TszRow, matchedBy: TszLink["matchedBy"], family: string, caution = "") => {
+    if (!links.some((l) => l.row === row)) links.push({ row, link: { tszNo: String(row.values?.[1] ?? "").trim(), matchedBy, family, caution } });
+  };
+  for (const row of tsz3Records) if (textHasCas(row.values?.[3], cas)) add(row, "cas", "");
+  if (!links.length) {
+    for (const rec of active) {
+      const chain = gadslFamilyChain(rec);
+      for (const fam of chain) {
+        const found = familyLinks(fam);
+        for (const f of found) add(f.row, "gadsl-family", firstLineOf(fam.substance), f.caution);
+        if (found.length) break;
+      }
+      if (!links.length) for (const row of diorganotinLinks(rec, chain)) add(row, "member-name", firstLineOf(chain[0]?.substance), "");
+    }
+  }
+  if (!links.length) for (const row of groupsByName(active.map((r) => String(r.substance || "")))) add(row, "substance-name", "", "Matched by the substance name only. Confirm the group.");
+  const tsz = links.map((l) => l.row);
+  const tszLinks = links.map((l) => l.link);
+  const gadslFamilies = [...new Map(active.flatMap(gadslFamilyChain).map((f) => [String(f.gadslNumber), f])).values()]
+    .map((f) => ({ gadslNumber: String(f.gadslNumber), substance: firstLineOf(f.substance), classification: f.classification, source: f.source, reportingThreshold: f.reportingThreshold }));
   const deleted = gadslDeletedRecords.filter((row) => normalizeCas(row.casOriginal || "") === cas);
   const relatedTszNumbers = new Set(tsz.map((row) => String(row.values?.[1] || "")));
   const popRows = popsRecords.filter((row) => relatedTszNumbers.has(String(row.values?.[1] || "")));
@@ -107,7 +220,9 @@ export function lookupSubstance(rawCas: string) {
     reachAnnexXVII: reach17Rows,
     reachAnnexXIV: reach14Rows,
     deletedGadslMatches: deleted,
-    tszMatchedBy: byCas.length ? "cas" as const : byName.length ? "group-name" as const : null,
+    tszLinks,
+    gadslFamilies,
+    tszMatchedBy: (tszLinks[0]?.matchedBy ?? null) as TszLink["matchedBy"] | null,
     notFound: active.length === 0 && tsz.length === 0 && deleted.length === 0,
     source: [
       "GADSL Reference List 2026 V1.0 / Reference List",

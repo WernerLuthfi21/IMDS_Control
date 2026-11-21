@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { lookupSubstance } from "@/lib/reference-data";
 
 describe("Appendix 3 'all members' groups", () => {
-  it("finds the PCB group from the GADSL name when the CAS is not listed, and its POPs rows", () => {
+  it("finds the PCB group through the GADSL family when the CAS is not listed, and its POPs rows", () => {
     const l = lookupSubstance("1336-36-3");
-    expect(l.tszMatchedBy).toBe("group-name");
+    expect(l.tszMatchedBy).toBe("gadsl-family");
     expect(String(l.tszGroups[0].values?.[2])).toMatch(/Polychlorinated biphenyls/);
     expect(l.pops.length).toBeGreaterThan(0);
   });

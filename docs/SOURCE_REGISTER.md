@@ -73,3 +73,12 @@ TMMIN destination codes → rule regions (`lib/judgement/destinations.ts`) come 
 - `gcatsFAQ.pdf` (image only), `gcatsSLA.pdf`, `3.G-CATS_Operation_-_How_to_-.pdf`, `CheckImdsStructure_…_86140YYA50.xlsx`: **no classification label found → UNKNOWN → blocked**, not read beyond the label check. ("IS CONFIDENTIAL" in the structure file is an IMDS column header.) Confirm the classification before they are used.
 - `GCATS_TMMIN_20261106.xls` (daily export): not opened; the G-CATS Detail view reads the same columns from the committed register (`raw_source`).
 - The G-CATS Detail layout (TMA package) follows the user's screenshot of TMC's G-CATS Detail screen.
+
+## Uploads of 2026-11-21 — reference lists and manuals
+
+Owner statement (Jasmin, 2026-11-21): all files below are **PROTECTED**, none CONFIDENTIAL; full reading permitted.
+GADSL Reference List 2026 V1, Appendix 3 / 4 / 5 (and the A3–A6 + MCCP judge-flow workbook), G-CATS Manual Flow Ver.7,
+G-CATS Manual Flow, G-CATS Manual Operation, G-CATS judgment Ver.5.1.10. Appendix 3–6 rows were compared with
+`data/reference/*.json`: identical (only a Japanese note in the #27 CAS cell differs). The CAS search failures came from the
+lookup, not the data: GADSL family rows (GADSL # / REF #) were ignored. Fixed; see `RULE_COVERAGE.md` "CAS → Appendix 3".
+

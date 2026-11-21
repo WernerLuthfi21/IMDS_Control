@@ -93,9 +93,18 @@ function substanceSteps(facts: RowFacts) {
     const no = String(t.values?.[1] ?? "").trim(), name = firstLine(t.values?.[2]);
     flowName = firstLine(t.values?.[4]);
     tszText = `${no} ${name}`.trim();
-    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "DONE", detail: `TSZ0001G #${no} · ${name} · judge flow: ${flowName || "—"}${lookup.tszMatchedBy === "group-name" ? " (\"all members\" group, matched by the GADSL substance name)" : ""}` });
+    const link = lookup.tszLinks[0];
+    const how = link?.matchedBy === "gadsl-family" ? ` · via GADSL family "${link.family}"`
+      : link?.matchedBy === "member-name" ? ` · via GADSL family "${link.family}" and the substance name`
+      : link?.matchedBy === "substance-name" ? " · matched by the substance name only" : " · CAS listed in Appendix 3";
+    const more = lookup.tszGroups.length > 1 ? ` (+${lookup.tszGroups.length - 1} more group${lookup.tszGroups.length > 2 ? "s" : ""})` : "";
+    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: link?.caution ? "MANUAL" : "DONE",
+      detail: `TSZ0001G #${no} · ${name} · judge flow: ${flowName || "—"}${how}${more}${link?.caution ? ". " + link.caution : ""}` });
   } else {
-    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "INFO", detail: `${cas} is not listed in Appendix 3. Use the GADSL entry and the substance-specific flow.` });
+    const fam = lookup.gadslFamilies[0];
+    steps.push({ id: "tsz", title: "Find TSZ0001G group in Appendix 3", status: "INFO",
+      detail: fam ? `${cas} (GADSL family #${fam.gadslNumber} "${fam.substance}") is not in Appendix 3 (TSZ0001G). Use the GADSL entry and the substance-specific flow.`
+        : `${cas} is not listed in Appendix 3. Use the GADSL entry and the substance-specific flow.` });
   }
   const bits: string[] = [];
   if (lookup.pops.length) bits.push(`POPs (${lookup.pops.length})`);

@@ -1731,3 +1731,4 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .sc-pred-tag{margin-left:auto;padding:2px 8px;border-radius:var(--r-1);background:var(--blue-bg);color:var(--blue);font-size:11.5px;font-weight:700}
 .sc-why{margin:2px 0 0;color:var(--muted);font-size:12px}
 @media(max-width:700px){.sc-id{grid-template-columns:1fr}}
+.callout-warning{border-color:var(--amber);background:var(--amber-bg);color:var(--ink)}
