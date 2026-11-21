@@ -40,7 +40,7 @@ Century Gothic stays the brand face (`--font`). Its web fallback Questrial is se
 CAS numbers, part numbers, supplier codes, masses, percentages, record keys and G-CATS comments — use the
 `.mono` class (or `code`) so digits line up (`tabular-nums`).
 
-Type scale — new and migrated rules use only these tokens (nothing below 11px):
+Type scale — every font size in `app/globals.css` uses these tokens since A1b (nothing below 11px; only hero `clamp()` headings are exempt):
 
 | Token | Size | Use |
 |---|---|---|

@@ -2,6 +2,11 @@
 
 ## 2026-11-21
 
+### Design system A1b: one type scale in the Judgement CSS
+- All 558 font sizes in `app/globals.css` now use the eight `--text-*` steps (30 sizes → 8; nothing below 11px).
+  Sizes map to the nearest step; 8–10.5px become 11px.
+- Font weights 650/750/800/850/900 map to 600/700 (9 weights → 4). Hero `clamp()` headings are unchanged.
+
 ### Design system A1a: self-hosted fonts, data face, type-scale tokens, UI audit script
 - `scripts/audit-ui.mjs` (dev only) prints the design-debt numbers for Judgement and the Tracker.
 - Questrial (Century Gothic fallback) and JetBrains Mono are self-hosted with `next/font`; the runtime Google
