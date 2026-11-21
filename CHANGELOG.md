@@ -2,6 +2,10 @@
 
 ## 2026-11-21
 
+### Judge flashcard in its own file
+- `components/judge-flashcard.tsx` holds the flashcard (decision, evidence, comment, keyboard); `review-deck.tsx`
+  keeps the deck state and data (512 → 360 lines). No behaviour change.
+
 ### Judge card A3: evidence and "recommended, not final"
 - Each card lists what the engine answered from the row or a master ("Answered from the row", JetBrains Mono),
   e.g. the mass-deviation maths, the four-phthalate sum, the Purchasing master lookup.

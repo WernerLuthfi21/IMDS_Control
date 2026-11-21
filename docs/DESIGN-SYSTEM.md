@@ -86,7 +86,8 @@ the Next.js CSS and the Tracker. Every UI pull request quotes the before/after n
 |---|---|---|
 | App shell, skip link, nav (`aria-current`), mobile search | `components/app-shell.tsx` | Sidebar is out of the tab order when closed on mobile; Esc closes it |
 | Command palette (Ctrl/⌘ K) | `components/command-palette.tsx` | Dialog + combobox/listbox; ↑ ↓ Enter Esc; returns focus |
-| Judgement table (Miko, piles, decks, flashcard) | `components/review-deck.tsx`, `components/miko-table.tsx` | Shortcuts only while focus is on the table |
+| Judgement table (Miko, piles, decks) | `components/review-deck.tsx`, `components/miko-table.tsx` |
+| Judge flashcard (decision, evidence, comment) | `components/judge-flashcard.tsx` | Shortcuts only while focus is on the table |
 | Case context (Rule path / History) | `components/case-context.tsx` | Loaded lazily, cached per case |
 | Flow chart canvas | `components/flow-library.tsx` | Pan, zoom, fit, reset, step details, case path |
 | Miko | `components/cat-mascot.tsx`, `components/cat-stage.tsx` | States below |
