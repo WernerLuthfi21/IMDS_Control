@@ -2,6 +2,13 @@
 
 ## 2026-11-21
 
+### Judge card A3: evidence and "recommended, not final"
+- Each card lists what the engine answered from the row or a master ("Answered from the row", JetBrains Mono),
+  e.g. the mass-deviation maths, the four-phthalate sum, the Purchasing master lookup.
+- A recommendation that still needs a person (e.g. WARP code found in the Purchasing master) shows a dashed
+  "Recommended OK — not final" line above the question, and the card asks Purchasing's Y/N directly instead of
+  landing in "missing". Nothing becomes final without that answer.
+
 ### Design system A1b: one type scale in the Judgement CSS
 - All 558 font sizes in `app/globals.css` now use the eight `--text-*` steps (30 sizes → 8; nothing below 11px).
   Sizes map to the nearest step; 8–10.5px become 11px.

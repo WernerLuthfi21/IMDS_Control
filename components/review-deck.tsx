@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, ArrowRight, Bot, Check, CheckCheck, CircleX, ExternalLink, FileText, FileWarning, History, LoaderCircle, RefreshCw, RotateCcw, X } from "lucide-react";
 import type { AutoOutput } from "@/lib/judgement/auto";
-import { classifyCase, NEED_LABEL, NEED_ORDER, type ReviewCard, type ReviewNeed } from "@/lib/judgement/review";
+import { classifyCase, evidenceOf, NEED_LABEL, NEED_ORDER, type ReviewCard, type ReviewNeed } from "@/lib/judgement/review";
 import { rememberAnswer, runCheck, saveJudgement } from "@/lib/judgement/client-save";
 import { answerKey, mergeAnswer, type DeckAnswers } from "@/lib/judgement/deck";
 import { CatMascot, type CatMood } from "@/components/cat-mascot";
@@ -17,11 +17,11 @@ type Row = { id: string; source_record_key: string; error_type_label: string; de
 type Candidate = {
   id: string; sourceRecordKey: string; errorType: string; partNo: string | null; supplierCode: string | null; cas?: string; kind: string;
   recommendation: { state: "OK" | "NG" | "HOLD"; comment: string; reason: string }; procedureText: string; signature: string;
-  eligible: boolean; inPendingQueue: boolean; draftFlow?: boolean; caution?: string; card: ReviewCard;
+  eligible: boolean; inPendingQueue: boolean; draftFlow?: boolean; caution?: string; card: ReviewCard; evidence?: string[];
 };
 type Saved = { id: string; judge: "OK" | "NG"; comment: string; procedure: string; actor?: string | null; date?: string | null };
 type Live = { given: DeckAnswers; check: AutoOutput };
-type View = { card: ReviewCard; rec: Candidate["recommendation"]; decided: boolean; procedure: string; draft: boolean; caution: string };
+type View = { card: ReviewCard; rec: Candidate["recommendation"]; decided: boolean; procedure: string; draft: boolean; caution: string; evidence: string[] };
 type NeedFilter = ReviewNeed | "all";
 const CHUNK = 200;
 const TMC = /contact tmc|report the p\/n and supplier information to tmc/i;
@@ -31,12 +31,12 @@ const WAITING = new Set<ReviewNeed>(["supplier", "purchasing", "tmc", "missing"]
 
 /** What a card shows now: the first evaluation, or the re-check after answers. */
 function viewOf(c: Candidate, l: Live | undefined): View {
-  if (!l) return { card: c.card, rec: c.recommendation, decided: c.eligible && (c.recommendation.state === "OK" || c.recommendation.state === "NG"), procedure: c.procedureText, draft: Boolean(c.draftFlow), caution: c.caution || "" };
+  if (!l) return { card: c.card, rec: c.recommendation, decided: c.eligible && (c.recommendation.state === "OK" || c.recommendation.state === "NG"), procedure: c.procedureText, draft: Boolean(c.draftFlow), caution: c.caution || "", evidence: c.evidence ?? [] };
   const rec = l.check.recommendation;
   const open = l.check.steps.some((s) => s.status === "NEEDS_INPUT" || s.status === "MANUAL") || Boolean(l.check.flow?.next);
   const decided = (rec.state === "OK" || rec.state === "NG") && !open && Boolean(rec.comment.trim());
   const card = classifyCase(l.check, { eligible: decided, tmcOpen: rec.state === "HOLD" && TMC.test(rec.reason), facts: {} });
-  return { card: { ...card, facts: c.card.facts }, rec, decided, procedure: l.check.procedureText || c.procedureText, draft: Boolean(l.check.flow?.draft), caution: l.check.flow?.caution || c.caution || "" };
+  return { card: { ...card, facts: c.card.facts }, rec, decided, procedure: l.check.procedureText || c.procedureText, draft: Boolean(l.check.flow?.draft), caution: l.check.flow?.caution || c.caution || "", evidence: evidenceOf(l.check) };
 }
 
 /**
@@ -462,6 +462,7 @@ function Flashcard({ cardRef, dealFrom, stamp, active, c, v, pos, total, left, c
             <strong>{c.partNo || "No part number"}</strong>
             <span className="jc-chip">Supplier {c.supplierCode || "—"}</span>
           </div>
+          {v.evidence.length > 0 && <div className="jc-evidence"><small>Answered from the row</small><ul>{v.evidence.map((e) => <li key={e}>{e}</li>)}</ul></div>}
           {c.card.facts.length > 0 && <dl className="jc-facts">{c.card.facts.map(([k, val]) => <div key={k} className={val.length > 26 ? "wide" : ""}><dt>{k}</dt><dd>{val}</dd></div>)}</dl>}
           <div className="jc-links">
             <button type="button" onClick={onDetail} disabled={!c.partNo}><FileText size={13}/> G-CATS detail</button>
@@ -488,6 +489,7 @@ function Flashcard({ cardRef, dealFrom, stamp, active, c, v, pos, total, left, c
             {canEdit && <button type="button" className={"jc-go " + decision.toLowerCase()} disabled={busy || !comment.trim()} onClick={() => onConfirm(decision as "OK" | "NG")}>
               {busy ? <LoaderCircle size={18} className="spin"/> : <Check size={18}/>} Confirm {decision}<kbd>Enter</kbd></button>}
           </> : q ? <>
+            {(v.rec.state === "OK" || v.rec.state === "NG") && <p className={"jc-rec " + v.rec.state.toLowerCase()}><span>Recommended {v.rec.state}</span> not final · a person confirms the answer below</p>}
             <div className="jc-ask"><small>Answer</small><strong>{q.text}</strong></div>
             <div className={"jc-opts" + (short ? " short" : "")}>{q.options.map(([val, label], i) => <button type="button" key={val} disabled={busy || !canEdit} onClick={() => onAnswer(q.field, val, q.id, all)}><kbd>{i + 1}</kbd><span>{label}</span></button>)}</div>
             {similar > 0 && canEdit && <label className="jc-same"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)}/><span>Also answer <b>{similar}</b> more · {TOYOTA_FIELDS.has(q.field === "answer" ? q.id : q.field) ? "same part" : "same supplier, part, CAS"}</span></label>}

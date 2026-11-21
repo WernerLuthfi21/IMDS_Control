@@ -111,6 +111,18 @@ Miko reports the table's real state; it is not a chatbot and never blocks the wo
 
 Clicking Miko opens a small popover: what the piles mean, keyboard shortcuts, and the save rule.
 
+### Judge card decision states
+
+| State | Look | Rule |
+|---|---|---|
+| Decided (OK / NG) | Filled badge, the word in large type, Confirm button | No open step, comment present |
+| Recommended, not final | Dashed outline "Recommended OK/NG — not final", question below | Engine has a recommendation but a person still answers (e.g. WARP Purchasing) |
+| Needs an answer | "Answer" + options with number keys | Flow question open |
+| Waiting | Amber badge, who it waits on | Supplier, Purchasing, TMC, missing source |
+
+Under the part number, "Answered from the row" lists the engine's automatic answers (mono), so the reviewer sees
+the evidence next to the decision.
+
 ## States every screen must have
 
 Empty (say what would fill it), loading (say what is happening), error (say what failed and that nothing
