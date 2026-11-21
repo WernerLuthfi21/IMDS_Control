@@ -2,6 +2,13 @@
 
 ## 2026-11-21
 
+### Security headers on every route; "Handed off" wording
+- Enforced Content-Security-Policy and `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  COOP and (production) HSTS for all routes (`lib/security/headers.ts`, `next.config.ts`). The Tracker gets only the
+  extra hosts it already uses. Details and next steps (nonce, SRI for Tracker CDN scripts) in `docs/SECURITY.md`.
+- Supplier follow-up results say **Handed off** instead of "SENT": HTTP 2xx from the flow is a hand-off, not
+  delivery (CLAUDE.md).
+
 ### Judge: more cases decided from the row, reliably, and faster bulk evaluation
 - No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.
 - No.9 "TOYOTA?" answers No from the material name too (blank / `***` still asks); refrigerant (HFC) likewise.
