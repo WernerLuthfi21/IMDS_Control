@@ -1732,3 +1732,6 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .sc-why{margin:2px 0 0;color:var(--muted);font-size:12px}
 @media(max-width:700px){.sc-id{grid-template-columns:1fr}}
 .callout-warning{border-color:var(--amber);background:var(--amber-bg);color:var(--ink)}
+
+/* icon tints (no hex in components) */
+.ic-amber{color:var(--amber)}.ic-muted{color:var(--muted)}.ic-blue{color:var(--blue)}.ic-green{color:var(--green)}

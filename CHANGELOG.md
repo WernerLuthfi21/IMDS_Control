@@ -2,6 +2,11 @@
 
 ## 2026-11-21
 
+### No hex colours in components
+- Icon tints and the automation test notes use theme tokens (`.ic-amber`, `.ic-muted`, `.ic-blue`, `.ic-green`,
+  `var(--green)` / `var(--red)`) instead of hard-coded hex, so they follow light/dark. Only the Miko illustration
+  keeps its own artwork colours.
+
 ### Judge: more cases decided from the row, reliably, and faster bulk evaluation
 - No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.
 - No.9 "TOYOTA?" answers No from the material name too (blank / `***` still asks); refrigerant (HFC) likewise.

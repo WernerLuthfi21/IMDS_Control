@@ -9,7 +9,7 @@ type Result = { id: string; state: "wait" | "sending" | "SENT" | "FAILED" | "SKI
 const TRANSPORT: Record<string, string> = { http: "direct (HTTP)", mail: "via mailbox" };
 
 function Step({ ok, label, detail, action }: { ok: boolean; label: string; detail?: string; action?: React.ReactNode }) {
-  return <li style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "6px 0" }}>{ok ? <CheckCircle2 size={16} color="#166534"/> : <Circle size={16} color="#a16207"/>}
+  return <li style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "6px 0" }}>{ok ? <CheckCircle2 size={16} className="ic-green"/> : <Circle size={16} className="ic-amber"/>}
       <div style={{ flex: 1 }}><strong>{label}</strong>{detail && <div style={{ fontSize: 12, color: "var(--muted)" }}>{detail}</div>}</div>{action}</li>
 }
 
@@ -81,10 +81,10 @@ export function AutomationPanel() {
     <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0 }}>
       <Step ok={!!status?.configured.excel} label="Excel master flow" detail={status?.configured.excel ? "Connected " + (TRANSPORT[status.transport?.excel || ""] || "") : "Set POWER_AUTOMATE_EXCEL_URL (or the FLOW_SMTP_* mailbox settings) in Vercel, then redeploy"}
         action={status?.configured.excel && <button className="btn btn-sm" type="button" disabled={testing === "excel"} onClick={() => void runTest("excel")}>{testing === "excel" ? "Testing…" : "Test"}</button>}/>
-      {testNote.excel && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.excel.ok ? "#166534" : "#b42336" }}>{testNote.excel.text}</li>}
+      {testNote.excel && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.excel.ok ? "var(--green)" : "var(--red)" }}>{testNote.excel.text}</li>}
       <Step ok={!!status?.configured.email} label="Supplier e-mail flow" detail={status?.configured.email ? "Connected " + (TRANSPORT[status.transport?.email || ""] || "") : "Set POWER_AUTOMATE_EMAIL_URL (or the FLOW_SMTP_* mailbox settings) in Vercel"}
         action={status?.configured.email && <button className="btn btn-sm" type="button" disabled={testing === "email"} onClick={() => void runTest("email")}>{testing === "email" ? "Sending…" : "Send test to me"}</button>}/>
-      {testNote.email && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.email.ok ? "#166534" : "#b42336" }}>{testNote.email.text}</li>}
+      {testNote.email && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.email.ok ? "var(--green)" : "var(--red)" }}>{testNote.email.text}</li>}
       <Step ok={!!status?.configured.secret} label="Shared secret" detail={status?.configured.secret ? "Set" : "Set POWER_AUTOMATE_SECRET so the flow only accepts this app"}/>
     </ul>
 
