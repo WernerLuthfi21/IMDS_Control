@@ -29,3 +29,4 @@ describe("security headers", () => {
     expect(securityHeaders({ dev: false, csp: false }).some((h) => h.key === "Content-Security-Policy")).toBe(false);
   });
 });
+

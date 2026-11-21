@@ -1329,8 +1329,6 @@ html[data-theme="dark"] .mt-fam.on{--tn:#14532d}
 .mt-slot-card{width:90px;height:126px;border-radius:12px;background:linear-gradient(160deg,#fffdf7,#efe7d3);box-shadow:0 10px 18px -10px rgba(0,0,0,.6);animation:mt-shuffle 1.1s ease-in-out infinite}
 @keyframes mt-shuffle{0%,100%{transform:translateX(-10px) rotate(-4deg)}50%{transform:translateX(10px) rotate(4deg)}}
 
-/* the case card is a physical card: always light, whatever the theme */
-.mt .jc,.mt-auto .aj{color-scheme:light;--bg:#f6f7f8;--glass-bg:rgba(255,255,255,.75);--glass-bg-2:rgba(246,252,248,.6);--amber:#98620a;--amber-bg:#fff6e5;--green:#18794e;--green-bg:#eaf6ef;--blue-bg:#edf4fc;--red-bg:#fff0f2;--press-top:#1d7f48;--press-bot:#125a31;--press-ink:#fff;--surface:#fffdf7;--surface-2:#f6f1e4;--ink:#1d2a22;--muted:#5b6660;--faint:#666d69;--line:#e6dfcd;--line-strong:#d2c8ae;--glass-ink:#173825;--glass-muted:#4c6355;--glass-edge:rgba(255,255,255,.9);--glass-line:rgba(28,100,58,.16);--accent:#167a45;--accent-soft:#eaf6ef;--k-green-bg:#e3f5ea;--k-red-bg:#fde9ec;--k-amber-bg:#fff4dd;--k-blue-bg:#e6effa;--k-violet-bg:#efe9fd;--aj-ok:#15803d;--aj-ng:#b42336;--aj-hold:#8a5a06;--red:#b42336;--blue:#315f98;color:var(--ink)}
 .mt .jc{border:1px solid #d9cfb6;box-shadow:0 1px 0 #fff inset,0 0 0 1px rgba(0,0,0,.04),0 2px 0 #e8e0cc,0 4px 0 #ddd3bb,0 26px 40px -22px rgba(0,0,0,.75);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
 .mt .jc:hover{transform:translateY(-2px);box-shadow:0 1px 0 #fff inset,0 0 0 1px rgba(0,0,0,.04),0 2px 0 #e8e0cc,0 4px 0 #ddd3bb,0 34px 48px -24px rgba(0,0,0,.8)}
 .mt .jc.dragging{transition:none}
@@ -1363,7 +1361,6 @@ html .mt .jc .n-destination,html .mt .jc .n-drawing{--rd-bg:#e6effa;--rd-ink:#31
   .mt-fam{min-height:30px;font-size:var(--text-sm)}
 }
 @media(prefers-reduced-motion:reduce){.mt-pile,.mt .jc{transition:none}.mt-pile.bump,.jc-stamp,.mt-slot-card{animation:none}}
-html[data-theme="dark"] .mt .jc textarea,html[data-theme="dark"] .mt .jc input:not([type=checkbox]),html[data-theme="dark"] .mt-auto .aj input:not([type=checkbox]),html[data-theme="dark"] .mt-auto .aj select,html[data-theme="dark"] .mt-auto .aj textarea{background-color:#fff;border-color:#d2c8ae;color:#1d2a22}
 @media(max-width:560px){.mt-face::before{display:none}.mt-face{padding:6px 9px}}
 html .mt .jc :is(h1,h2,h3),html .mt-auto .aj :is(h1,h2,h3){color:var(--glass-ink)}
 html[data-theme="dark"] .mt-auto .aj-mode.shadow{background:#fff4dd;color:#8a5a06;border-color:#f0d9a8}
@@ -1762,3 +1759,97 @@ html[data-theme="dark"] .fl-search input{background:transparent}
 .cfm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
 /* icon tints (no hex in components) */
 .ic-amber{color:var(--amber)}.ic-muted{color:var(--muted)}.ic-blue{color:var(--blue)}.ic-green{color:var(--green)}
+
+/* ═══ CALM LAYER — one surface system for the Judge board (2026-11-21) ═══
+   The board used a felt-table skin with always-light paper cards, 3D orbs and yellow glows. In dark mode that
+   put cream cards on green felt next to dark panels: two products on one screen. This layer draws the board
+   with the app's own tokens: luminance steps for depth, hairlines only where needed, state colour as a small
+   dot or edge, one accent for "selected". Loaded last. */
+
+/* overview strip */
+.js{background:var(--surface);color:var(--ink);border:0;border-top:1px solid var(--edge-hi);box-shadow:var(--e-1);border-radius:var(--r-3)}
+html[data-theme="dark"] .js{background:var(--surface)}
+.js-eyebrow{color:var(--muted);font-weight:600;letter-spacing:.08em}
+.js-issue{color:var(--ink);font-weight:600}
+.js-issue em{background:var(--amber-bg);color:var(--amber);font-weight:700}
+.js-ring b{color:var(--ink)}
+.js-ring .ov-ring-track{stroke:var(--line)}
+.js-nums>div{background:var(--surface-2);border:0;box-shadow:none}
+.js-nums dt{color:var(--muted);font-weight:600}
+.js-nums dd{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.js-nums .d dd{color:var(--green)}.js-nums .w dd{color:var(--amber)}
+
+/* the board */
+.mt{--mt-ink:var(--ink);--mt-ink-2:var(--muted);--mt-chip:var(--surface-2);--mt-chip-bd:var(--line);background:var(--surface) !important;border:0;border-top:1px solid var(--edge-hi);box-shadow:var(--e-1);border-radius:var(--r-3);color:var(--ink)}
+.mt-say strong{color:var(--ink);font-weight:700}
+.mt-say span{color:var(--muted)}
+
+/* buttons + filter chips on the board */
+.mt-btn,.mt-icon,.mt .jb-needs button{background:var(--surface-2);border:1px solid var(--line);color:var(--ink);font-weight:600}
+.mt-btn:hover,.mt-icon:hover,.mt .jb-needs button:hover{background:var(--accent-soft)}
+.mt .jb-needs button b{color:var(--muted);font-family:var(--f-mono);font-weight:500}
+.mt-btn.on,.mt .jb-needs button.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.mt .jb-needs button.on b{color:var(--surface)}
+.mt-btn:focus-visible,.mt-icon:focus-visible,.mt .jb-needs button:focus-visible,.mt-deck:focus-visible,.mt-pile:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+
+/* status piles and error-type decks: flat tiles, state as an edge */
+.mt-edges{display:none}
+.mt-face,.mt-deck-face{background:var(--surface-2) !important;border:1px solid var(--line) !important;box-shadow:none !important}
+.mt-face::before{display:none}
+.mt-face-top small{color:var(--pc);font-weight:700}
+.mt-face-top b,.mt-case strong,.mt-deck-name{color:var(--ink)}
+.mt-face-top b{font-family:var(--f-mono);font-weight:600}
+.mt-case{border-top:1px solid var(--line)}
+.mt-case strong{font-family:var(--f-mono);font-weight:500;letter-spacing:0}
+.mt-case em,.mt-deck-stats{color:var(--muted)}
+.mt-case i.ok{background:var(--green-bg);color:var(--green)}.mt-case i.ng{background:var(--red-bg);color:var(--red)}
+.mt-pile:hover,.mt-deck:hover,.mt-deck.on{transform:none}
+.mt-pile:hover .mt-face,.mt-deck:hover .mt-deck-face{background:var(--surface) !important;border-color:var(--line-strong) !important}
+.mt-pile.on .mt-face,.mt-deck.on .mt-deck-face{border-color:var(--accent) !important;box-shadow:0 0 0 1px var(--accent) !important;background:var(--surface) !important}
+.mt-deck-face::after{width:3px}
+.mt-deck-top b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.mt-deck-name{font-weight:600}
+.mt-deck-stats{font-weight:500}
+.mt-deck-stats .d{color:var(--green)}.mt-deck-stats .w{color:var(--amber)}
+.mt-deck-bar{background:var(--line)}
+.mt-deck-bar .d{background:var(--green)}.mt-deck-bar .w{background:var(--amber)}
+
+/* orbs → flat dots (state colour, no 3D) */
+.jb-orb{width:10px !important;height:10px !important;background:var(--tn) !important;box-shadow:none !important}
+.jb-orb>*{display:none}
+
+/* empty / loading slots */
+.mt-slot{border:1px dashed var(--line-strong);color:var(--ink)}
+.mt-slot span{color:var(--muted)}
+.mt-slot-card{background:var(--surface-2);box-shadow:none}
+.mt .rd-progress,.mt .rd-notice{background:var(--surface-2);color:var(--ink)}
+.mt-retry{background:var(--accent);color:var(--surface)}
+
+/* the case card follows the theme */
+.mt .jc{border:1px solid var(--line) !important;box-shadow:var(--e-2) !important}
+.mt .jc:hover{transform:none}
+.mt .jc-ghost{background:var(--surface-2);border-color:var(--line)}
+.mt .jc-head{background:var(--surface-2) !important}
+.jc-decide.ok,.jc-decide.ng,.jc-decide.ask,.jc-decide.wait{background:var(--surface-2)}
+.jc-decide.ok .jc-verdict strong{color:var(--green)}.jc-decide.ng .jc-verdict strong{color:var(--red)}
+.jc-badge{background:var(--tn,var(--accent)) !important;box-shadow:none !important}
+.jc-decide.ok .jc-badge{background:var(--green) !important;color:var(--surface)}.jc-decide.ng .jc-badge{background:var(--red) !important;color:var(--surface)}
+.jc-facts dt,.jc-evidence small,.jc-comment label{color:var(--muted)}
+.jc-facts dd{color:var(--ink)}
+.jc-evidence li{font-family:var(--font);font-size:var(--text-sm);color:var(--ink)}
+:root{--edge-hi:rgba(255,255,255,.75)}
+html[data-theme="dark"]{--edge-hi:rgba(255,255,255,.07)}
+
+/* state tones read on dark surfaces */
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-red{--tn:#F0A29C;--tb:#3D2321}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-orange{--tn:#F2B27A;--tb:#3A2A17}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-blue{--tn:#9DC0DD;--tb:#1B3141}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-violet{--tn:#C3B0F2;--tb:#2A2540}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-teal{--tn:#86D3C9;--tb:#173A36}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-amber{--tn:#E6BC6A;--tb:#3A2F17}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-pink{--tn:#F0A6C9;--tb:#3B2230}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-slate{--tn:#B8C2CF;--tb:#26303A}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-green{--tn:#8FD1A6;--tb:#1C3B2B}
+html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-indigo{--tn:#AEB4F5;--tb:#24264A}
+html[data-theme="dark"] .mt .jc .jx-error{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.js-nums>div:not(.d):not(.w) dd{color:var(--ink)}

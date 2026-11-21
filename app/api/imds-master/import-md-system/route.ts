@@ -36,6 +36,8 @@ function plain(value: unknown): string | number | boolean | null {
   if (typeof value === "object") {
     const v = value as Record<string, unknown>;
     if ("error" in v) return null; // Excel error cell (#N/A, #REF!…): no value, never the JSON text {"error":…}
+    // Formula cell: use the cached result; without one there is no value (never the JSON {"formula":…}).
+    if ("formula" in v || "sharedFormula" in v) return v.result === undefined || v.result === null ? null : plain(v.result);
     if ("result" in v) return plain(v.result);
     if ("text" in v && typeof v.text === "string") return v.text;
     if ("richText" in v && Array.isArray(v.richText)) {
