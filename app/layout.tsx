@@ -20,6 +20,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     const allowed = pathname.startsWith("/supplier-precheck") || pathname.startsWith("/api/") || ["/login", "/forgot-password", "/reset-password", "/setup-required"].includes(pathname) || pathname.startsWith("/auth/");
     if (pathname && !allowed) redirect("/supplier-precheck");
   }
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const themeScript = `try{var t=localStorage.getItem("imds-theme");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
-  return <html lang="en" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head><body><AppShell role={role} email={auth.email}>{children}</AppShell></body></html>;
+  return <html lang="en" suppressHydrationWarning><head><script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} /></head><body><AppShell role={role} email={auth.email}>{children}</AppShell></body></html>;
 }

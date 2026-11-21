@@ -97,8 +97,9 @@ and the E2E header check):
 - **Content-Security-Policy (enforced)**: `default-src 'self'`; scripts only from this origin (+ `vercel.live` for
   preview comments); `connect-src` this origin + the Supabase project (https + wss); `img-src` self, data:, blob:,
   Supabase; fonts self-hosted (`font-src 'self'`); `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
-  `frame-ancestors 'none'`. Scripts still allow `'unsafe-inline'` because Next.js bootstrap scripts are not
-  nonce-tagged yet — **next step: per-request nonce in `proxy.ts`**, then drop `'unsafe-inline'`.
+  `frame-ancestors 'none'`. App pages get a **per-request nonce** from `proxy.ts` (`'nonce-…' 'strict-dynamic'`); Next.js tags its
+  scripts from the request CSP header and the layout tags the theme script via `x-nonce`. An injected inline script
+  without the nonce does not run. `'unsafe-inline'` remains only as the CSP1 fallback (ignored when a nonce is present).
 - `/imds-tracker` gets the same policy plus exactly what the approved Tracker loads: cdnjs (SheetJS, jsPDF,
   autotable), jsDelivr (MSAL), Google Fonts, Microsoft Graph / login. COOP there is `same-origin-allow-popups` for
   the MSAL sign-in popup; everywhere else `same-origin`.

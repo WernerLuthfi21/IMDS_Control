@@ -126,6 +126,7 @@ test("every page sends the security headers (CSP, no framing, nosniff)", async (
   const h = res!.headers();
   expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
   expect(h["content-security-policy"]).toContain("object-src 'none'");
+  expect(h["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
   expect(h["x-content-type-options"]).toBe("nosniff");
   expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   await expect(page.getByRole("heading").first()).toBeVisible();

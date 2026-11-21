@@ -2,6 +2,10 @@
 
 ## 2026-11-21
 
+### CSP nonce for app pages
+- `proxy.ts` sets a fresh CSP nonce per request (`'nonce-…' 'strict-dynamic'`); inline scripts without it are
+  blocked. The Tracker keeps its own policy (inline handlers). Tests: `tests/security-headers.test.ts`, E2E header check.
+
 ### Security headers on every route; "Handed off" wording
 - Enforced Content-Security-Policy and `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
   COOP and (production) HSTS for all routes (`lib/security/headers.ts`, `next.config.ts`). The Tracker gets only the

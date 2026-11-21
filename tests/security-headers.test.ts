@@ -20,4 +20,12 @@ describe("security headers", () => {
     expect(securityHeaders({ dev: false }).some((h) => h.key === "Strict-Transport-Security")).toBe(true);
     expect(securityHeaders({ dev: true }).some((h) => h.key === "Strict-Transport-Security")).toBe(false);
   });
+  it("app pages: a nonce turns on strict-dynamic; proxy sets it, next.config does not duplicate it", async () => {
+    const { makeNonce } = await import("@/lib/security/headers");
+    const n = makeNonce();
+    expect(n).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+    expect(makeNonce()).not.toBe(n);
+    expect(contentSecurityPolicy({ dev: false, nonce: n })).toContain(`script-src 'self' 'nonce-${n}' 'strict-dynamic'`);
+    expect(securityHeaders({ dev: false, csp: false }).some((h) => h.key === "Content-Security-Policy")).toBe(false);
+  });
 });

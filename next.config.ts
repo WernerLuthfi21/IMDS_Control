@@ -11,7 +11,8 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "20mb" } },
   async headers() {
     return [
-      { source: "/((?!imds-tracker).*)", headers: securityHeaders({ dev, supabaseUrl }) },
+      // App pages: the CSP with a per-request nonce comes from proxy.ts; API routes need no CSP.
+      { source: "/((?!imds-tracker).*)", headers: securityHeaders({ dev, supabaseUrl, csp: false }) },
       { source: "/imds-tracker/:path*", headers: securityHeaders({ dev, supabaseUrl, tracker: true }) },
       { source: "/imds-tracker", headers: securityHeaders({ dev, supabaseUrl, tracker: true }) }
     ];

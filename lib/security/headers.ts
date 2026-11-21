@@ -1,8 +1,9 @@
 /**
  * HTTP security headers for every route (docs/SECURITY.md → Browser security headers).
- * CSP is enforced. Scripts still need 'unsafe-inline' because Next.js inline bootstrap scripts are not
- * nonce-tagged yet; the policy already blocks foreign script hosts, plugins, framing, <base> hijacking and
- * form posts or fetches to unknown origins. Next step: per-request nonce in proxy.ts.
+ * CSP is enforced. App pages get a per-request nonce from proxy.ts ('nonce-…' + 'strict-dynamic'): an inline
+ * script without the nonce does not run. 'unsafe-inline' stays only as the fallback CSP1 browsers read (CSP2+
+ * browsers ignore it when a nonce is present). The approved Tracker page has inline handlers, so it keeps its
+ * own policy without a nonce (set in next.config.ts).
  */
 type Header = { key: string; value: string };
 
@@ -10,7 +11,7 @@ function origin(url: string | undefined): string | null {
   try { return url ? new URL(url).origin : null; } catch { return null; }
 }
 
-export function contentSecurityPolicy(opts: { dev: boolean; supabaseUrl?: string; tracker?: boolean }): string {
+export function contentSecurityPolicy(opts: { dev: boolean; supabaseUrl?: string; tracker?: boolean; nonce?: string }): string {
   const sb = origin(opts.supabaseUrl);
   const sbWs = sb ? sb.replace(/^http/, "ws") : null;
   // The IMDS Tracker (approved standalone page) loads its libraries from two CDNs and talks to Microsoft Graph.
@@ -19,7 +20,7 @@ export function contentSecurityPolicy(opts: { dev: boolean; supabaseUrl?: string
   const trackerFonts = opts.tracker ? ["https://fonts.googleapis.com"] : [];
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", ...(opts.dev ? ["'unsafe-eval'"] : []), "https://vercel.live", ...trackerScripts],
+    "script-src": ["'self'", ...(opts.nonce ? [`'nonce-${opts.nonce}'`, "'strict-dynamic'"] : []), "'unsafe-inline'", ...(opts.dev ? ["'unsafe-eval'"] : []), "https://vercel.live", ...trackerScripts],
     "style-src": ["'self'", "'unsafe-inline'", ...trackerFonts],
     "img-src": ["'self'", "data:", "blob:", ...(sb ? [sb] : [])],
     "font-src": ["'self'", "data:", ...(opts.tracker ? ["https://fonts.gstatic.com"] : [])],
@@ -34,9 +35,16 @@ export function contentSecurityPolicy(opts: { dev: boolean; supabaseUrl?: string
   return Object.entries(directives).map(([k, v]) => `${k} ${v.join(" ")}`).join("; ");
 }
 
-export function securityHeaders(opts: { dev: boolean; supabaseUrl?: string; tracker?: boolean }): Header[] {
+/** A fresh nonce per request (base64 of 16 random bytes). */
+export function makeNonce(): string {
+  const b = new Uint8Array(16); crypto.getRandomValues(b);
+  return btoa(String.fromCharCode(...b));
+}
+
+/** Static headers for next.config.ts. `csp: false` when proxy.ts sets the nonce CSP for that route. */
+export function securityHeaders(opts: { dev: boolean; supabaseUrl?: string; tracker?: boolean; csp?: boolean }): Header[] {
   return [
-    { key: "Content-Security-Policy", value: contentSecurityPolicy(opts) },
+    ...(opts.csp === false ? [] : [{ key: "Content-Security-Policy", value: contentSecurityPolicy(opts) }]),
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
