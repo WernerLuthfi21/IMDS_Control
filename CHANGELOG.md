@@ -2,6 +2,11 @@
 
 ## 2026-11-21
 
+### Tracker on the shared type system (approved by Jasmin, 2026-11-21)
+- Tracker CSS uses the same eight `--text-*` steps as Judgement (127 sizes; 24 sizes → 8, display numbers above
+  32px keep their size) and four weights (650/720/750/800 → 600/700).
+- Tracker `--f-mono` is now JetBrains Mono (it was Century Gothic), so part numbers and counts line up like in Judgement.
+
 ### Judge flashcard in its own file
 - `components/judge-flashcard.tsx` holds the flashcard (decision, evidence, comment, keyboard); `review-deck.tsx`
   keeps the deck state and data (512 → 360 lines). No behaviour change.

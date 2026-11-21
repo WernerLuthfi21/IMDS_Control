@@ -64,6 +64,9 @@ Headings ≥24px use `--track-display` (−0.02em). Weights: 400, 500, 600, 700 
 | Label, eyebrow | `--text-xs` / 700, uppercase, letter-spacing .08em |
 | Numbers | `font-variant-numeric: tabular-nums` (set on `body`); codes in `--f-mono` |
 
+The IMDS Tracker (`private/imds-tracker.html`, purple accent) uses the same `--text-*` steps, the same four
+weights and JetBrains Mono for data since 2026-11-21. Its colours stay its own (approved purple palette).
+
 ## Design-debt audit
 
 `node scripts/audit-ui.mjs` (dev only, no dependencies) prints hex counts, font sizes and weights, radius values,
