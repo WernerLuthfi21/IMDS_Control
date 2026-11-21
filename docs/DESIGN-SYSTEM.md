@@ -67,6 +67,18 @@ Headings ≥24px use `--track-display` (−0.02em). Weights: 400, 500, 600, 700 
 The IMDS Tracker (`private/imds-tracker.html`, purple accent) uses the same `--text-*` steps, the same four
 weights and JetBrains Mono for data since 2026-11-21. Its colours stay its own (approved purple palette).
 
+### One surface system (2026-11-21)
+
+- **Judge board**: no felt table, no always-light paper cards, no 3D orbs, no yellow glow. The board, piles,
+  error-type decks and the case card use the theme tokens (`--surface`, `--surface-2`, `--line`, `--ink`,
+  `--muted`); state colour shows as a small dot or a 3px edge; "selected" is one accent outline. Counts and part
+  numbers use the mono face. Evidence lines use the body font (mono is for codes, not sentences).
+- **Tracker**: integrated, own character. Same structure as the app shell — full-height sidebar (same width,
+  brand block "IMDS / G-CATS · IMDS Tracker", back button, nav item size, user row), full-width 60px top bar,
+  24px page title, flat tiles, status as a dot + the word (no emoji). Its colour stays violet: plum sidebar, the
+  Tracker's violet-tinted surfaces, violet active-nav edge and accents; the cube mascot stays small (like Miko).
+  **Judgement = green, Tracker = purple** — same layout, two characters.
+
 ## Design-debt audit
 
 `node scripts/audit-ui.mjs` (dev only, no dependencies) prints hex counts, font sizes and weights, radius values,
@@ -144,6 +156,6 @@ this database). The case History panel is the reference implementation.
 
 ## Not allowed
 
-Purple gradients, glassmorphism, glow, emoji as icons, infinite idle animation, decorative 3D, fake or
+Purple gradients, glassmorphism, glow, emoji as icons, 3D orbs or cubes, light "paper" cards inside a dark theme, infinite idle animation, decorative 3D, fake or
 "example" data shown as real (fixtures in screenshots are labelled FIXTURE), inline hex colours in
 components (use tokens), new `!important` outside the token layer.

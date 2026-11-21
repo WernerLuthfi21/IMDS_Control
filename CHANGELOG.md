@@ -2,6 +2,16 @@
 
 ## 2026-11-21
 
+### One surface system: Judge board and Tracker look like one app
+- Judge board: the felt-table skin, always-light paper cards, 3D orbs and yellow glows are replaced by the theme
+  tokens (flat tiles, state as a dot or edge, one accent outline for "selected"); the case card follows light/dark;
+  counts and part numbers in the mono face; evidence lines in the body font.
+- Tracker: same shell structure as the app (full-height sidebar with the same brand block, back button, nav sizes and
+  user row; full-width top bar; 24px page title; flat tiles; status = dot + word, no emoji) but its own character:
+  plum sidebar, violet surfaces and accents, small cube mascot. Judgement stays green, Tracker stays purple.
+- Fix: Excel formula cells without a cached value were stored and shown as `{"formula":"_xlfn…"}` (e.g. supplier
+  contact e-mail in Suppliers). Importers now keep the cached result or nothing; existing rows are cleaned when shown.
+
 ### Tracker on the shared type system (approved by Jasmin, 2026-11-21)
 - Tracker CSS uses the same eight `--text-*` steps as Judgement (127 sizes; 24 sizes → 8, display numbers above
   32px keep their size) and four weights (650/720/750/800 → 600/700).

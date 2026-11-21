@@ -15,5 +15,9 @@ export function cleanCell(v: unknown): string {
   if (!s) return "";
   if (ERROR_CODE.test(s)) return "";
   if (/^\{\s*"error"\s*:/.test(s)) return "";
+  // Formula cells stored as JSON text by older imports: use the cached result, else nothing.
+  if (/^\{\s*"(?:formula|sharedFormula|result)"\s*:/.test(s)) {
+    try { const o = JSON.parse(s) as Record<string, unknown>; return "result" in o ? cleanCell(o.result) : ""; } catch { return ""; }
+  }
   return s;
 }
