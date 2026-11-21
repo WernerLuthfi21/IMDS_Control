@@ -2,6 +2,13 @@
 
 ## 2026-11-21
 
+### Design system A1a: self-hosted fonts, data face, type-scale tokens, UI audit script
+- `scripts/audit-ui.mjs` (dev only) prints the design-debt numbers for Judgement and the Tracker.
+- Questrial (Century Gothic fallback) and JetBrains Mono are self-hosted with `next/font`; the runtime Google
+  Fonts import is gone from `app/globals.css`.
+- Codes and numbers (`.mono`, `code`, rule codes, destination codes) use JetBrains Mono with tabular digits.
+- Type-scale tokens `--text-xs … --text-3xl` and line-height tokens added; `docs/DESIGN-SYSTEM.md` → Type.
+
 ### Judge: more cases decided from the row, reliably, and faster bulk evaluation
 - No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.
 - No.9 "TOYOTA?" answers No from the material name too (blank / `***` still asks); refrigerant (HFC) likewise.

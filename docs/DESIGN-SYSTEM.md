@@ -35,16 +35,40 @@ friends) are routed to `--muted` by a single rule, because on paper they fell to
 
 ## Type
 
-Century Gothic is the face (`--font`, with Questrial / URW Gothic / system fallbacks). One family for
-everything; hierarchy comes from size and weight.
+Century Gothic stays the brand face (`--font`). Its web fallback Questrial is self-hosted by `next/font` in
+`app/layout.tsx` (no runtime request to Google). **Data uses JetBrains Mono** (`--f-mono`, also self-hosted):
+CAS numbers, part numbers, supplier codes, masses, percentages, record keys and G-CATS comments — use the
+`.mono` class (or `code`) so digits line up (`tabular-nums`).
+
+Type scale — new and migrated rules use only these tokens (nothing below 11px):
+
+| Token | Size | Use |
+|---|---|---|
+| `--text-xs` | 11px | Labels, eyebrows, table headers (uppercase, letter-spacing .08em) |
+| `--text-sm` | 12px | Table cells, form labels, badges |
+| `--text-md` | 13px | Dense UI text, buttons |
+| `--text-base` | 14px | Body |
+| `--text-lg` | 16px | Panel titles |
+| `--text-xl` | 20px | Section titles, decision label |
+| `--text-2xl` | 24px | Page titles |
+| `--text-3xl` | 32px | Workspace landing, the OK / NG word on the Judge card |
+
+Line height: `--lh-tight` 1.25 (headings), `--lh-ui` 1.4 (tables, controls), `--lh-body` 1.6 (prose).
+Headings ≥24px use `--track-display` (−0.02em). Weights: 400, 500, 600, 700 only.
 
 | Role | Size / weight |
 |---|---|
-| Page title | 26px / 700 |
-| Section title | 15–19px / 700–800 |
-| Body | 13–14px / 400–600 |
-| Label, eyebrow | 10.5–11px / 700, uppercase, letter-spacing .08–.12em |
-| Numbers | `font-variant-numeric: tabular-nums` (set on `body`) |
+| Page title | `--text-2xl` / 700 |
+| Section title | `--text-lg`–`--text-xl` / 700 |
+| Body | `--text-md`–`--text-base` / 400–600 |
+| Label, eyebrow | `--text-xs` / 700, uppercase, letter-spacing .08em |
+| Numbers | `font-variant-numeric: tabular-nums` (set on `body`); codes in `--f-mono` |
+
+## Design-debt audit
+
+`node scripts/audit-ui.mjs` (dev only, no dependencies) prints hex counts, font sizes and weights, radius values,
+`1px solid` borders, inline styles, `confirm()`, Tracker `innerHTML` writes, CSP and Google Fonts references for
+the Next.js CSS and the Tracker. Every UI pull request quotes the before/after numbers in its description.
 
 ## Shape, depth, motion
 
