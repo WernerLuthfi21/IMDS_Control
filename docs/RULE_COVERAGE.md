@@ -83,7 +83,7 @@ Primary source since 2026-11-18: **G-CATS Manual Flow Ver.7** (TMC-MED(KM); its 
 | No.10 Pb Application Code 71 p.18, Pb TOYOTA Policy Table pp.10–17 | Encoded | Table checked row by row: ID 62 → standard pattern, ID 75 → NG EU/TW only, ID 76 → OK everywhere. IDs 68, 79, 86 (bare "2026~") stay HOLD. |
 | No.7 Mass tolerance raw-material branch p.3 | Encoded (engine branch now fed from the row) | Outside the buffer + Delivery Part name "Raw Material": heavier than the drawing → OK "Confirmed with Drawing.", else NG. |
 | Methanol (Ver.5.1.10 p.49), 0.1wt% "T1" charts, GADSL 190 PFAS precedent | Encoded (Ver.5.1.10 / precedent) | Not in Ver.7. |
-| No.8 Mass deviation (Appendix I), No.9 Not specified substances (Ver.7 p.4), No.20 Supplied is not SMS (Appendix I) | Encoded, kind `other` | New. No.8: reviewer reads both masses (>±1% → NG with the Appendix I comment; within → TMC). No.9: TOYOTA material / IMDS Committee / ≤10% / multi material, from the row where possible. No.20: Purchasing/supplier Y → OK, N → NG "Toyota Supplied Part No is incorrect.[component]". |
+| No.8 Mass deviation (Appendix I), No.9 Not specified substances (Ver.7 p.4), No.20 Supplied is not SMS (Appendix I) | Encoded, kind `other` | New. No.8: |(A) − (B)| × 100 / (A) computed with Decimal.js from columns 23/24 (>1% → NG with the Appendix I comment; within → TMC); asked only when a mass is missing. No.9: "TOYOTA?" answered from the material name both ways (match → Yes, any other readable name → No; blank or `***` → asked); IMDS Committee stays a human question (no list exists); ≤10% / multi material from the row where possible. No.20: Purchasing/supplier Y → OK, N → NG "Toyota Supplied Part No is incorrect.[component]". |
 | Substances without a dedicated chart (glycols, nitrosamines, PBDE, aziridinyl, BNST, benzene, DMF/DMAC, MDA, pitch, PAH, TCEP, arsenic No.15, groups with "Refer to TSZ0001G") | **General step** (draft, never auto-final) | The step every Ver.7 chart shares: supplier input mistake → NG "Supplier input mistake."; it contains → report the P/N to TMC. The Ver.5.1.10 page is kept on the card. |
 
 There is no "Manual judgement" pile any more: unknown or TMC-only error types (22/23), Error Type 19 and Pb policy cells with an unconfirmed date go to the **TMC** pile with the reason; data gaps (no CAS, no drawing mass) go to **Missing data**.
@@ -103,7 +103,7 @@ When an Appendix II flow ends in "Contact TMC/TMNA/TME/TDEM" (or "Report … to 
 
 ### No.21 WARP Part number (`lib/judgement/warp.ts`)
 
-Supplier code found in the Purchasing supplier code master and the company name matches (or the record has no company name) → OK "Confirmed by Purchasing Div.". Code missing or name differs → the reviewer records Purchasing's answer (Y → OK "Confirmed by Purchasing Div.", N → NG "Supplier code is incorrect."). Auto-judge family `warp`.
+Supplier says the code is wrong → NG "Supplier code is incorrect." first. Purchasing's answer (Y → OK "Confirmed by Purchasing Div.", N → NG) decides next. A code found in the Purchasing master with a matching name only **recommends** OK: the Purchasing step stays MANUAL, so the case is never auto-final. Reason (2026-11-21): in the Master Data, 59 of 601 such cases were judged NG by people — the same codes are OK for one part and NG for another, so the master alone is not reliable enough. The review deck shows the recommendation, so a person confirms with one click (or in Bulk).
 
 ## Supplier self-check: predicted G-CATS checks (2026-11-18)
 
@@ -134,3 +134,18 @@ CAS only. A link carries a **caution** (the step stays `MANUAL`, so it is never 
 TSZ0001G table that is not in the uploaded appendices (Tables 4, 5, 6, 7, 8, 11) or the carbon range differs (#76 C9–C14
 vs GADSL C9–C21). Coverage over all 7,066 GADSL rows with a CAS: 635 linked before, 3,018 after (2026-11-21). GADSL
 families that are not in TSZ0001G (cobalt, nickel, "Hazardous Substances including SoC", …) stay unlinked on purpose.
+
+## Automation check against the Master Data (2026-11-21)
+
+Every rule change is re-run over the 5,515 rows of `G-CATS Error Log Master Data` (see `docs/SOURCE_REGISTER.md`). A case counts as auto-final eligible only with no open step (no NEEDS_INPUT / MANUAL) and an encoded flow.
+
+| Step | Eligible with no human answer | Disagree with the human judge |
+|---|---|---|
+| Before this change | 109 | 0 |
+| After (mass deviation computed, TOYOTA No from the row, four-phthalate total, WARP to MANUAL) | 346 | 0 |
+| Same, when the vehicle destination is remembered for the part | 976 | 0 |
+
+- No.8 Mass deviation: 71 rows, computed for all; 70 of 70 judged rows agree.
+- Phthalates, "total of the four CAS in the same material below 0.1wt%?": the sum of the four CAS rows with the same part, supplier, component part no., material name and download date (`lib/judgement/material-group.ts`). Checked on 179 rows: every "Below 0.1wt%" OK has a sum below 0.1 and every NG a sum of 0.1 or more. A masked or missing content keeps the question open.
+- Air conditioner (HFC p.27) still asks when the part name does not say air conditioner: the Master Data has no non-air-con HFC rows to prove an automatic "No".
+- Still a human / external answer by design: supplier "Confirm to supplier" (1,623), mass tolerance class (426), vehicle destination (768, remembered per part after the first answer), SMS supplier (117), IMDS Committee material (70), Purchasing for WARP (873). Historical labels (Battery (Pb), Tokusetsu, …) stay unmapped.

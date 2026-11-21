@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { enqueue, dispatch } from "@/lib/automation/outbox";
-import { evaluateBulkCandidate, groupBulkCandidates, type BulkSourceItem } from "@/lib/judgement/bulk";
+import { evaluateBulkCandidate, loadBulkContext, groupBulkCandidates, type BulkSourceItem } from "@/lib/judgement/bulk";
 import { loadPartMemory, partKey } from "@/lib/judgement/memory";
 import { loadEscalations } from "@/lib/judgement/escalation";
 import { UUID, validIds } from "@/lib/judgement/ids";
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
     try {
       const rows = await loadRows(supabase, ids);
       const memory = (await loadPartMemory(supabase, rows.map((row) => row.delivery_part_no || ""))).map;
-      const escalations = (await loadEscalations(supabase, rows.map((row) => row.delivery_part_no || ""))).map;
-      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no)), escalations));
+      const [escalations, ctx] = await Promise.all([loadEscalations(supabase, rows.map((row) => row.delivery_part_no || "")).then((r) => r.map), loadBulkContext(supabase, rows)]);
+      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no)), escalations, ctx));
       const prohibited = candidates.filter((item) => item.prohibited);
       return NextResponse.json({
         evaluated: candidates.length, notFound: ids.length - rows.length,
@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
       const rows = await loadRows(supabase, ids);
       if (rows.length !== ids.length) return NextResponse.json({ error: "One or more cases are no longer available. Re-run the preview." }, { status: 409 });
       const memory = (await loadPartMemory(supabase, rows.map((row) => row.delivery_part_no || ""))).map;
-      const escalations = (await loadEscalations(supabase, rows.map((row) => row.delivery_part_no || ""))).map;
-      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no)), escalations));
+      const [escalations, ctx] = await Promise.all([loadEscalations(supabase, rows.map((row) => row.delivery_part_no || "")).then((r) => r.map), loadBulkContext(supabase, rows)]);
+      const candidates = await inBatches(rows, PAGE_SIZE, (row) => evaluateBulkCandidate(supabase, row, memory.get(partKey(row.delivery_part_no)), escalations, ctx));
       const consistent = candidates.length === ids.length
         && candidates.every((item) => item.signature === signature && item.eligible && item.inPendingQueue && item.recommendation.state === decision);
       if (!consistent) return NextResponse.json({ error: "The case data or recommendation changed after preview. Nothing was applied; run the preview again." }, { status: 409 });

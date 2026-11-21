@@ -13,12 +13,12 @@ describe("WARP part number (Appendix I No.21)", () => {
     expect(detectKind("WARP Part number")).toBe("warp");
     expect(isWarpError("Mass tolerance range")).toBe(false);
   });
-  it("confirms a registered code with a matching name", () => {
+  it("recommends OK for a registered code with a matching name, but Purchasing still confirms (Master Data: registered codes were rejected for some parts)", () => {
     const c = checkWarp(first.code, "PT. " + first.name + " Tbk");
     expect(c.found).toBe(true);
     const r = runAutoWorkflow({ errorType: "WARP Part number", facts: { ...facts, companyName: first.name }, supplierCode: first.code });
     expect(r.recommendation).toMatchObject({ state: "OK", comment: "Confirmed by Purchasing Div." });
-    expect(r.steps.every((s) => s.status === "DONE")).toBe(true);
+    expect(r.steps.find((s) => s.id === "warp-purchasing")?.status).toBe("MANUAL");
   });
   it("asks Purchasing when the code is unknown or the name differs, then follows the answer", () => {
     const unknown = runAutoWorkflow({ errorType: "WARP Part number", facts, supplierCode: "ZZ999" });

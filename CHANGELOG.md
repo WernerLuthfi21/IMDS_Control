@@ -2,6 +2,18 @@
 
 ## 2026-11-21
 
+### Judge: more cases decided from the row, reliably, and faster bulk evaluation
+- No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.
+- No.9 "TOYOTA?" answers No from the material name too (blank / `***` still asks); refrigerant (HFC) likewise.
+- Phthalates: the total of the four CAS in the same material is summed from the other rows of the part
+  (`lib/judgement/material-group.ts`) and answers the Manual Flow question; masked contents keep it open.
+- WARP: a code in the Purchasing master now recommends OK but keeps the Purchasing step open (never auto-final);
+  supplier "code is wrong" wins first. The old auto-OK contradicted 59 historical judgements.
+- Bulk preview / apply and auto-run load supplier confirmations and phthalate sibling rows once per batch instead of
+  one query per case.
+- Master Data replay: auto-final eligible cases 109 → 346 (976 with the destination remembered), 0 disagreements.
+  Tests: `tests/judge-automation.test.ts`.
+
 ### CAS search follows GADSL families into Appendix 3
 - A CAS that is a member of a GADSL family now reaches the Appendix 3 (TSZ0001G) group of that family, e.g. 26027-38-3
   → GADSL #160 → TSZ0001G #73 "4-Nonylphenol, branched and linear, ethoxylated" (shown as "not listed in Appendix 3"
