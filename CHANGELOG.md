@@ -2,6 +2,15 @@
 
 ## 2026-11-21
 
+### Miko drawn from the approved character sheet
+- `CatMascot` (used by the Judge table, Auto-judge card and empty states) now shows Miko's poses from the character
+  sheet (`public/miko/*.webp`, 22 transparent WebP files, about 0.5 MB in total) instead of the hand-drawn SVG.
+  Same props (`mood`, `size`, `look`, `label`), same 102x102 SVG frame, so the existing hop, float and tilt
+  animations and the status marks (gear, clock, dots, !, x, sparkles) are unchanged. Mood to pose: idle sitting,
+  working laptop, thinking, success happy, waiting sleeping, alert surprised, error sad, celebrate cheer, empty curious.
+- Added the Meshy turntable views (`turn-front/side/back.webp`) for the upcoming interactive 3D Miko; not used by any
+  page yet. A GLB viewer is deliberately not in this PR (no `three` dependency until the model file exists).
+
 ### One surface system: Judge board and Tracker look like one app
 - Judge board: the felt-table skin, always-light paper cards, 3D orbs and yellow glows are replaced by the theme
   tokens (flat tiles, state as a dot or edge, one accent outline for "selected"); the case card follows light/dark;

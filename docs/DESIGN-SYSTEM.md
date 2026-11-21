@@ -105,7 +105,7 @@ the Next.js CSS and the Tracker. Every UI pull request quotes the before/after n
 | Judge flashcard (decision, evidence, comment) | `components/judge-flashcard.tsx` | Shortcuts only while focus is on the table |
 | Case context (Rule path / History) | `components/case-context.tsx` | Loaded lazily, cached per case |
 | Flow chart canvas | `components/flow-library.tsx` | Pan, zoom, fit, reset, step details, case path |
-| Miko | `components/cat-mascot.tsx`, `components/cat-stage.tsx` | States below |
+| Miko | `components/cat-mascot.tsx`, `components/cat-stage.tsx`, `public/miko/*.webp` | One character, nine states below; images come from the approved character sheet, never redrawn per page |
 | Drop zone | `components/drop-zone.tsx` | One upload pattern for the whole app |
 | Auto-judge card | `components/autojudge-card.tsx` | Switches are staged; saving is an explicit approval |
 | Confirm dialog (`confirmAction`) | `components/ui/confirm-dialog.tsx` | Every bulk / irreversible action; typed count from 50 items; never `window.confirm` |
