@@ -121,13 +121,16 @@ create index if not exists automation_events_job_idx
   on public.automation_job_events(job_id, event_at, id);
 
 create table if not exists public.automation_desktop_locks (
-  device_id uuid primary key references public.automation_devices(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  device_id uuid not null references public.automation_devices(id) on delete cascade,
   job_id uuid not null references public.automation_jobs(id) on delete cascade,
   session_id uuid not null references public.automation_user_sessions(id) on delete cascade,
   acquired_at timestamptz not null default now(),
   lease_expires_at timestamptz not null,
   released_at timestamptz
 );
+create unique index if not exists automation_one_active_desktop_lock_per_device
+  on public.automation_desktop_locks(device_id) where released_at is null;
 
 create trigger automation_devices_updated_at before update on public.automation_devices
   for each row execute procedure public.set_updated_at();
@@ -153,8 +156,11 @@ create policy automation_devices_read_internal on public.automation_devices
 create policy automation_sessions_read_internal on public.automation_user_sessions
   for select to authenticated
   using (
-    user_id = auth.uid()
-    or public.has_any_role(array['admin','preparer','reviewer','viewer','rule_author','rule_approver']::public.app_role[])
+    public.has_any_role(array['admin','preparer','reviewer','viewer','rule_author','rule_approver']::public.app_role[])
+    and (
+      user_id = auth.uid()
+      or public.has_any_role(array['admin','preparer','reviewer','viewer','rule_author','rule_approver']::public.app_role[])
+    )
   );
 
 create policy automation_jobs_read_internal on public.automation_jobs
