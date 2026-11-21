@@ -103,7 +103,7 @@ When an Appendix II flow ends in "Contact TMC/TMNA/TME/TDEM" (or "Report … to 
 
 ### No.21 WARP Part number (`lib/judgement/warp.ts`)
 
-Supplier says the code is wrong → NG "Supplier code is incorrect." first. Purchasing's answer (Y → OK "Confirmed by Purchasing Div.", N → NG) decides next. A code found in the Purchasing master with a matching name only **recommends** OK: the Purchasing step stays MANUAL, so the case is never auto-final. Reason (2026-11-21): in the Master Data, 59 of 601 such cases were judged NG by people — the same codes are OK for one part and NG for another, so the master alone is not reliable enough. The review deck shows the recommendation, so a person confirms with one click (or in Bulk).
+Supplier says the code is wrong → NG "Supplier code is incorrect." first. Purchasing's answer (Y → OK "Confirmed by Purchasing Div.", N → NG) decides next. A code found in the Purchasing master with a matching name only **recommends** OK: the Purchasing step stays MANUAL, so the case is never auto-final. Reason (2026-11-21): in the Master Data, 59 of 601 such cases were judged NG by people — the same codes are OK for one part and NG for another, so the master alone is not reliable enough. The flow keeps the Purchasing question open (`purchasingWarp`), so the review deck shows "Recommended OK — not final" with the Y/N question; one click confirms it (or Bulk).
 
 ## Supplier self-check: predicted G-CATS checks (2026-11-18)
 
