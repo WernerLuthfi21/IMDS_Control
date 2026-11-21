@@ -64,6 +64,9 @@ Headings ≥24px use `--track-display` (−0.02em). Weights: 400, 500, 600, 700 
 | Label, eyebrow | `--text-xs` / 700, uppercase, letter-spacing .08em |
 | Numbers | `font-variant-numeric: tabular-nums` (set on `body`); codes in `--f-mono` |
 
+The IMDS Tracker (`private/imds-tracker.html`, purple accent) uses the same `--text-*` steps, the same four
+weights and JetBrains Mono for data since 2026-11-21. Its colours stay its own (approved purple palette).
+
 ## Design-debt audit
 
 `node scripts/audit-ui.mjs` (dev only, no dependencies) prints hex counts, font sizes and weights, radius values,
@@ -93,6 +96,7 @@ the Next.js CSS and the Tracker. Every UI pull request quotes the before/after n
 | Miko | `components/cat-mascot.tsx`, `components/cat-stage.tsx` | States below |
 | Drop zone | `components/drop-zone.tsx` | One upload pattern for the whole app |
 | Auto-judge card | `components/autojudge-card.tsx` | Switches are staged; saving is an explicit approval |
+| Confirm dialog (`confirmAction`) | `components/ui/confirm-dialog.tsx` | Every bulk / irreversible action; typed count from 50 items; never `window.confirm` |
 | Error / not-found pages | `app/error.tsx`, `app/not-found.tsx` | `.state-page` |
 
 ### Miko's states

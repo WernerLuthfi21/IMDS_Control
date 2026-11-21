@@ -2,6 +2,11 @@
 
 ## 2026-11-21
 
+### Tracker on the shared type system (approved by Jasmin, 2026-11-21)
+- Tracker CSS uses the same eight `--text-*` steps as Judgement (127 sizes; 24 sizes → 8, display numbers above
+  32px keep their size) and four weights (650/720/750/800 → 600/700).
+- Tracker `--f-mono` is now JetBrains Mono (it was Century Gothic), so part numbers and counts line up like in Judgement.
+
 ### Judge flashcard in its own file
 - `components/judge-flashcard.tsx` holds the flashcard (decision, evidence, comment, keyboard); `review-deck.tsx`
   keeps the deck state and data (512 → 360 lines). No behaviour change.
@@ -24,6 +29,24 @@
   Fonts import is gone from `app/globals.css`.
 - Codes and numbers (`.mono`, `code`, rule codes, destination codes) use JetBrains Mono with tabular digits.
 - Type-scale tokens `--text-xs … --text-3xl` and line-height tokens added; `docs/DESIGN-SYSTEM.md` → Type.
+### CSP nonce for app pages
+- `proxy.ts` sets a fresh CSP nonce per request (`'nonce-…' 'strict-dynamic'`); inline scripts without it are
+  blocked. The Tracker keeps its own policy (inline handlers). Tests: `tests/security-headers.test.ts`, E2E header check.
+
+### Security headers on every route; "Handed off" wording
+- Enforced Content-Security-Policy and `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  COOP and (production) HSTS for all routes (`lib/security/headers.ts`, `next.config.ts`). The Tracker gets only the
+  extra hosts it already uses. Details and next steps (nonce, SRI for Tracker CDN scripts) in `docs/SECURITY.md`.
+- Supplier follow-up results say **Handed off** instead of "SENT": HTTP 2xx from the flow is a hand-off, not
+  delivery (CLAUDE.md).
+### One confirmation dialog for bulk and irreversible actions
+- `components/ui/confirm-dialog.tsx` replaces all six `window.confirm` calls (Auto-judge run, bulk apply, bulk undo,
+  confirm decided cards, supplier e-mail hand-off, clear MDS for IMDS). Themed, focus-trapped, Esc cancels, shows
+  the count and consequence; from 50 items the person types the count before the button unlocks.
+### No hex colours in components
+- Icon tints and the automation test notes use theme tokens (`.ic-amber`, `.ic-muted`, `.ic-blue`, `.ic-green`,
+  `var(--green)` / `var(--red)`) instead of hard-coded hex, so they follow light/dark. Only the Miko illustration
+  keeps its own artwork colours.
 
 ### Judge: more cases decided from the row, reliably, and faster bulk evaluation
 - No.8 Mass deviation is computed from (A) and (B) (Decimal.js); the reviewer is asked only when a mass is missing.

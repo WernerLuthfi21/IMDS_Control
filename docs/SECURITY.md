@@ -88,3 +88,27 @@ Same-origin check on public POSTs, honeypot field, input length/charset validati
 
 ### Not implemented
 Authenticator-app (TOTP) MFA and SSO. Supabase supports TOTP MFA; add it as a follow-up if required. Forgot-password is the primary recovery path.
+
+## Browser security headers (2026-11-21)
+
+`lib/security/headers.ts`, applied to every route in `next.config.ts` (tested in `tests/security-headers.test.ts`
+and the E2E header check):
+
+- **Content-Security-Policy (enforced)**: `default-src 'self'`; scripts only from this origin (+ `vercel.live` for
+  preview comments); `connect-src` this origin + the Supabase project (https + wss); `img-src` self, data:, blob:,
+  Supabase; fonts self-hosted (`font-src 'self'`); `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `frame-ancestors 'none'`. App pages get a **per-request nonce** from `proxy.ts` (`'nonce-…' 'strict-dynamic'`); Next.js tags its
+  scripts from the request CSP header and the layout tags the theme script via `x-nonce`. An injected inline script
+  without the nonce does not run. `'unsafe-inline'` remains only as the CSP1 fallback (ignored when a nonce is present).
+- `/imds-tracker` gets the same policy plus exactly what the approved Tracker loads: cdnjs (SheetJS, jsPDF,
+  autotable), jsDelivr (MSAL), Google Fonts, Microsoft Graph / login. COOP there is `same-origin-allow-popups` for
+  the MSAL sign-in popup; everywhere else `same-origin`.
+- Also: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy` (camera, microphone, geolocation, payment, usb off), HSTS in production.
+
+Open findings (owner decision, Tracker is approved UI):
+- The Tracker loads four CDN scripts **without Subresource Integrity**. Add `integrity` + `crossorigin` hashes for the
+  pinned versions, or self-host the files, in the Tracker integration PR.
+- Tracker `innerHTML` writes (44) were reviewed: user and workbook values pass through `esc()` / `escAttr()`;
+  the remaining interpolations are numbers, fixed labels and internal ids.
+

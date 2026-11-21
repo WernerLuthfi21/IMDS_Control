@@ -120,3 +120,14 @@ test("unknown address shows a page-not-found screen with a way back", async ({ p
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await expect(page.locator(".state-page").getByRole("link", { name: "Judgement register" })).toBeVisible();
 });
+
+test("every page sends the security headers (CSP, no framing, nosniff)", async ({ page }) => {
+  const res = await page.goto("/login");
+  const h = res!.headers();
+  expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(h["content-security-policy"]).toContain("object-src 'none'");
+  expect(h["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+  expect(h["x-content-type-options"]).toBe("nosniff");
+  expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+});

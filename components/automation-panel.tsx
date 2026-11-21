@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Circle, Download, Mail, RefreshCw, Send } from "lucide-react";
 import { renderFollowup } from "@/lib/automation/render";
+import { confirmAction, TYPE_TO_CONFIRM_FROM } from "@/components/ui/confirm-dialog";
 
 type Status = { configured: { excel: boolean; email: boolean; secret: boolean }; transport?: { excel: string | null; email: string | null }; counts: Record<string, number>; lastError: string | null; failed?: { id: string; kind: string; error: string | null; attempts: number; at: string }[] };
 type Cand = { id: string; source_record_key: string; delivery_part_no: string | null; supplier_code: string; error_type_label: string; hasContact: boolean; followup: string | null };
@@ -9,7 +10,7 @@ type Result = { id: string; state: "wait" | "sending" | "SENT" | "FAILED" | "SKI
 const TRANSPORT: Record<string, string> = { http: "direct (HTTP)", mail: "via mailbox" };
 
 function Step({ ok, label, detail, action }: { ok: boolean; label: string; detail?: string; action?: React.ReactNode }) {
-  return <li style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "6px 0" }}>{ok ? <CheckCircle2 size={16} color="#166534"/> : <Circle size={16} color="#a16207"/>}
+  return <li style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "6px 0" }}>{ok ? <CheckCircle2 size={16} className="ic-green"/> : <Circle size={16} className="ic-amber"/>}
       <div style={{ flex: 1 }}><strong>{label}</strong>{detail && <div style={{ fontSize: 12, color: "var(--muted)" }}>{detail}</div>}</div>{action}</li>
 }
 
@@ -57,7 +58,12 @@ export function AutomationPanel() {
   }
   async function sendSelected() {
     const ids = sendable.filter((c) => picked.has(c.id)).map((c) => c.id);
-    if (!ids.length || !window.confirm(`Send ${ids.length} supplier e-mail(s) one by one?`)) return;
+    if (!ids.length || !(await confirmAction({
+      title: `Hand off ${ids.length} supplier e-mail${ids.length === 1 ? "" : "s"}?`,
+      body: "Each e-mail is handed to the Power Automate flow one by one. A hand-off is not proof of delivery; check the flow's run history.",
+      confirmLabel: `Hand off ${ids.length}`,
+      typeToConfirm: ids.length >= TYPE_TO_CONFIRM_FROM ? String(ids.length) : undefined
+    }))) return;
     setRunning(true); setMsg("");
     setResults(Object.fromEntries(ids.map((id) => [id, { id, state: "wait" } as Result])));
     for (const id of ids) { // strictly sequential: the next e-mail starts only after the previous one was answered
@@ -81,10 +87,10 @@ export function AutomationPanel() {
     <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0 }}>
       <Step ok={!!status?.configured.excel} label="Excel master flow" detail={status?.configured.excel ? "Connected " + (TRANSPORT[status.transport?.excel || ""] || "") : "Set POWER_AUTOMATE_EXCEL_URL (or the FLOW_SMTP_* mailbox settings) in Vercel, then redeploy"}
         action={status?.configured.excel && <button className="btn btn-sm" type="button" disabled={testing === "excel"} onClick={() => void runTest("excel")}>{testing === "excel" ? "Testing…" : "Test"}</button>}/>
-      {testNote.excel && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.excel.ok ? "#166534" : "#b42336" }}>{testNote.excel.text}</li>}
+      {testNote.excel && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.excel.ok ? "var(--green)" : "var(--red)" }}>{testNote.excel.text}</li>}
       <Step ok={!!status?.configured.email} label="Supplier e-mail flow" detail={status?.configured.email ? "Connected " + (TRANSPORT[status.transport?.email || ""] || "") : "Set POWER_AUTOMATE_EMAIL_URL (or the FLOW_SMTP_* mailbox settings) in Vercel"}
         action={status?.configured.email && <button className="btn btn-sm" type="button" disabled={testing === "email"} onClick={() => void runTest("email")}>{testing === "email" ? "Sending…" : "Send test to me"}</button>}/>
-      {testNote.email && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.email.ok ? "#166534" : "#b42336" }}>{testNote.email.text}</li>}
+      {testNote.email && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.email.ok ? "var(--green)" : "var(--red)" }}>{testNote.email.text}</li>}
       <Step ok={!!status?.configured.secret} label="Shared secret" detail={status?.configured.secret ? "Set" : "Set POWER_AUTOMATE_SECRET so the flow only accepts this app"}/>
     </ul>
 
@@ -109,7 +115,7 @@ export function AutomationPanel() {
       {shown.map((c) => { const r = results[c.id]; const ok = c.hasContact && c.followup !== "SENT";
         return <tr key={c.id}><td><input type="checkbox" aria-label={`Select ${c.delivery_part_no}`} disabled={!ok || running} checked={picked.has(c.id)} onChange={() => toggle(c.id)}/></td>
           <td className="mono">{c.delivery_part_no}</td><td className="mono">{c.supplier_code}</td><td>{c.error_type_label}</td>
-          <td>{r ? <span title={r.note}>{r.state === "SENT" ? <CheckCircle2 size={13}/> : r.state === "FAILED" ? <AlertTriangle size={13}/> : <Mail size={13}/>} {r.state}{r.note && r.state !== "SENT" ? ` — ${r.note}` : ""}</span> : !c.hasContact ? "No supplier PIC" : c.followup === "SENT" ? "Already sent" : c.followup ?? "Ready"}</td>
+          <td>{r ? <span title={r.note}>{r.state === "SENT" ? <CheckCircle2 size={13}/> : r.state === "FAILED" ? <AlertTriangle size={13}/> : <Mail size={13}/>} {r.state === "SENT" ? "Handed off" : r.state === "FAILED" ? "Failed" : r.state === "SKIPPED" ? "Skipped" : r.state === "sending" ? "Handing off…" : "Waiting"}{r.note && r.state !== "SENT" ? ` — ${r.note}` : ""}</span> : !c.hasContact ? "No supplier PIC" : c.followup === "SENT" ? "Already handed off" : c.followup ?? "Ready"}</td>
           <td><button className="btn btn-sm" type="button" onClick={() => setPreview(preview === c.id ? null : c.id)}>{preview === c.id ? "Hide" : "Preview"}</button></td></tr>; })}
       {!shown.length && <tr><td colSpan={6}>No matching open records.</td></tr>}
     </tbody></table></div>
@@ -119,6 +125,6 @@ export function AutomationPanel() {
       <a className="btn btn-sm" href="/api/automation/export" download><Download size={13}/> Download register CSV (one-time Excel seed)</a>
       <span className="muted" style={{ fontSize: 12 }}>Paste it into the Excel table once; later saves update it automatically.</span>
     </div>
-    <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>“Sent” means the flow or mailbox accepted the request. It is not proof that the supplier read it. Confirm in the flow’s Run history.</p>
+    <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>“Handed off” means the flow or mailbox accepted the request. It is not proof that the supplier read it. Confirm in the flow’s Run history.</p>
   </section>;
 }
