@@ -741,6 +741,21 @@ main{padding:27px 29px 32px}
   #theme-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .gsearch-wrap{order:9;flex:1 1 100%}
 }
+
+/* Directory strata cards (2026-11-23) */
+.dir-sec.strata{border:1px solid var(--line);border-radius:var(--r-2);padding:var(--s-4);background:var(--surface)}
+.strata-h{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start}
+.strata-h h3{font:700 var(--text-md)/1.2 var(--f-ui);letter-spacing:0;text-transform:none;color:var(--ink);margin:0 0 2px}
+.strata-h p{margin:0}
+.strata-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:var(--text-sm);background:var(--lilac);color:var(--brand-text)}
+.s-mid .strata-n{background:var(--info-soft,var(--lilac))}.s-top .strata-n,.s-dir .strata-n{background:var(--warn-soft);color:var(--warn-ink)}
+.strata-c{font-size:var(--text-xs);font-weight:700;padding:2px 9px;border-radius:99px;background:var(--ok-soft);color:var(--ok-ink);white-space:nowrap}
+.strata-c.none{background:var(--neutral-soft);color:var(--muted)}
+.dir-grid.dg-x{grid-template-columns:minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1.5fr) minmax(0,.9fr) minmax(150px,.9fr) 36px}
+.dir-paste{min-height:44px;padding:8px 10px;resize:vertical}
+.pv-grid{display:grid;gap:6px}.pv-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px;font-size:var(--text-sm);align-items:baseline}
+.pv-l{font-weight:700;color:var(--muted)}.pv-v{overflow-wrap:anywhere}
+@media (max-width:760px){.dir-grid.dg-x{grid-template-columns:1fr 1fr}.dir-grid.dg-x .dg-h{display:none}.pv-row{grid-template-columns:1fr;gap:2px}.strata-h{grid-template-columns:auto minmax(0,1fr)}.strata-c{grid-column:2;justify-self:start}}
 </style>
 </head>
 <body>
@@ -860,7 +875,7 @@ main{padding:27px 29px 32px}
     <!-- ============ DIRECTORY ============ -->
     <section class="view" id="view-directory" hidden aria-labelledby="h-directory">
       <header class="view-head"><div><h1 id="h-directory">Directory</h1><p class="panel-sub" id="dir-sub"></p></div>
-        <div class="view-actions" id="dir-tools"><button type="button" class="btn btn-secondary btn-sm" data-action="dir-new">+ Add supplier</button><button type="button" class="btn btn-secondary btn-sm" id="btn-dir-import" data-action="dir-import-toggle" aria-expanded="false" aria-controls="dir-import">Import / update files</button><button type="button" class="btn btn-ghost btn-sm" data-action="dir-export">Export Excel</button><button type="button" class="btn btn-ghost btn-sm" data-action="dir-backup">Download backup</button><button type="button" class="btn btn-ghost btn-sm" data-action="dir-restore">Restore backup</button></div></header>
+        <div class="view-actions" id="dir-tools"><button type="button" class="btn btn-secondary btn-sm" data-action="dir-new">+ Add supplier</button><button type="button" class="btn btn-secondary btn-sm" id="btn-dir-import" data-action="dir-import-toggle" aria-expanded="false" aria-controls="dir-import">Import / update files</button><button type="button" class="btn btn-ghost btn-sm" data-action="dir-export">Export Excel</button><button type="button" class="btn btn-ghost btn-sm" data-action="dir-backup">Download backup</button><button type="button" class="btn btn-ghost btn-sm" data-action="dir-restore" title="A backup (replaces the directory) or a directory update file (merges)">Restore backup / update file</button></div></header>
       <section class="panel" id="dir-import" hidden aria-labelledby="h-dirimp">
         <div class="panel-head"><div><h2 id="h-dirimp">Import contacts</h2><p class="panel-sub">Upload once. The tracker remembers everything and matches suppliers by vendor code, then by name. Come back only when the files change.</p></div></div>
         <div class="dropzone" id="dir-drop" role="button" tabindex="0" aria-label="Select or drop the supplier database and PUD buyer list"><span class="dz-ic" aria-hidden="true">📇</span><div><b>Select or drop both files</b><div class="muted small">TMMIN supplier database (.xlsx) · PUD buyer list “Supplier List – Buyer” (.xlsx) — one or both, in any order</div></div></div>
@@ -2583,11 +2598,14 @@ function onSearchKey(e){
 const DIR_KEY="imds-directory";
 const DIR={entries:{},buyers:{},aliases:{},meta:{},version:0};
 let DIRM=null,DIRIDX=null;
-const DIR_PEOPLE={pic1:"IMDS PIC 1",pic2:"IMDS PIC 2",pic3:"IMDS PIC 3",staff:"Marketing staff (PIC to TMMIN)",spv:"Supervisor",dph:"Department head",gm:"General manager",md:"Marketing director",vp:"Vice president",pd:"President director"};
+const DIR_PEOPLE={pic1:"IMDS PIC 1",pic2:"IMDS PIC 2",pic3:"IMDS PIC 3",staff:"Marketing staff (PIC to TMMIN)",spv:"Marketing supervisor",dph:"Department head",gm:"General manager",md:"Marketing director",vp:"Vice president director",pd:"President director"};
+/* PUD buyers (TMMIN purchasing). Used when the Directory has no e-mail for a buyer. Same list as lib/followup/directory.ts (a test keeps them equal). */
+const BUILTIN_BUYERS={"Puguh":{"full":"Wahyu Puguh Bakhtiar","email":"wahyu.bakhtiar@toyota.co.id"},"Luthfy":{"full":"Ahmad Syofyan (Luthfy)","email":"ahmad.syofyan@toyota.co.id"},"Omen":{"full":"Fathurohman (Omen)","email":"Fathurohman@toyota.co.id"},"Irman":{"full":"Irman Firmansyah","email":"irman.firmansyah@toyota.co.id"},"Taris":{"full":"Adabina Ladiva (Taris)","email":"adabina.ladiva@toyota.co.id"},"Liza":{"full":"Elizabeth Listya (Liza)","email":"elizabeth.listya@toyota.co.id"},"Aries":{"full":"Aries Fredi","email":"aries.fredi@toyota.co.id"},"Bangun":{"full":"Arif Santoso (Bangun)","email":"arif.santoso@toyota.co.id"},"Fifi":{"full":"Anindya Darmawan (Fifi)","email":"anindya.darmawan@toyota.co.id"},"Regia":{"full":"Regia Erfawinanda","email":"regia.erfawinanda@toyota.co.id"}};
 const DIR_GROUPS=[
-  {id:"pic",title:"IMDS PIC (supplier side)",hint:"Who receives submission requests and reminders.",people:["pic1","pic2","pic3"],cols:["name","position","email","phone"]},
-  {id:"mid",title:"Middle management",hint:"Added to To when “+ Middle mgmt” is switched on in the email composer.",people:["staff","spv","dph","gm"],cols:["name","email","phone"]},
-  {id:"top",title:"Top management",hint:"Added to To when “+ Top mgmt” is switched on.",people:["md","vp","pd"],cols:["name","email","phone"]}
+  {id:"pic",n:1,title:"IMDS PIC",hint:"Receives every IMDS request and reminder (To).",people:["pic1","pic2","pic3"],cols:["name","position","email","phone"]},
+  {id:"mid",n:3,title:"Middle management",hint:"CC when “Middle management” is ticked. Receives the e-mail (To) when the supplier has no IMDS PIC: staff / supervisor first, else department head / GM.",people:["staff","spv","dph","gm"],cols:["name","email","phone"]},
+  {id:"top",n:4,title:"Top management",hint:"CC when “Top management” is ticked.",people:["md"],cols:["name","email","phone"]},
+  {id:"dir",n:5,title:"Director",hint:"CC when “Director” is ticked. Kept apart from top management, for escalation only.",people:["vp","pd"],cols:["name","email","phone"]}
 ];
 const DIR_COLS={name:"Name",position:"Position",email:"Email",phone:"Phone"};
 const DIR_DB_FIELDS=[];
@@ -2782,24 +2800,32 @@ async function importDirFiles(files){
 
 /* ---------- reading contacts for emails ---------- */
 function buyerInfo(short){
-  if(!short)return null;const b=DIR.buyers[short]||{};
-  return{short,name:b.full||short,email:splitEmails(b.email||"")[0]||"",emails:splitEmails(b.email||"")};
+  if(!short)return null;const b=DIR.buyers[short]||{},bi=BUILTIN_BUYERS[short]||{};
+  const emails=splitEmails(b.email||"").length?splitEmails(b.email||""):splitEmails(bi.email||"");
+  return{short,name:b.full||bi.full||short,email:emails[0]||"",emails:emails.slice(0,1),builtin:!splitEmails(b.email||"").length&&!!bi.email};
 }
 /* One answer for “who do we mail?”: the directory first, then the built-in list, then the workbook's own contact sheet. */
-function contactLookup(company,forcedKey){
+/* Strata and fallback follow lib/followup/directory.ts (resolveContacts), which the weekly schedule uses on the server:
+   To = IMDS PIC (+ additional contacts marked “To”); no PIC → middle management (staff/supervisor, else dept. head/GM). */
+function dirX(e){return Array.isArray(e&&e.x)?e.x:[]}
+function contactLookup(company,forcedKey,opts){
+  const fallback=!opts||opts.fallbackMid!==false;
   const d=forcedKey&&DIR.entries[forcedKey]?{key:forcedKey,entry:DIR.entries[forcedKey]}:dirFor(company),db=SUPPLIER_DB[company.toUpperCase()],wc=D.contacts.get(company.toUpperCase());
-  let pic=[],mid=[],top=[],buyer=null,fromDir=false;
-  if(d){const f=d.entry.f;
-    pic=uniqMail(["pic1","pic2","pic3"].flatMap(p=>splitEmails(f[p+"_email"])).concat(splitEmails(f.pic_extra)));
-    mid=uniqMail(["staff","spv","dph","gm"].flatMap(p=>splitEmails(f[p+"_email"])));
-    top=uniqMail(["md","vp","pd"].flatMap(p=>splitEmails(f[p+"_email"])));
-    buyer=buyerInfo(f.buyer);fromDir=!!(pic.length||mid.length||top.length||buyer)}
-  let src=fromDir?"directory":"none";
-  if(!pic.length&&db&&db.pic.length){pic=db.pic.slice();if(!fromDir)src="built-in"}
+  const mails=(f,people)=>uniqMail(people.flatMap(p=>splitEmails(f[p+"_email"])));
+  let pic=[],cc=[],mid=[],top=[],dir=[],buyer=null,fromDir=false,f={};
+  if(d){f=d.entry.f;const x=dirX(d.entry);
+    pic=uniqMail(mails(f,["pic1","pic2","pic3"]).concat(splitEmails(f.pic_extra),x.filter(p=>p.role==="to").flatMap(p=>splitEmails(p.email))));
+    cc=uniqMail(x.filter(p=>(p.role||"cc")==="cc").flatMap(p=>splitEmails(p.email)));
+    mid=mails(f,["staff","spv","dph","gm"]);top=mails(f,["md"]);dir=mails(f,["vp","pd"]);
+    buyer=buyerInfo(f.buyer);fromDir=!!(pic.length||mid.length||top.length||dir.length||buyer)}
+  let src=fromDir?"directory":"none",toFrom=pic.length?"pic":"none";
+  if(!pic.length&&db&&db.pic.length){pic=db.pic.slice();toFrom="pic";if(!fromDir)src="built-in"}
   if(!mid.length&&db&&db.mid.length)mid=db.mid.slice();
-  if(!top.length&&db&&db.top.length)top=db.top.slice();
-  if(!pic.length&&wc&&wc.pic){pic=splitEmails(wc.pic);if(src==="none"&&pic.length)src="workbook"}
-  return{pic,mid,top,buyer,src,dirKey:d?d.key:null};
+  if(!top.length&&!dir.length&&db&&db.top.length)top=db.top.slice();
+  if(!pic.length&&fallback){const a=mails(f,["staff","spv"]),b=mails(f,["dph","gm"]);pic=a.length?a:b.length?b:mid.slice();if(pic.length)toFrom="mid"}
+  if(!pic.length&&wc&&wc.pic){pic=splitEmails(wc.pic);if(pic.length){toFrom="workbook";if(src==="none")src="workbook"}}
+  const not=l=>l.filter(e=>!pic.some(p=>p.toLowerCase()===e.toLowerCase()));
+  return{pic,ccAlways:not(cc),mid:not(mid),top:not(top),dir:not(dir),buyer,src,toFrom,dirKey:d?d.key:null};
 }
 function buyerEmailsFor(companies){return uniqMail(companies.flatMap(c=>{const b=contactLookup(c).buyer;return b?b.emails:[]}))}
 
@@ -2853,7 +2879,11 @@ function renderDirList(){
 }
 function dirPreviewHTML(k){
   const e=DIR.entries[k];if(!e)return"";const cl=contactLookup(e.name,k);
-  return `<h3>What the email composer will use</h3><p class="small"><b>To:</b> ${cl.pic.length?esc(cl.pic.join(", ")):'<span class="t-bad">no PIC email — add one above</span>'}<br><b>If “+ Middle mgmt”:</b> ${cl.mid.length?esc(cl.mid.join(", ")):"—"}<br><b>If “+ Top mgmt”:</b> ${cl.top.length?esc(cl.top.join(", ")):"—"}<br><b>If “+ PUD buyer” (CC):</b> ${cl.buyer&&cl.buyer.email?esc(cl.buyer.email):"—"}</p><p class="muted small">Source: ${cl.src==="directory"?"this directory":cl.src==="built-in"?"built-in list (not in directory yet)":cl.src==="workbook"?"workbook contact sheet":"none"}. Fields you edit are marked ● and are kept when you re-import files.</p>`;
+  const row=(l,v,extra)=>`<div class="pv-row"><span class="pv-l">${l}</span><span class="pv-v">${v&&v.length?esc(v.join(", ")):'<span class="muted">—</span>'}${extra||""}</span></div>`;
+  return `<h3>What the e-mails will use</h3><div class="pv-grid">
+    ${row("To",cl.pic,cl.toFrom==="mid"?' <span class="badge badge-warn">no IMDS PIC — middle management receives it</span>':cl.pic.length?"":' <span class="t-bad small">add an IMDS PIC or middle management e-mail</span>')}
+    ${row("Always CC",cl.ccAlways)}${row("CC if “Middle management”",cl.mid)}${row("CC if “Top management”",cl.top)}${row("CC if “Director”",cl.dir)}
+    ${row("CC if “PUD buyer”",cl.buyer&&cl.buyer.email?[cl.buyer.email]:[],cl.buyer&&cl.buyer.builtin?' <span class="muted small">(built-in buyer list)</span>':"")}</div><p class="muted small">Source: ${cl.src==="directory"?"this directory":cl.src==="built-in"?"built-in list (not in directory yet)":cl.src==="workbook"?"workbook contact sheet":"none"}. Fields you edit are marked ● and are kept when you re-import files.</p>`;
 }
 function renderDirPreviewOnly(k){const pv=$(".dir-sec.preview");if(pv)pv.innerHTML=dirPreviewHTML(k)}
 function renderDirDetail(){
@@ -2871,10 +2901,35 @@ function renderDirDetail(){
       <div class="dir-fields cols-3"><label class="dir-f"><span>Buyer</span>${dirInput(k,"buyer",f.buyer,"PUD buyer — "+e.name).replace('type="text"','type="text" list="buyer-names"')}</label>
       <div class="dir-f"><span>Full name</span><div class="dir-static">${esc(buyer?buyer.name:"—")}</div></div>
       <div class="dir-f"><span>Email</span><div class="dir-static">${buyer&&buyer.email?esc(buyer.email):`<button type="button" class="link-btn" data-action="dir-tab" data-tab="buyers">${buyer?"Add buyer email":"—"}</button>`}</div></div></div></section>
-    ${DIR_GROUPS.map(g=>`<section class="dir-sec"><h3>${g.title}</h3><p class="muted small">${g.hint}</p>${people(g)}${g.id==="pic"?`<div class="dir-grid dg-extra"><span class="dg-l">Additional emails</span><div class="dg-c" data-col="Email(s), separated by ;">${dirInput(k,"pic_extra",f.pic_extra,"Additional PIC emails — "+e.name)}</div></div>`:""}</section>`).join("")}
+    ${DIR_GROUPS.filter(g=>g.id==="pic").map(g=>strataCard(g,people(g)+`<div class="dir-grid dg-extra"><span class="dg-l">More PIC e-mails (To)</span><div class="dg-c" data-col="E-mail(s), separated by ;">${dirInput(k,"pic_extra",f.pic_extra,"More IMDS PIC e-mails — "+e.name)}</div></div>`,f)).join("")}
+    ${extraCard(k,e)}
+    ${DIR_GROUPS.filter(g=>g.id!=="pic").map(g=>strataCard(g,people(g),f)).join("")}
     <section class="dir-sec"><h3>WhatsApp community</h3><div class="dir-fields cols-2"><label class="dir-f chkrow"><input type="checkbox" data-action-change="dir-wa" data-key="${escAttr(k)}" ${f.wa_added?"checked":""}> <span class="nocaps">Added to the IMDS WhatsApp community</span></label><label class="dir-f"><span>Members</span>${dirInput(k,"wa_members",f.wa_members,"WhatsApp members — "+e.name)}</label></div></section>
     <section class="dir-sec preview">${dirPreviewHTML(k)}</section>`;
 }
+/* One card per stratum: number, title, how it is used, filled count. */
+function strataCard(g,inner,f){
+  const n=g.people.filter(p=>splitEmails(f[p+"_email"]).length).length;
+  return `<section class="dir-sec strata s-${g.id}"><div class="strata-h"><span class="strata-n" aria-hidden="true">${g.n}</span><div><h3>${g.title}</h3><p class="muted small">${g.hint}</p></div><span class="strata-c ${n?"":"none"}">${n?`${n} with e-mail`:"no e-mail"}</span></div>${inner}</section>`;
+}
+const X_ROLES=[["cc","Always CC"],["to","To (with the PIC)"],["none","Not mailed (info only)"]];
+function extraCard(k,e){
+  const x=dirX(e);
+  const inp=(i,fld,v,l,t)=>`<input class="dir-in ${fld==="email"&&emailBad(v)?"invalid":""}" type="${t||"text"}" data-action-change="dir-x" data-key="${escAttr(k)}" data-i="${i}" data-field="${fld}" value="${escAttr(v||"")}" aria-label="${escAttr(l)}" autocomplete="off" spellcheck="false">`;
+  return `<section class="dir-sec strata s-extra"><div class="strata-h"><span class="strata-n" aria-hidden="true">2</span><div><h3>Additional contacts</h3><p class="muted small">People who are often on the e-mail thread (for example the supplier's own CC list). “Always CC” adds them to every e-mail to this supplier.</p></div><span class="strata-c ${x.length?"":"none"}">${x.length?x.length+" contact"+(x.length===1?"":"s"):"none yet"}</span></div>
+    ${x.length?`<div class="dir-grid dg-x"><span class="dg-h">Name</span><span class="dg-h">Position</span><span class="dg-h">Email</span><span class="dg-h">Phone</span><span class="dg-h">Use</span><span class="dg-h"><span class="sr-only">Remove</span></span>
+      ${x.map((p,i)=>`<div class="dg-c" data-col="Name">${inp(i,"name",p.name,"Name of additional contact "+(i+1))}</div><div class="dg-c" data-col="Position">${inp(i,"position",p.position,"Position of additional contact "+(i+1))}</div><div class="dg-c" data-col="Email">${inp(i,"email",p.email,"Email of additional contact "+(i+1))}</div><div class="dg-c" data-col="Phone">${inp(i,"phone",p.phone,"Phone of additional contact "+(i+1),"tel")}</div>
+        <div class="dg-c" data-col="Use"><select class="dir-in" data-action-change="dir-x" data-key="${escAttr(k)}" data-i="${i}" data-field="role" aria-label="How contact ${i+1} is used">${X_ROLES.map(([v,l])=>`<option value="${v}" ${(p.role||"cc")===v?"selected":""}>${l}</option>`).join("")}</select></div>
+        <div class="dg-c"><button type="button" class="icon-btn" data-action="dir-x-del" data-key="${escAttr(k)}" data-i="${i}" aria-label="Remove additional contact ${i+1}" title="Remove">×</button></div>`).join("")}</div>`:""}
+    <div><button type="button" class="btn btn-secondary btn-sm" data-action="dir-x-add" data-key="${escAttr(k)}">+ Add contact</button> <span class="muted small">Tip: paste several at once, e.g. <code>"Name" &lt;name@company.com&gt;; …</code></span></div>
+    <label class="dir-f"><span>Paste contacts (optional)</span><textarea class="dir-in dir-paste" rows="2" data-action-change="dir-x-paste" data-key="${escAttr(k)}" placeholder='"Yudi Hermawan" <yudi@company.com>; "Arwan" <arwan@company.com>' aria-label="Paste several contacts"></textarea></label></section>`;
+}
+/* "Name" <mail>; Name <mail>; mail → [{name,email}] */
+function parseContactList(text){
+  const out=[];String(text||"").split(/[;\n]+/).forEach(part=>{const m=/^\s*"?([^"<]*?)"?\s*<\s*([^>\s]+@[^>\s]+)\s*>\s*$/.exec(part);if(m){out.push({name:clean(m[1].replace(/^SC_|^VK\s+/i,"")),email:m[2]});return}const em=splitEmails(part);if(em.length)out.push({name:"",email:em[0]})});
+  return out;
+}
+function setDirX(key,fn){const e=DIR.entries[key];if(!e)return false;e.x=dirX(e).map(p=>Object.assign({},p));fn(e.x);e.m=e.m||{};e.m.x=1;e.at=new Date().toISOString();return saveDir()}
 function renderDirBuyers(){
   const cnt={};Object.values(DIR.entries).forEach(e=>{if(e.f.buyer)cnt[e.f.buyer]=(cnt[e.f.buyer]||0)+1});
   const names=Object.keys(DIR.buyers).sort((a,b)=>a.localeCompare(b));
@@ -2929,10 +2984,40 @@ function exportDirExcel(){
   const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
   saveBlob(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"IMDS_Directory_"+todayKey()+".xlsx","Directory Excel");
 }
+/* Directory update file (mode "merge"): new suppliers are added; known ones get the file's fields unless the team
+   edited that field by hand (e.m), except entries marked force (a correction); "clear" removes fields; additional
+   contacts are appended when their e-mail is not listed yet; buyers get a name / e-mail where none is set. */
+function dirMergeTarget(u,k){const f=findDirEntry(u.name,u.code);return f&&f.how!=="fuzzy"?f.key:DIR.entries[k]?k:null}
+function planDirMerge(o){
+  const st={added:0,updated:0,contacts:0,corrections:0};
+  Object.entries(o.entries).forEach(([k,u])=>{const t=dirMergeTarget(u,k);if(!t){st.added++;st.contacts+=(u.x||[]).length}else{st.updated++;const have=new Set(dirX(DIR.entries[t]).map(p=>(p.email||"").toLowerCase()));st.contacts+=(u.x||[]).filter(p=>!have.has((p.email||"").toLowerCase())).length}if(u.force)st.corrections++});
+  return st;
+}
+function applyDirMerge(o){
+  Object.entries(o.entries).forEach(([k,u])=>{
+    const t=dirMergeTarget(u,k),clean1=v=>{const c=Object.assign({},v);delete c.force;delete c.clear;return c};
+    if(!t){DIR.entries[k]=Object.assign(clean1(u),{f:Object.assign({},u.f||{}),m:Object.assign({},u.m||{}),x:(u.x||[]).slice()});return}
+    const e=DIR.entries[t];e.f=e.f||{};e.m=e.m||{};
+    (u.clear||[]).forEach(f=>{delete e.f[f]});
+    Object.entries(u.f||{}).forEach(([f,v])=>{if(u.force||!e.m[f])e.f[f]=v});
+    if(u.force)Object.keys(u.m||{}).forEach(f=>{e.m[f]=1});
+    const have=new Set(dirX(e).map(p=>(p.email||"").toLowerCase()));e.x=dirX(e).slice();
+    (u.x||[]).forEach(p=>{if(!have.has((p.email||"").toLowerCase())){e.x.push(Object.assign({},p));have.add((p.email||"").toLowerCase())}});
+    if(!e.code&&u.code)e.code=u.code;if(!e.type&&u.type)e.type=u.type;if(e.src==="buyer"&&u.src==="database")e.src="database";
+    e.at=new Date().toISOString();
+  });
+  Object.entries(o.buyers||{}).forEach(([s,b])=>{const c=DIR.buyers[s]||(DIR.buyers[s]={});if(b.full&&!c.full)c.full=b.full;if(b.email&&!c.email)c.email=b.email});
+  Object.entries(o.aliases||{}).forEach(([a,k])=>{if(!DIR.aliases[a])DIR.aliases[a]=k});
+  DIRIDX=null;DIRM=null;
+}
 async function restoreDirBackup(file){
   try{
     const o=JSON.parse(await file.text());
     if(!o||o.app!=="imds-tracker-directory"||!o.entries||typeof o.entries!=="object")throw new Error("not a directory backup");
+    if(o.mode==="merge"){const plan=planDirMerge(o);
+      if(!await confirmDialog({title:"Update the directory?",message:`${plan.added} new supplier(s), ${plan.updated} updated, ${plan.contacts} additional contact(s), ${plan.corrections} correction(s). Fields your team edited by hand are kept, except the corrections marked in the file.`,confirmLabel:"Update directory"}))return;
+      applyDirMerge(o);DIR.meta.importedAt=new Date().toISOString();DIR.meta.files=[...(DIR.meta.files||[]),...((o.meta&&o.meta.files)||[]).map(f=>({name:f.name,at:new Date().toISOString()}))].slice(-6);
+      saveDir();renderAll();toast(`Directory updated: ${plan.added} new, ${plan.updated} updated`,"ok");return}
     if(dirCount()&&!await confirmDialog({title:"Replace the directory?",message:`This replaces the current directory (${dirCount()} suppliers) with the backup (${Object.keys(o.entries).length} suppliers).`,confirmLabel:"Replace",danger:true}))return;
     DIR.entries=o.entries;DIR.buyers=o.buyers||{};DIR.aliases=o.aliases||{};DIR.meta=o.meta||{};DIR_STATE.sel=null;saveDir();renderAll();toast("Backup restored","ok");
   }catch(e){toast("That file is not a valid directory backup.","err")}
@@ -3451,6 +3536,8 @@ const ACTIONS={
   "dir-import-toggle":()=>{DIR_STATE.importOpen=!DIR_STATE.importOpen;renderDirectory()},
   "dir-pick":()=>$("#dir-file-input").click(),
   "dir-backup":()=>downloadDirBackup(),"dir-export":()=>exportDirExcel(),"dir-restore":()=>$("#dir-restore-input").click(),
+  "dir-x-add":(el)=>{setDirX(el.dataset.key,x=>{x.push({role:"cc"})});renderDirDetail();const ins=$$(`[data-action-change="dir-x"][data-field="name"]`);if(ins.length)ins[ins.length-1].focus()},
+  "dir-x-del":(el)=>{setDirX(el.dataset.key,x=>{x.splice(Number(el.dataset.i),1)});renderDirDetail();renderDirList()},
   "dir-new":(el)=>{$("#dirnew-name").value="";$("#dirnew-code").value="";openModal("modal-dirnew",el)},
   "dir-new-save":()=>{const n=clean($("#dirnew-name").value);if(!n){$("#dirnew-name").focus();toast("Enter the supplier name.","err");return}const k=nameKey(n);if(DIR.entries[k]){toast("That supplier already exists.","err");return}DIR.entries[k]=blankEntry(n,clean($("#dirnew-code").value),"manual");saveDir();DIR_STATE.sel=k;DIR_STATE.tab="suppliers";DIR_STATE.only=false;closeModal("modal-dirnew");renderAll();toast("Supplier added","ok")},
   "dir-remove":async(el)=>{const e=DIR.entries[el.dataset.key];if(!e)return;if(await confirmDialog({title:"Remove this entry?",message:`${e.name} will be removed from the directory. Imported suppliers can be restored by importing the file again.`,confirmLabel:"Remove",danger:true})){delete DIR.entries[el.dataset.key];Object.keys(DIR.aliases).forEach(a=>{if(DIR.aliases[a]===el.dataset.key)delete DIR.aliases[a]});DIR_STATE.sel=null;saveDir();renderAll();toast("Entry removed","ok")}},
@@ -3486,7 +3573,12 @@ const CHANGE={
     const v=el.value,bad=(/email/.test(el.dataset.field)||el.dataset.field==="pic_extra")&&emailBad(v);el.classList.add("edited");el.classList.toggle("invalid",bad);if(bad)el.setAttribute("aria-invalid","true");else el.removeAttribute("aria-invalid");
     if(el.dataset.field==="buyer"){renderDirList();renderDirDetail();renderChrome()}else{renderDirList();const pv=$(".dir-sec.preview");if(pv){const e=DIR.entries[el.dataset.key];const keep=document.activeElement;renderDirPreviewOnly(el.dataset.key)}}
     if(bad)toast("That email looks incomplete — please check it.","err")},
-  "dir-wa":(el)=>{setDirField(el.dataset.key,"wa_added",el.checked?"1":"")},  "buyer-field":(el)=>{setBuyerField(el.dataset.buyer,el.dataset.field,el.value);const bad=el.dataset.field==="email"&&emailBad(el.value);el.classList.toggle("invalid",bad);if(bad)toast("That email looks incomplete — please check it.","err")},
+  "dir-wa":(el)=>{setDirField(el.dataset.key,"wa_added",el.checked?"1":"")},
+  "dir-x":(el)=>{const i=Number(el.dataset.i),fld=el.dataset.field;setDirX(el.dataset.key,x=>{if(x[i]){const v=clean(el.value);if(v)x[i][fld]=v;else delete x[i][fld]}});
+    if(fld==="email"){const bad=emailBad(el.value);el.classList.toggle("invalid",bad);if(bad)toast("That email looks incomplete — please check it.","err")}renderDirPreviewOnly(el.dataset.key);renderDirList()},
+  "dir-x-paste":(el)=>{const list=parseContactList(el.value);if(!list.length){toast("No e-mail address found in the pasted text.","err");return}
+    let added=0;setDirX(el.dataset.key,x=>{list.forEach(c=>{if(!x.some(p=>(p.email||"").toLowerCase()===c.email.toLowerCase())){x.push({name:c.name,email:c.email,role:"cc"});added++}})});
+    el.value="";toast(added?`${added} contact${added===1?"":"s"} added as “Always CC”`:"Those contacts are already listed","ok");renderDirDetail()},  "buyer-field":(el)=>{setBuyerField(el.dataset.buyer,el.dataset.field,el.value);const bad=el.dataset.field==="email"&&emailBad(el.value);el.classList.toggle("invalid",bad);if(bad)toast("That email looks incomplete — please check it.","err")},
   "dir-link":(el)=>{const ok=linkTracker(el.dataset.company,el.value.trim());if(!ok&&el.value.trim()){toast("No directory supplier has that exact name — pick one from the list.","err");return}renderAll();toast(el.value.trim()?"Linked":"Link removed","ok")},
   "model-flag":(el)=>{
     const k=el.dataset.model,flag=el.dataset.flag;

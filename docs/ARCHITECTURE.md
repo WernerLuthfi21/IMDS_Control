@@ -48,6 +48,9 @@ Command palette: Ctrl/⌘ K (modules, part / CAS / supplier search, theme).
    Master; Excel edits come back through `/api/imds-master/sync-from-excel`.
 5. **Supplier**: self-check parses the supplier's file, predicts the G-CATS checks, stores confirmations; follow-up
    e-mails go through one payload (`lib/followup/payload.ts`) to the e-mail flow.
+6. **Weekly follow-up**: Vercel Cron (24 daily jobs) → `/api/cron/followups` → `lib/followup/scheduled-run.ts` renders
+   the template server-side (`render.ts`), resolves contacts from the Directory strata (`directory.ts`), builds the
+   attachments incl. the IMDS Supplier Check Form (`check-form.ts`) and hands each e-mail to the flow.
 
 ## API groups (`app/api`)
 
@@ -59,7 +62,8 @@ Command palette: Ctrl/⌘ K (modules, part / CAS / supplier search, theme).
 | `register/*`, `approvals/finalize`, `tasks`, `evidence/*` | Register edits and export, finalisation RPC, tasks, private evidence | internal roles |
 | `self-check/*`, `prechecks/*` | Supplier self-check and pre-check workflow | supplier (own code) / internal review |
 | `followups`, `automation/*`, `suppliers/contacts` | Follow-ups, Power Automate dispatch / status / test, PIC directory | internal roles |
-| `imds-master/*` | Tracker data, MD System import, master import/export, Excel reverse sync | internal roles; reverse sync by shared secret |
+| `imds-master/*` | Tracker data, MD System import, master import/export, Excel reverse sync, follow-up schedule (status / preview / send now) | internal roles; reverse sync by shared secret |
+| `cron/followups` | Weekly automatic follow-up (runs only on the saved WIB day/hour, once per slot) | Vercel Cron with `CRON_SECRET` |
 | `reference` | CAS → GADSL / TSZ lookup | authenticated |
 
 Routes check identity and role; RLS enforces record access. The service-role key is used only in server routes that

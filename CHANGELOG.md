@@ -2,6 +2,29 @@
 
 ## 2026-11-23
 
+### Supplier contacts in strata, weekly automatic follow-up, IMDS Supplier Check Form
+- Directory: contacts in five strata — IMDS PIC (To), **Additional contacts** (“Always CC”, “To” or info only; paste a
+  list like `"Name" <mail>; …`), Middle management, Top management and **Director** (split from top management).
+  Each stratum is a numbered card with its count; “What the e-mails will use” lists To and every CC option.
+- No IMDS PIC → the e-mail goes To middle management (staff / supervisor, else department head / GM) instead of being
+  blocked; the composer marks it “via middle mgmt”. Switch in Settings → E-mail templates (“No IMDS PIC?”).
+- Composer: CC options Middle management / Top management / **Director** / PUD buyer; “Always CC” contacts are added
+  automatically; tidier To column (first address + count, source tag).
+- PUD buyers: built-in e-mails for Puguh, Luthfy, Omen, Irman, Taris, Liza, Aries, Bangun, Fifi and Regia, used when
+  the Directory has none (`lib/followup/directory.ts` and the Tracker page; a test keeps both lists equal).
+- Directory “Restore backup / update file” accepts a **merge** update file: adds suppliers, fills fields without
+  overwriting the team's manual edits (except corrections marked in the file), appends additional contacts.
+- **IMDS Supplier Check Form** (attachment option in the composer and the schedule): guide, checking list, information
+  form with the supplier's outstanding parts, IMDS supplier code (Z008 + code), ID/version, plan date, the findings
+  G-CATS recorded for each part number before, an AUTO CHECK column (mass deviation ≠ 0, Misc. ≥ 10 %, mass outside
+  the drawing tolerance, prohibited substance without remains/purpose, ID/version missing), dropdowns, and the
+  current contacts to confirm. Generated on demand, never stored.
+- **Weekly automatic follow-up**: Settings → Automatic follow-up (days, hour WIB, type, template, sender, models,
+  CC, attachments, per-run limit). `/api/cron/followups` runs from 24 daily Vercel cron jobs (Hobby plan), checks the
+  WIB slot, claims it once in `audit_events`, renders the same template server-side and hands each e-mail to Power
+  Automate (HTTP 202 = handed off). Needs `CRON_SECRET` + `SUPABASE_SERVICE_ROLE_KEY`. Preview and “Send now” in
+  Settings; last runs listed. Off by default.
+
 ### Tracker: supplier due date → "Apply to all parts" of that model
 - Each model row in "Due dates for this supplier" now shows either "✓ All N parts follow this date" or a button
   "Apply to all N parts · M differ" that gives the date (supplier due date, else the model deadline) to every part of

@@ -131,6 +131,7 @@ Vercel > Project > Settings > Environment Variables > tambahkan (Production), la
 | `POWER_AUTOMATE_EMAIL_URL` | URL pemicu Flow C (Bagian 6) | ya |
 | `FOLLOWUP_SENDERS` | pengirim yang boleh dipilih, mis. `IMDS Team <imds@perusahaan.co.id>; Budi <budi@perusahaan.co.id>` | opsional |
 | `FOLLOWUP_MIN_GAP_HOURS` | jeda minimum kirim ulang ke supplier yang sama (default 24; `0` mematikan) | opsional |
+| `CRON_SECRET` | kata sandi acak panjang (mis. 40 karakter) untuk **follow-up otomatis mingguan** (bagian 6d). Vercel mengirimnya sendiri ke `/api/cron/followups`; tanpa ini jadwal tidak jalan | untuk jadwal |
 
 Catatan: URL flow berisi tanda tangan rahasia. Jangan tempel di chat atau repo. `POWER_AUTOMATE_EXCEL_URL` hanya untuk Judgement; **jangan dipakai untuk Tracker**.
 
@@ -243,6 +244,18 @@ Semua e-mail ke supplier sekarang lewat **satu tempat**. Tombol *Remind*, *Send 
 **Directory tersimpan di database.** Kontak (sampai top management) dimuat otomatis di setiap browser; tersimpan otomatis ±2 detik setelah diedit.
 
 **PUD buyer:** Directory → tab PUD buyers → *Update buyers from a pasted list*. Tempel baris dari Excel: `email ⇥ nama buyer` (mengisi e-mail buyer) dan/atau `kode ⇥ kode ⇥ nama supplier ⇥ buyer` (menetapkan buyer ke supplier). Tidak ada yang dihapus; supplier yang belum ada di Directory dilaporkan.
+
+## 6d. Follow-up otomatis mingguan (Settings → Automatic follow-up)
+
+1. Vercel → Settings → Environment Variables: tambah `CRON_SECRET` (acak, panjang), pastikan `SUPABASE_SERVICE_ROLE_KEY`, `POWER_AUTOMATE_EMAIL_URL` dan `POWER_AUTOMATE_SECRET` ada, lalu **Redeploy**.
+2. Tracker → Settings → **Automatic follow-up (weekly)**: centang *Send automatically*, pilih hari dan jam (WIB), jenis e-mail, template, pengirim, CC (middle / top / director / PUD buyer) dan lampiran (PDF, Excel, **IMDS Supplier Check Form**). **Save schedule**.
+3. **Preview the next run** menampilkan e-mail yang akan dikirim (tidak mengirim apa pun). **Send now…** mengirim saat itu juga dengan pengaturan yang tersimpan.
+
+Cara kerja: `vercel.json` berisi 24 cron harian (satu per jam; paket Hobby hanya boleh harian dan menjalankannya dalam jam itu, ±59 menit). Setiap jam, `/api/cron/followups` memeriksa apakah hari/jam WIB cocok; satu slot hanya jalan sekali (dicatat di `audit_events`). Supplier yang baru dikirimi dalam `FOLLOWUP_MIN_GAP_HOURS` dilewati; batas per run bisa diatur. Status "Handed off" = flow menerima (HTTP 202), bukan bukti terkirim; cek riwayat flow/Outlook.
+
+**Kontak dan strata (Directory):** IMDS PIC (To) · Additional contacts (*Always CC* / *To* / info saja) · Middle management · Top management · **Director** (terpisah). Supplier tanpa IMDS PIC otomatis dikirim ke middle management (staff/supervisor, jika kosong dept. head/GM); bisa dimatikan di Settings → E-mail templates. E-mail PUD buyer bawaan dipakai jika Directory belum punya.
+
+**File update Directory:** Directory → *Restore backup / update file* menerima file update (mode *merge*): supplier baru ditambah, yang ada diisi tanpa menimpa isian manual tim, kecuali koreksi yang ditandai di file.
 
 ## 7. Flow B: Excel Master → website (edit manual di Excel)
 
