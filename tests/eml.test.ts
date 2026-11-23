@@ -24,4 +24,11 @@ describe("Outlook draft (.eml)", () => {
   it("names the file after the supplier and date", () => {
     expect(emlFileName("PT. Alpha Metal (5000)", new Date("2026-11-18T00:00:00Z"))).toBe("IMDS_PT_Alpha_Metal_5000_2026-11-18.eml");
   });
+  it("adds an HTML alternative when html is given, keeping the plain text", () => {
+    const eml = buildEml({ to: ["a@x.co.id"], cc: [], subject: "S", body: "Hi", html: "<p>Hi</p>" });
+    expect(eml).toContain("multipart/alternative");
+    expect(eml).toContain("Content-Type: text/plain; charset=UTF-8");
+    expect(eml).toContain("Content-Type: text/html; charset=UTF-8");
+    expect(eml).toContain(Buffer.from("<p>Hi</p>").toString("base64"));
+  });
 });

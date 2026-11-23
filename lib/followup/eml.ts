@@ -4,7 +4,7 @@
  * Automate, no Microsoft Graph, works for every colleague: the user presses Send in Outlook.
  */
 export type EmlAttachment = { name: string; contentType: string; contentBytes: string };
-export type EmlInput = { to: string[]; cc: string[]; subject: string; body: string; attachments?: EmlAttachment[]; date?: Date };
+export type EmlInput = { to: string[]; cc: string[]; subject: string; body: string; attachments?: EmlAttachment[]; date?: Date; html?: string };
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const wrap = (s: string) => s.replace(/.{1,76}/g, "$&\r\n").trimEnd();
@@ -27,10 +27,14 @@ export function buildEml(input: EmlInput): string {
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${boundary}"`
   ];
-  const parts = [[
-    `--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "",
-    wrap(b64(input.body.replace(/\r?\n/g, "\r\n")))
-  ].join("\r\n")];
+  const plain = ["Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", wrap(b64(input.body.replace(/\r?\n/g, "\r\n")))].join("\r\n");
+  // With HTML (font and layout from Settings) the body is multipart/alternative; Outlook shows the HTML, the text stays as fallback.
+  const alt = boundary + "-alt";
+  const bodyPart = input.html
+    ? [`Content-Type: multipart/alternative; boundary="${alt}"`, "", `--${alt}`, plain, `--${alt}`,
+       "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", wrap(b64(input.html)), `--${alt}--`].join("\r\n")
+    : plain;
+  const parts = [`--${boundary}\r\n${bodyPart}`];
   for (const a of input.attachments || []) {
     const name = safeName(a.name);
     parts.push([

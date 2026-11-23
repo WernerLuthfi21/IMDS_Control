@@ -160,7 +160,7 @@ Jika tidak: **Response 401**, lalu **Terminate**.
 
 Tambahkan **Select** (Data Operations):
 - From: `triggerBody()?['files']` (file dikirim di `files`; `attachments` selalu kosong karena pemicu Teams webhook menolak file di `attachments` dengan HTTP 400)
-- Map: `Name` = `item()?['name']`, `ContentBytes` = `item()?['contentBytes']`
+- Map: `Name` = `item()?['name']`, `ContentBytes` = `base64ToBinary(item()?['contentBytes'])` (wajib `base64ToBinary`: tanpa itu Outlook menyandikan file dua kali dan lampiran terbuka kosong/rusak)
 
 ### 3.4 Kirim
 

@@ -1,6 +1,7 @@
 // The ONE e-mail contract between this website and Power Automate (Tracker + Judgement). Version 2 is a superset of the
 // older payloads ({type,followupId,to,cc,subject,body} and the Tracker's attachments), so flows built earlier keep working.
 import { emailsOf } from "./recipients";
+import { cleanFont, DEFAULT_FONT } from "./center";
 
 export type Attachment = { name: string; contentType: string; contentBytes: string };
 export type Sender = { name: string; email: string };
@@ -43,10 +44,32 @@ export const SUPPLIER_EMAIL_SCHEMA = {
   }
 } as const;
 
-/** Plain text → minimal safe HTML for Outlook: escape, keep line breaks, keep the font simple. */
-export function toHtml(text: string): string {
-  const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  return `<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">${esc.replace(/\r\n|\r|\n/g, "<br>")}</div>`;
+const escHtml = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * Plain text → safe, tidy HTML for Outlook. Everything is escaped. Paragraphs are separated by blank lines;
+ * "•", "-" and "1." lines become proper lists; links become clickable; an "IMPORTANT NOTES"-style all-caps
+ * heading line is bold. Font comes from Settings (only a known family and 9–16 pt; see cleanFont).
+ */
+export function toHtml(text: string, font: { family: string; sizePt: number } = DEFAULT_FONT): string {
+  const f = cleanFont(font);
+  const link = (t: string) => escHtml(t).replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:)]/g, (u) => `<a href="${u}">${u}</a>`);
+  const blocks = String(text).replace(/\r\n|\r/g, "\n").split(/\n{2,}/).map((b) => b.replace(/^\n+|\n+$/g, "")).filter(Boolean);
+  const out: string[] = [];
+  const kindOf = (l: string) => (/^\s*\d+[.)]\s+/.test(l) ? "ol" : /^\s*[•\-*]\s+/.test(l) ? "ul" : "p");
+  for (const b of blocks) {
+    const lines = b.split("\n");
+    if (lines.length === 1 && /^[A-Z0-9 &/()-]{6,60}$/.test(lines[0].trim()) && /[A-Z]{3}/.test(lines[0])) { out.push(`<p style="margin:0 0 6pt 0"><b>${escHtml(lines[0].trim())}</b></p>`); continue; }
+    // Consecutive lines of the same kind form one run: a heading line followed by "1. …" lines is a paragraph + a list.
+    const runs: { kind: string; lines: string[] }[] = [];
+    for (const l of lines) { const k = kindOf(l); if (runs.length && runs[runs.length - 1].kind === k) runs[runs.length - 1].lines.push(l); else runs.push({ kind: k, lines: [l] }); }
+    runs.forEach((r, i) => {
+      const gap = i === runs.length - 1 ? "10pt" : "4pt";
+      if (r.kind === "p") out.push(`<p style="margin:0 0 ${gap} 0">${r.lines.map(link).join("<br>")}</p>`);
+      else out.push(`<${r.kind} style="margin:0 0 ${gap} 0;padding-left:22pt">${r.lines.map((l) => `<li style="margin:0 0 2pt 0">${link(l.replace(/^\s*([•\-*]|\d+[.)])\s+/, ""))}</li>`).join("")}</${r.kind}>`);
+    });
+  }
+  return `<div style="font-family:'${f.family}',Arial,sans-serif;font-size:${f.sizePt}pt;line-height:1.35">${out.join("")}</div>`;
 }
 
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -67,6 +90,7 @@ export function pickSender(allowed: Sender[], requested?: string | null): Sender
 
 export type PayloadInput = Omit<SupplierEmailPayload, "type" | "version" | "from" | "senderName" | "to" | "cc" | "attachments" | "files" | "followupId" | "logId" | "bodyHtml"> & {
   followupId?: string; logId?: string; to: string[]; cc: string[]; sender?: Sender | null; attachments?: Attachment[];
+  font?: { family: string; sizePt: number };
 };
 
 export function buildSupplierEmailPayload(i: PayloadInput): SupplierEmailPayload {
@@ -82,7 +106,7 @@ export function buildSupplierEmailPayload(i: PayloadInput): SupplierEmailPayload
     supplierCode: i.supplierCode, supplierName: i.supplierName,
     from: i.sender?.email ?? "", senderName: i.sender?.name ?? "",
     to: to.join(";"), cc: [...new Set(i.cc.flatMap(emailsOf))].filter((e) => !to.includes(e)).join(";"),
-    subject: i.subject.trim().slice(0, 240), body: i.body.trim().slice(0, 30000), bodyHtml: toHtml(i.body.trim().slice(0, 30000)),
+    subject: i.subject.trim().slice(0, 240), body: i.body.trim().slice(0, 30000), bodyHtml: toHtml(i.body.trim().slice(0, 30000), i.font),
     attachments: [], files: attachments, metadata: i.metadata
   };
 }

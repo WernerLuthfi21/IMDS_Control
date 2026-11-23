@@ -104,7 +104,26 @@ describe("duplicate-send guard", () => {
 
 import { toHtml } from "@/lib/followup/payload";
 describe("HTML body for Outlook", () => {
-  it("escapes markup and keeps line breaks", () => {
-    expect(toHtml("Dear <ACME> & team,\nPart A\r\nPart B")).toBe('<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">Dear &lt;ACME&gt; &amp; team,<br>Part A<br>Part B</div>');
+  it("escapes markup and keeps line breaks inside a paragraph", () => {
+    expect(toHtml("Dear <ACME> & team,\nPart A\r\nPart B")).toBe(`<div style="font-family:'Calibri',Arial,sans-serif;font-size:11pt;line-height:1.35"><p style="margin:0 0 10pt 0">Dear &lt;ACME&gt; &amp; team,<br>Part A<br>Part B</p></div>`);
+  });
+  it("turns blank lines into paragraphs, bullets and numbers into lists, caps lines into bold, links into anchors", () => {
+    const h = toHtml("Hello\n\n• one\n• two\n\n1. a\n2. b\n\nIMPORTANT NOTES\n\nSee https://bit.ly/x.");
+    expect(h).toContain('<ul style="margin:0 0 10pt 0;padding-left:22pt"><li style="margin:0 0 2pt 0">one</li>');
+    expect(h).toContain("<ol ");
+    expect(h).toContain("<b>IMPORTANT NOTES</b>");
+    expect(h).toContain('<a href="https://bit.ly/x">https://bit.ly/x</a>.');
+  });
+  it("uses the configured font, but only a known family and a 9–16 pt size", () => {
+    expect(toHtml("x", { family: "Arial", sizePt: 12 })).toContain("font-family:'Arial',Arial,sans-serif;font-size:12pt");
+    expect(toHtml("x", { family: "x;background:url(evil)", sizePt: 99 })).toContain("font-family:'Calibri',Arial,sans-serif;font-size:11pt");
+  });
+  it("splits a heading line followed by numbered lines into a paragraph and a list", () => {
+    const h = toHtml("Outstanding part numbers:\n1. A-1\n2. A-2");
+    expect(h).toContain('<p style="margin:0 0 4pt 0">Outstanding part numbers:</p><ol ');
+    expect(h).toContain("<li style=\"margin:0 0 2pt 0\">A-2</li></ol>");
+  });
+  it("never lets a link break out of the attribute", () => {
+    expect(toHtml('https://a.b/"onmouseover=x')).not.toContain('"onmouseover');
   });
 });

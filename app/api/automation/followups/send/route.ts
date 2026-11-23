@@ -4,6 +4,7 @@ import { enqueue, dispatch } from "@/lib/automation/outbox";
 import { flowConfig, renderFollowup, transportFor } from "@/lib/automation/flow";
 import { resolveRecipients, emailsOf, type ContactRow } from "@/lib/followup/recipients";
 import { parseSenders, pickSender } from "@/lib/followup/payload";
+import { DEFAULT_CONFIG, sanitizeConfig, signOff } from "@/lib/followup/center";
 export const maxDuration = 60;
 
 /** Sends ONE supplier e-mail through Power Automate. The browser calls this once per selected row, in order. */
@@ -29,7 +30,10 @@ export async function POST(request: NextRequest) {
     supabase.from("sync_outbox").select("id").eq("item_id", itemId).eq("kind", "SUPPLIER_EMAIL").eq("status", "SENT").limit(1),
   ]);
   if (dup?.length || handed?.length) return NextResponse.json({ error: "A follow-up for this record was already sent.", status: "SKIPPED" }, { status: 409 });
-  const msg = renderFollowup({ errorType: item.error_type_label || "", supplierName: contact.supplier_name, supplierCode: item.supplier_code, partNo: item.delivery_part_no });
+  const rendered = renderFollowup({ errorType: item.error_type_label || "", supplierName: contact.supplier_name, supplierCode: item.supplier_code, partNo: item.delivery_part_no });
+  // Same sign-off as the Tracker e-mails (Settings → E-mail templates); Power Automate adds no Outlook signature.
+  const { data: mailSettings } = await supabase.from("imds_tracker_settings").select("value").eq("key", "followup_config").maybeSingle();
+  const msg = { ...rendered, body: signOff(rendered.body, sanitizeConfig(mailSettings?.value ?? DEFAULT_CONFIG), sender?.name) };
   const { data: f, error } = await supabase.from("supplier_followups").insert({ item_id: itemId, supplier_code: item.supplier_code, recipient_email: contact.email, cc_emails: recipients.cc, subject: msg.subject, message_body: msg.body, status: "COMPOSED", composed_at: new Date().toISOString(), created_by: user.id }).select("id").single();
   if (error || !f) return NextResponse.json({ error: error?.message || "Could not create follow-up.", status: "FAILED" }, { status: 400 });
   await enqueue(supabase, user.id, { kind: "SUPPLIER_EMAIL", followupId: f.id, itemId });
