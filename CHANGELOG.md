@@ -2,6 +2,11 @@
 
 ## 2026-11-23
 
+### Tracker: supplier list and summary PDF
+- The whole supplier row opens the supplier (no need to hit the name). The name is plain bold text, not a link.
+- The table no longer squeezes the name column on narrower windows: Status hides below 1180 px and rows become cards below 1000 px.
+- Executive summary PDF, priority suppliers: a **Submitted n / all parts** column next to **Not Submitted n / all parts**.
+
 ### Tracker: parts workbench in the supplier drawer
 - One **Target date** column (the submission plan).
   - A model deadline change sets every part of the model; a supplier × model due date sets that supplier's parts.
