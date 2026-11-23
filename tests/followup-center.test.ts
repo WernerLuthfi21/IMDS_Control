@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG, DEFAULT_REQUIRED_CC, KINDS, PLACEHOLDERS, mergeCc, sanitizeConfig } from "@/lib/followup/center";
+import { DEFAULT_CONFIG, DEFAULT_REQUIRED_CC, KINDS, PLACEHOLDERS, cleanFont, footerFor, mergeCc, sanitizeConfig } from "@/lib/followup/center";
 
 describe("default templates", () => {
   it("has one default template for each of the three kinds", () => {
@@ -48,5 +48,63 @@ describe("mergeCc", () => {
   });
   it("re-adds a required address the browser removed", () => {
     expect(mergeCc({ to: ["p@a.com"], cc: [], required: ["req@x.com"] })).toEqual(["req@x.com"]);
+  });
+});
+
+import { DEFAULT_SIGNATURE, sanitizeConfig as cleanCfg, withSignature } from "@/lib/followup/center";
+describe("sign-off under every e-mail", () => {
+  it("is on by default with the full sender name placeholder", () => {
+    const c = cleanCfg({});
+    expect(c.signature).toBe(DEFAULT_SIGNATURE);
+    expect(c.signature).toContain("{sendername}");
+    expect(c.senderNames.Werner).toBe("Abdullah Luthfi Werner");
+  });
+  it("is added once; a template that already signs off keeps its own", () => {
+    const sig = "Best regards,\n\nAbdullah Luthfi Werner\nTMMIN - Material Engineering";
+    expect(withSignature("Dear X,\n\nThank you.", sig)).toBe("Dear X,\n\nThank you.\n\n" + sig);
+    expect(withSignature("Dear X,\n\nKind regards,\nAyu", sig)).toBe("Dear X,\n\nKind regards,\nAyu");
+    expect(withSignature("Dear X", "")).toBe("Dear X");
+  });
+  it("an emptied signature stays empty and names are sanitised", () => {
+    const c = cleanCfg({ signature: "", senderNames: { Werner: "  Abdullah Luthfi Werner ", "": "x", Bad: "" } });
+    expect(c.signature).toBe("");
+    expect(c.senderNames).toEqual({ Werner: "Abdullah Luthfi Werner" });
+  });
+});
+
+import { fullSenderName, signOff } from "@/lib/followup/center";
+describe("server-side sign-off (safety net for both e-mail routes)", () => {
+  const cfg = cleanCfg({});
+  it("fills the full name for a known sender, case-insensitive", () => {
+    expect(fullSenderName(cfg.senderNames, "werner")).toBe("Abdullah Luthfi Werner");
+    expect(fullSenderName(cfg.senderNames, "Jasmin")).toBe("Jasmin");
+    expect(signOff("Dear X,\n\nThank you.", cfg, "Werner")).toBe("Dear X,\n\nThank you.\n\nBest regards,\n\nAbdullah Luthfi Werner\nTMMIN - Material Engineering");
+  });
+  it("drops the name line when no sender is known, never sending an empty line", () => {
+    expect(signOff("Hi", cfg, null)).toBe("Hi\n\nBest regards,\n\nTMMIN - Material Engineering");
+  });
+  it("does not sign a body the page already signed", () => {
+    const once = signOff("Hi", cfg, "Werner");
+    expect(signOff(once, cfg, "Werner")).toBe(once);
+  });
+});
+
+describe("footer per sender and e-mail font", () => {
+  const cfg = sanitizeConfig({ signature: "Best regards,\n\n{sendername}", senderNames: { Werner: "Abdullah Luthfi Werner", Ayu: "Eka Tarisa Ayu Putri" }, senderFooters: { werner: "Regards,\n{sendername}\nIMDS PIC · Ext. 1234", "": "x" } });
+  it("keeps only named footers and defaults to none", () => {
+    expect(cfg.senderFooters).toEqual({ werner: "Regards,\n{sendername}\nIMDS PIC · Ext. 1234" });
+    expect(sanitizeConfig({}).senderFooters).toEqual({});
+  });
+  it("uses the sender's own footer (any case), otherwise the shared signature", () => {
+    expect(footerFor(cfg, "Werner")).toContain("IMDS PIC");
+    expect(footerFor(cfg, "Ayu")).toBe("Best regards,\n\n{sendername}");
+    expect(footerFor(cfg, "")).toBe("Best regards,\n\n{sendername}");
+    expect(signOff("Body", cfg, "Werner")).toBe("Body\n\nRegards,\nAbdullah Luthfi Werner\nIMDS PIC · Ext. 1234");
+    expect(signOff("Body", cfg, "Ayu")).toBe("Body\n\nBest regards,\n\nEka Tarisa Ayu Putri");
+  });
+  it("accepts only a known font family and a readable size", () => {
+    expect(sanitizeConfig({}).font).toEqual({ family: "Calibri", sizePt: 11 });
+    expect(cleanFont({ family: "segoe ui", sizePt: "12" })).toEqual({ family: "Segoe UI", sizePt: 12 });
+    expect(cleanFont({ family: "Comic;x", sizePt: 40 })).toEqual({ family: "Calibri", sizePt: 11 });
   });
 });

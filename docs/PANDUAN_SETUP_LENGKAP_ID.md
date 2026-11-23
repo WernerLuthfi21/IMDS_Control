@@ -185,7 +185,7 @@ Kenapa lambat/gagal: tanpa Concurrency = 1, dua baris bisa bentrok di Excel. Den
 1. Instant cloud flow `IMDS Tracker - Supplier Follow-up`, pemicu sama seperti Flow A.
 2. **Parse JSON**: Content `triggerBody()`; Schema = `docs/power-automate/supplier-email.schema.json`.
 3. **Condition** rahasia (sama seperti Flow A langkah 3), lalu di True:
-4. **Data Operations > Select** (lampiran): From = `body('Parse_JSON')?['files']`. Map `Name` → `item()?['name']`, `ContentBytes` → `item()?['contentBytes']`.
+4. **Data Operations > Select** (lampiran): From = `body('Parse_JSON')?['files']`. Map `Name` → `item()?['name']`, `ContentBytes` → `base64ToBinary(item()?['contentBytes'])` (wajib `base64ToBinary`: tanpa itu Outlook menyandikan file dua kali dan lampiran terbuka kosong/rusak).
    (Versi lama memakai `first(...)`, sehingga hanya lampiran pertama yang terkirim. Pakai Select agar PDF **dan** Excel ikut.)
 5. **Office 365 Outlook > Send an email (V2)** (atau *Send an email from a shared mailbox (V2)* bila `from` terisi):
    - To = `to`, CC = `cc`, Subject = `subject`, Body = `bodyHtml` (HTML aman, baris baru sudah benar).

@@ -2,6 +2,23 @@
 
 ## 2026-11-23
 
+### E-mail: sign-off, footer per sender, default font, tidier body, clearer send screen
+- Every supplier e-mail (Tracker and Judgement) ends with a sign-off, added once only. It is configurable in Settings →
+  E-mail templates: the shared signature plus a `short = full name` list (`{sendername}`; defaults Werner → Abdullah
+  Luthfi Werner, Ayu → Eka Tarisa Ayu Putri). A template that already ends with "regards"/"sincerely" keeps its own.
+- New: **footer per sender**. Each sender can have its own footer (name, title, phone). It replaces the shared
+  signature for that sender only; empty means the shared signature is used. Same rule in the browser and on the server
+  (`footerFor`).
+- New: **default e-mail font** (Calibri, Arial, Segoe UI, Verdana, Tahoma, Aptos, Times New Roman; 9–16 pt). Only a
+  known family and size are accepted, so no arbitrary CSS reaches the e-mail.
+- Tidier HTML body: blank lines become paragraphs, "•"/"-" and "1." lines become real lists, links are clickable, an
+  ALL-CAPS line (IMPORTANT NOTES) is bold. Everything is still escaped. Outlook drafts (.eml) now carry the same HTML
+  as `multipart/alternative`, with the plain text kept as a fallback.
+- Settings shows a live preview of the selected template with the chosen sender's footer and font (sample values).
+- Send screen: labelled send modes (Safe test / Outlook drafts / Live send), folded sending options, a sticky action
+  bar that says what the button does, an e-mail-style preview with files, an in-page confirmation listing the
+  recipients, and a finish card. On a phone, supplier rows become cards.
+- Docs: the e-mail flow's Select maps `ContentBytes` = `base64ToBinary(item()?['contentBytes'])`.
 ### Tracker: supplier list and summary PDF
 - The whole supplier row opens the supplier (no need to hit the name). The name is plain bold text, not a link.
 - The table no longer squeezes the name column on narrower windows: Status hides below 1180 px and rows become cards below 1000 px.
