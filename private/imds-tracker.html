@@ -691,6 +691,53 @@ main{padding:27px 29px 32px}
   .pr-sel{grid-row:1/span 3}.pr-part{grid-column:2}.pr-status{grid-column:3;grid-row:1;justify-self:end}
   .pr-model{grid-column:2}.pr-date{grid-column:2/-1}.pr-act{grid-column:1/-1;text-align:left}.pr-act .act{margin:0 6px 0 0}
 }
+/* ==========================================================================
+   THEME + HERO (2026-11-23): the sidebar follows light/dark like the top bar
+   (light = white bar with violet accents, dark = plum); the 3D cubes are larger and
+   centred in their column at every width; the phone top bar no longer overlaps the page.
+   ========================================================================== */
+:root{
+  --side-bg:var(--surface);--on-side:var(--ink);--on-side-2:var(--muted);--side-line:var(--line-strong);--side-fill:var(--surface-2);
+  --side-strong:var(--ink);--side-hover:var(--lilac);--side-count:rgba(124,58,237,.10);--side-count-ink:var(--brand-text);
+  --mark-bg:var(--violet-solid);--mark-ink:var(--on-violet);--nav-on:var(--lilac);--nav-on-ink:var(--brand-text);--nav-on-count:rgba(124,58,237,.18);
+  --av-bg:var(--violet-solid);--av-ink:var(--on-violet);--side-edge:var(--line)
+}
+:root[data-theme="dark"]{
+  --side-bg:#120B22;--on-side:#EEE7FB;--on-side-2:#C9B8F2;--side-line:rgba(255,255,255,.24);--side-fill:rgba(255,255,255,.09);
+  --side-strong:#FFFFFF;--side-hover:rgba(255,255,255,.08);--side-count:rgba(255,255,255,.14);--side-count-ink:#FFFFFF;
+  --mark-bg:#FFFFFF;--mark-ink:#5B21B6;--nav-on:#F7F5FA;--nav-on-ink:#211A2B;--nav-on-count:#E9DDFB;
+  --av-bg:#F7F5FA;--av-ink:#5B21B6;--side-edge:transparent
+}
+.sidebar{border-right:1px solid var(--side-edge)}
+.nav-link:hover{background:var(--side-hover)}
+.back-menu:hover{background:var(--side-hover)}
+.nav-link .nav-count,.nav-link .nav-count.warn{background:var(--side-count);color:var(--side-count-ink)}
+.ur-avatar{background:var(--av-bg);color:var(--av-ink)}
+.ur-btn:hover{background:var(--side-hover);color:var(--side-strong)}
+.sidebar .brand-logo{border-color:var(--side-line)}
+
+/* hero: cubes larger, centred in the right column */
+.hero{grid-template-columns:minmax(0,1.15fr) minmax(220px,.85fr);gap:16px;min-height:220px}
+.cube-stage{position:relative;inset:auto;width:auto;height:200px;min-height:0;opacity:1;transform:none;display:grid;place-items:center;overflow:visible}
+.cubes{scale:.74;translate:-14px -32px}
+@media (max-width:1024px){
+  .hero{grid-template-columns:minmax(0,1.2fr) minmax(180px,.8fr)}
+  .cube-stage{position:relative;right:auto;top:auto;width:auto;height:180px;transform:none}
+  .cubes{scale:.62;translate:-12px -40px}
+}
+@media (max-width:700px){
+  .hero{grid-template-columns:1fr;gap:4px;padding:16px}
+  .cube-stage{order:-1;height:170px}
+  .cubes{scale:.54;translate:-12px -44px}
+}
+
+/* phone top bar: one tidy row of buttons, search on its own row below, nothing overlaps the page */
+@media (max-width:768px){
+  .topbar{height:auto;min-height:56px;padding:8px 12px;gap:8px;row-gap:8px;flex-wrap:wrap}
+  .topbar .btn-sm{padding-left:10px;padding-right:10px}
+  #theme-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .gsearch-wrap{order:9;flex:1 1 100%}
+}
 </style>
 </head>
 <body>

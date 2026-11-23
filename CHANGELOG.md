@@ -2,6 +2,15 @@
 
 ## 2026-11-23
 
+### Tracker: sidebar follows light/dark, larger centred 3D cubes, tidy phone top bar
+- The sidebar now follows the theme like the top bar: white with violet accents in light, plum in dark (tokens only;
+  the active item, counts, avatar and logo frame keep their contrast in both).
+- The 3D cubes on the Overview are larger and centred in their column (desktop, tablet), and sit centred above the
+  title on a phone instead of being cut off or covering it.
+- Phone top bar: buttons stay on one row, the search gets its own row below, the theme button is icon-only, and the
+  "Live · N parts" notice moved to the bottom so it no longer covers the top bar.
+- Fix: a stray merge marker in the Tracker CSS dropped the part-dialog field style.
+
 ### E-mail: sign-off, footer per sender, default font, tidier body, clearer send screen
 - Every supplier e-mail (Tracker and Judgement) ends with a sign-off, added once only. It is configurable in Settings →
   E-mail templates: the shared signature plus a `short = full name` list (`{sendername}`; defaults Werner → Abdullah

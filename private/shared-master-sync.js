@@ -140,7 +140,7 @@
       var st = document.createElement("style");
       st.textContent = "#imds-bar{position:fixed;left:0;right:0;top:0;height:3px;z-index:9999;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}#imds-bar.on{opacity:1}" +
         "#imds-bar::before{content:'';position:absolute;inset:0;width:40%;background:linear-gradient(90deg,#c4b5fd,#6d28d9);animation:imdsbar 1.1s ease-in-out infinite}@keyframes imdsbar{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}" +
-        "#imds-load{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9998;display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:var(--surface,#fff);color:var(--ink,#1f2933);font:600 12px var(--f-ui,sans-serif);box-shadow:0 6px 24px rgba(40,20,80,.16);border:1px solid var(--line-strong,#e8e1f1);transition:opacity .4s}" +
+        "#imds-load{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:calc(100vw - 32px);z-index:9998;display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:var(--surface,#fff);color:var(--ink,#1f2933);font:600 12px var(--f-ui,sans-serif);box-shadow:0 6px 24px rgba(40,20,80,.16);border:1px solid var(--line-strong,#e8e1f1);transition:opacity .4s}" +
         "#imds-load.ok{border-color:var(--ok)}#imds-load.err{border-color:var(--bad);color:var(--bad)}#imds-load.fade{opacity:0;pointer-events:none}" +
         "#imds-load button{border:1px solid var(--line-strong,#ddd);background:transparent;color:inherit;border-radius:8px;padding:2px 10px;cursor:pointer;font:inherit}";
       document.head.appendChild(st);
