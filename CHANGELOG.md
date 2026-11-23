@@ -2,6 +2,25 @@
 
 ## 2026-11-23
 
+### Follow-up → Automatic: several automations, reminder before sending, previews and drafts; standard files
+- Automatic follow-ups moved from Settings to **Follow-up → Automatic**. Several automations, each with:
+  - its own type: follow-up per supplier, request per supplier, or **summary to all suppliers** (one e-mail with a
+    server-built summary PDF: totals plus submitted / not submitted / rejected / working per supplier);
+  - how often (**every week, every 2 weeks, every month**: week 1–4 or the last week), days and hour (WIB);
+  - models, parts, template, sender, CC and files.
+- Guardrails:
+  - a **reminder e-mail to the TMMIN PIC** before every run (default 24 h, to the sender's address) listing every
+    e-mail, recipient and file;
+  - **Skip next run**, Switch on/off, Send now (confirm), a test reminder, per-run limit, minimum gap;
+  - one run per slot, and a history of reminders and runs.
+- **Preview this run** shows every e-mail with its full text; each one can be downloaded as an Outlook draft with its
+  real attachments. Nothing is sent from the preview.
+- **Standard files** replace the generated check form. Your own files (e.g. the IMDS Supplier Check Form template) are
+  uploaded once and attached **exactly as uploaded**, chosen per manual e-mail or per automation.
+  - New route `/api/imds-master/attachments`; admin / preparer can edit.
+  - Migration `20261123010000_tracker_attachment_library.sql`.
+- Removed: the generated, pre-filled check form (`lib/followup/check-form.ts`).
+
 ### Supplier contacts in strata, weekly automatic follow-up, IMDS Supplier Check Form
 - Directory: contacts in five strata — IMDS PIC (To), **Additional contacts** (“Always CC”, “To” or info only; paste a
   list like `"Name" <mail>; …`), Middle management, Top management and **Director** (split from top management).

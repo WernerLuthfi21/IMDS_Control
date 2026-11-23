@@ -18,9 +18,12 @@ The workbook import endpoint requires explicit classification and rejects CONFID
 - Rotate credentials if they are ever committed or disclosed.
 - `CRON_SECRET` (server-only) protects `/api/cron/followups`: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; any
   other caller gets 401, and without the variable the endpoint does nothing (503). The job uses the service-role key
-  only to read the master, settings and G-CATS findings and to write follow-up logs and audit rows; it sends only
-  through the configured Power Automate flow, only on the saved WIB day/hour, once per slot. “Preview” and “Send now”
-  in Settings run with the signed-in user's own session (RLS) and need preparer/admin (preview also reviewer).
+  only to read the master, settings and the file library and to write follow-up logs and audit rows; it sends only
+  through the configured Power Automate flow, only on each automation's saved WIB slot, once per slot, after the
+  reminder to the TMMIN PIC. Preview, draft, test reminder and “Send now” (Follow-up → Automatic) run with the
+  signed-in user's own session (RLS) and need preparer/admin (preview and draft also reviewer).
+- Standard files (`attachment_library`) are uploaded by admin / preparer only, limited to office / PDF / image types
+  and 3 MB each, and attached byte for byte (never parsed or changed).
 - Supplier contact data (Directory) lives in the database (`imds_tracker_settings.directory`), never in the repository.
   The PUD buyer list in code holds only TMMIN staff work e-mails, as the mandatory CC list already does.
 

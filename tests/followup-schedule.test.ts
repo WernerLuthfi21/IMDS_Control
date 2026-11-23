@@ -3,9 +3,11 @@ import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { BUILTIN_BUYERS, findEntry, resolveContacts, type Directory } from "@/lib/followup/directory";
 import { classifyStatus, dateLong, maskProj, modelKey, renderSupplierEmail, TEAM } from "@/lib/followup/render";
-import { DEFAULT_SCHEDULE, isDue, nextRuns, sanitizeSchedule, wibSlot } from "@/lib/followup/schedule";
-import { autoCheckFormula, buildCheckFormXlsx, imdsSupplierCode } from "@/lib/followup/check-form";
+import { describe as describeAuto, isDue, nextRuns, noticeFor, sanitizeAutomation, sanitizeAutomations, wibSlot } from "@/lib/followup/schedule";
 import { DEFAULT_CONFIG, sanitizeConfig } from "@/lib/followup/center";
+import { pickLibrary, sanitizeLibrary } from "@/lib/followup/library";
+import { buildEmails, groupParts, noticeEmail, summaryRows, type Context, type MasterRow } from "@/lib/followup/scheduled-run";
+import { buildSummaryPdf } from "@/lib/imds-master/summary-pdf";
 
 // FIXTURE directory, invented names and addresses.
 const dir: Directory = {
@@ -83,29 +85,44 @@ describe("server rendering matches the Tracker rules", () => {
   });
 });
 
-describe("weekly schedule", () => {
-  it("is off by default and keeps only valid days, hour and limits", () => {
-    expect(sanitizeConfig({}).schedule).toEqual(DEFAULT_SCHEDULE);
-    const s = sanitizeSchedule({ enabled: true, days: [1, 1, 9, "3"], hour: 25, maxSuppliers: 0, kind: "x", models: [" 737d "] });
-    expect(s).toMatchObject({ enabled: true, days: [1, 3], hour: 9, maxSuppliers: 60, kind: "followup", models: ["737D"] });
+describe("automations: frequency, days, hour (WIB), reminder", () => {
+  const A = (o: Record<string, unknown>) => sanitizeAutomation({ enabled: true, days: [1], hour: 9, ...o });
+  it("has no automation by default and turns an older single schedule into the first one", () => {
+    expect(sanitizeConfig({}).automations).toEqual([]);
+    const l = sanitizeAutomations(undefined, { enabled: true, days: [1, 4], hour: 8, attachments: { pdf: true, xlsx: false } });
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ id: "a1", enabled: true, days: [1, 4], hour: 8, frequency: "weekly", attachments: { pdf: true, xlsx: false, library: [] } });
+  });
+  it("keeps only valid values", () => {
+    const a = sanitizeAutomation({ days: [1, 1, 9], hour: 25, maxSuppliers: 0, kind: "x", frequency: "daily", monthWeek: 9, notify: { leadHours: 500, to: "a@x.test; bad" }, skip: "nope" });
+    expect(a).toMatchObject({ enabled: false, days: [1], hour: 9, maxSuppliers: 60, kind: "followup", frequency: "weekly", monthWeek: 1, notify: { enabled: true, leadHours: 24, to: ["a@x.test"] }, skip: "" });
   });
   it("uses WIB days and hours", () => {
-    // Monday 23 Nov 2026 09:20 WIB = 02:20 UTC
-    expect(wibSlot(new Date("2026-11-23T02:20:00Z"))).toEqual({ date: "2026-11-23", dow: 1, hour: 9, key: "2026-11-23@09" });
-    // Sunday 22 Nov 2026 23:30 UTC = Monday 06:30 WIB
+    expect(wibSlot(new Date("2026-11-23T02:20:00Z"))).toMatchObject({ date: "2026-11-23", dow: 1, hour: 9, day: 23, key: "2026-11-23@09" });
     expect(wibSlot(new Date("2026-11-22T23:30:00Z")).dow).toBe(1);
   });
-  it("is due only on the chosen days within the chosen hour", () => {
-    const s = sanitizeSchedule({ enabled: true, days: [1, 4], hour: 9 });
-    expect(isDue(s, new Date("2026-11-23T02:59:00Z"))).toBe(true);   // Mon 09:59 WIB
-    expect(isDue(s, new Date("2026-11-23T03:00:00Z"))).toBe(false);  // Mon 10:00 WIB
-    expect(isDue(s, new Date("2026-11-24T02:10:00Z"))).toBe(false);  // Tue
-    expect(isDue({ ...s, enabled: false }, new Date("2026-11-23T02:10:00Z"))).toBe(false);
+  it("weekly: due on the chosen days within the chosen hour, not on a skipped slot", () => {
+    const a = A({ days: [1, 4] });
+    expect(isDue(a, new Date("2026-11-23T02:59:00Z"))).toBe(true);
+    expect(isDue(a, new Date("2026-11-23T03:00:00Z"))).toBe(false);
+    expect(isDue(a, new Date("2026-11-24T02:10:00Z"))).toBe(false);
+    expect(isDue({ ...a, enabled: false }, new Date("2026-11-23T02:10:00Z"))).toBe(false);
+    expect(isDue({ ...a, skip: "2026-11-23@09" }, new Date("2026-11-23T02:10:00Z"))).toBe(false);
   });
-  it("lists the next runs", () => {
-    const s = sanitizeSchedule({ enabled: true, days: [1, 4], hour: 9 });
-    expect(nextRuns(s, new Date("2026-11-23T05:00:00Z"), 2).map((d) => d.toISOString())).toEqual(["2026-11-26T02:00:00.000Z", "2026-11-30T02:00:00.000Z"]);
-    expect(nextRuns({ ...s, enabled: false }, new Date())).toEqual([]);
+  it("every 2 weeks: the anchor's week, then every other week", () => {
+    const a = A({ frequency: "biweekly", anchor: "2026-11-23" });
+    expect(nextRuns(a, new Date("2026-11-22T00:00:00Z"), 3).map((d) => wibSlot(d).date)).toEqual(["2026-11-23", "2026-12-07", "2026-12-21"]);
+  });
+  it("monthly: first / last week of the month", () => {
+    expect(nextRuns(A({ frequency: "monthly", monthWeek: 1 }), new Date("2026-11-10T00:00:00Z"), 2).map((d) => wibSlot(d).date)).toEqual(["2026-12-07", "2027-01-04"]);
+    expect(nextRuns(A({ frequency: "monthly", monthWeek: 5 }), new Date("2026-11-10T00:00:00Z"), 1).map((d) => wibSlot(d).date)).toEqual(["2026-11-30"]);
+    expect(describeAuto(A({ frequency: "monthly", monthWeek: 5 }))).toBe("Monthly, last week, on Monday, 09:00–09:59 WIB");
+  });
+  it("sends the reminder `leadHours` before a run", () => {
+    const a = A({ notify: { leadHours: 24 } });
+    expect(noticeFor(a, new Date("2026-11-22T02:30:00Z"))?.toISOString()).toBe("2026-11-23T02:00:00.000Z");   // Sun 09:30 WIB → Mon 09:00
+    expect(noticeFor(a, new Date("2026-11-22T03:30:00Z"))).toBeNull();
+    expect(noticeFor({ ...a, notify: { ...a.notify, enabled: false } }, new Date("2026-11-22T02:30:00Z"))).toBeNull();
   });
   it("vercel.json registers one daily job per hour (Hobby plan allows daily jobs only)", () => {
     const v = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
@@ -115,38 +132,67 @@ describe("weekly schedule", () => {
   });
 });
 
-describe("supplier check form", () => {
-  it("builds the IMDS supplier code from the vendor code", () => {
-    expect(imdsSupplierCode("0003")).toBe("Z0080003");
-    expect(imdsSupplierCode("T007")).toBe("Z008T007");
-    expect(imdsSupplierCode("12345")).toBe("");
+describe("standard files (library)", () => {
+  it("keeps allowed files byte for byte and attaches them in the chosen order", () => {
+    const xlsx = Buffer.from("PK\u0003\u0004 fixture").toString("base64");
+    const lib = sanitizeLibrary({ files: [
+      { id: "f1", name: "IMDS_Supplier_Check_Form.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", base64: xlsx },
+      { id: "f2", name: "x.exe", contentType: "application/x-msdownload", base64: xlsx },
+      { id: "f3", name: "guide.pdf", contentType: "application/pdf", base64: "JVBERi0=" }] });
+    expect(lib.files.map((f) => f.id)).toEqual(["f1", "f3"]);
+    expect(pickLibrary(lib, ["f3", "zz", "f1"]).map((f) => [f.name, f.contentBytes])).toEqual([["guide.pdf", "JVBERi0="], ["IMDS_Supplier_Check_Form.xlsx", xlsx]]);
   });
-  it("auto-check formula lists every problem and says OK otherwise", () => {
-    const f = autoCheckFormula(8);
-    expect(f).toContain('"Not filled yet"');
-    expect(f).toContain('K8<>0');
-    expect(f).toContain('S8>=10');
-    expect(f).toContain('"OK"');
+});
+
+describe("automation e-mails", () => {
+  const rows: MasterRow[] = [
+    { id: "1", company_name: "ALPHA PARTS", vendor_code: "9001", project: "737D", part_no: "FX-1", part_name: "A (FIXTURE)", imds_status: "Not Submitted Yet", submission_plan: "2026-11-01" },
+    { id: "2", company_name: "ALPHA PARTS", vendor_code: "9001", project: "737D", part_no: "FX-2", part_name: "B (FIXTURE)", imds_status: "Accepted" },
+    { id: "3", company_name: "BETA COMPONENTS", vendor_code: "9002", project: "688D", part_no: "FX-3", part_name: "C (FIXTURE)", imds_status: "Rejected" },
+    { id: "4", company_name: "GAMMA", vendor_code: "9003", project: "688D", part_no: "FX-4", part_name: "D (FIXTURE)", imds_status: "Working" }
+  ];
+  const ctx: Context = { cfg: sanitizeConfig({}), dir, due: { models: { "737D": "2026-11-25" }, suppliers: {} }, lib: sanitizeLibrary({ files: [{ id: "f1", name: "Form.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", base64: "UEsDBA==" }] }), rows };
+  const now = new Date("2026-11-23T02:00:00Z");
+  it("groups outstanding parts per supplier (Working only when asked) and counts the summary over all parts", () => {
+    const a = sanitizeAutomation({});
+    expect(groupParts(a, rows, "2026-11-23").map((g) => [g.name, g.parts.length])).toEqual([["ALPHA PARTS", 1], ["BETA COMPONENTS", 1]]);
+    expect(groupParts({ ...a, includeWorking: true }, rows, "2026-11-23").map((g) => g.name)).toContain("GAMMA");
+    expect(groupParts({ ...a, models: ["688D"] }, rows, "2026-11-23").map((g) => g.name)).toEqual(["BETA COMPONENTS"]);
+    expect(groupParts({ ...a, onlyPastDue: true }, rows, "2026-11-23").map((g) => g.name)).toEqual(["ALPHA PARTS"]);
+    expect(summaryRows(groupParts(a, rows, "2026-11-23"), rows, a, ctx.due)[0]).toMatchObject({ supplier: "ALPHA PARTS", total: 2, submitted: 1, missing: 1, due: "2026-11-25" });
   });
-  it("fills the four sheets with the supplier's parts, earlier findings and contacts", async () => {
-    const buf = await buildCheckFormXlsx({
-      supplierName: "ALPHA PARTS", supplierCode: "9001", generatedAt: new Date("2026-11-23T00:00:00Z"),
-      parts: [{ part_no: "FX-1000", part_name: "PART (FIXTURE)", project: "737D", imds_id_version: "123/1", submission_plan: "2026-11-30" }, { part_no: "=HYPERLINK(1)", part_name: "x" }],
-      findings: { FX1000: ["Error Type 5 · CAS 7439-92-1"] },
-      contacts: [{ role: "PIC #1", name: "Fixture Person", email: "pic@alpha.test" }]
-    });
-    const wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf as unknown as ArrayBuffer);
-    expect(wb.worksheets.map((w) => w.name)).toEqual(["Guide & Instruction", "1. IMDS Checking List", "2. IMDS Information Form", "3. Contact Person (Updated)"]);
-    const f = wb.getWorksheet("2. IMDS Information Form")!;
-    expect(f.getCell("B8").value).toBe("Z0089001");
-    expect(f.getCell("D8").value).toBe("FX-1000");
-    expect(f.getCell("G8").value).toBe("123/1");
-    expect((f.getCell("K8").value as { formula: string }).formula).toBe('IF(AND(I8<>"",J8<>""),I8-J8,"")');
-    expect((f.getCell("AB8").value as { formula: string }).formula).toBe(autoCheckFormula(8));
-    expect(f.getCell("AC8").value).toBe("Error Type 5 · CAS 7439-92-1");
-    expect(f.getCell("AD8").value).toBe("737D · plan 2026-11-30");
-    expect(f.getCell("D9").value).toBe("'=HYPERLINK(1)");
-    expect(wb.getWorksheet("3. Contact Person (Updated)")!.getCell("B5").value).toBe("Fixture Person");
+  it("per supplier: recipients from the Directory, middle management when there is no PIC, the chosen files", async () => {
+    const b = await buildEmails(ctx, sanitizeAutomation({ attachments: { pdf: false, xlsx: true, library: ["f1"] }, sender: "Werner" }), { now });
+    expect(b.out.map((x) => [x.plan.supplier, x.plan.to.join(";"), x.plan.toFrom])).toEqual([["ALPHA PARTS", "pic@alpha.test;to2@alpha.test", "pic"], ["BETA COMPONENTS", "dph@beta.test;gm@beta.test", "mid"]]);
+    expect(b.out[0].plan.cc).toContain("cc@alpha.test");
+    expect(b.out[0].plan.attachments).toEqual(["IMDS_Outstanding_9001_2026-11-23.xlsx", "Form.xlsx"]);
+    const files = await b.out[0].files();
+    expect(files.map((f) => f.name)).toEqual(["IMDS_Outstanding_9001_2026-11-23.xlsx", "Form.xlsx"]);
+    expect(files[1].contentBytes).toBe("UEsDBA==");
+    expect(b.out[0].plan.body).toContain("Abdullah Luthfi Werner");
+  });
+  it("summary: one e-mail to every supplier's PIC with the summary PDF", async () => {
+    const b = await buildEmails(ctx, sanitizeAutomation({ kind: "recap", attachments: { pdf: true, xlsx: false, library: [] } }), { now });
+    expect(b.out).toHaveLength(1);
+    expect(b.out[0].plan.to).toEqual(["pic@alpha.test", "to2@alpha.test", "dph@beta.test", "gm@beta.test"]);
+    const files = await b.out[0].files();
+    expect(files[0].name).toBe("IMDS_Submission_Summary_2026-11-23.pdf");
+    expect(Buffer.from(files[0].contentBytes, "base64").subarray(0, 4).toString("latin1")).toBe("%PDF");
+  });
+  it("the reminder says what goes out, when, and where to stop it", () => {
+    const a = sanitizeAutomation({ name: "Weekly 737D", enabled: true, days: [1], hour: 9 });
+    const m = noticeEmail(a, { automationId: a.id, name: a.name, slot: "2026-11-23@09", dryRun: true, sent: 0, failed: 0, skipped: 1, from: "IMDS", planned: [
+      { supplier: "ALPHA PARTS", code: "9001", parts: 2, to: ["pic@alpha.test"], cc: ["x@y.test"], toFrom: "pic", subject: "s", attachments: ["Form.xlsx"] },
+      { supplier: "GAMMA", code: "9003", parts: 1, to: [], cc: [], toFrom: "none", subject: "s", attachments: [], skip: "No e-mail address" }] }, now, "https://app.test");
+    expect(m.subject).toBe('[IMDS automation] "Weekly 737D" will send 1 e-mail(s) on Monday, 23 November 2026 at 09:00 WIB');
+    expect(m.body).toContain("1. ALPHA PARTS — 2 part(s) — To: pic@alpha.test — CC: 1 — Files: Form.xlsx");
+    expect(m.body).toContain("- GAMMA: No e-mail address");
+    expect(m.body).toContain("https://app.test/imds-tracker#followup");
+  });
+  it("summary PDF is a valid PDF", async () => {
+    const pdf = await buildSummaryPdf({ title: "IMDS Submission Summary", subtitle: "FIXTURE", models: ["7*7D"], generatedAt: now, rows: Array.from({ length: 45 }, (_, i) => ({ supplier: "SUPPLIER " + i + " (FIXTURE)", code: String(9000 + i), total: 10, submitted: i % 10, missing: 10 - (i % 10), rejected: 0, working: 0, due: "2026-11-30" })) });
+    expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
+    expect(pdf.length).toBeGreaterThan(1500);
   });
 });
 
@@ -163,5 +209,6 @@ describe("Tracker page uses the same lists", () => {
   it("the default follow-up config has no Director CC and falls back to middle management", () => {
     expect(DEFAULT_CONFIG.ccRoles.dir).toBe(false);
     expect(DEFAULT_CONFIG.fallbackMid).toBe(true);
+    expect(DEFAULT_CONFIG.automations).toEqual([]);
   });
 });

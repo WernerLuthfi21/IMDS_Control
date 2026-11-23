@@ -1,43 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_CONFIG, sanitizeConfig } from "@/lib/followup/center";
-import { isDue, wibSlot } from "@/lib/followup/schedule";
-import { runScheduledFollowups } from "@/lib/followup/scheduled-run";
+import { isDue, noticeFor, wibSlot } from "@/lib/followup/schedule";
+import { loadContext, runAutomation } from "@/lib/followup/scheduled-run";
+import { sendNotice, summarize } from "@/lib/followup/automation-notice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
+/** Claim a slot once: the first claim row wins; a retried invocation stops. */
+async function claim(db: Admin, slot: string): Promise<boolean> {
+  const { data: mine } = await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_CLAIM", entity_type: "imds_tracker_schedule", metadata: { slot } }).select("id").single();
+  const { data: first } = await db.from("audit_events").select("id").eq("action", "IMDS_FOLLOWUP_SCHEDULE_CLAIM").eq("metadata->>slot", slot).order("created_at", { ascending: true }).limit(1);
+  return Boolean(mine && first && first[0] && first[0].id === mine.id);
+}
+
 /**
- * Weekly automatic follow-up. Vercel Cron calls this once in every hour of the day (vercel.json: 24 daily jobs,
- * the Hobby plan allows daily jobs only and runs each within its hour) with `Authorization: Bearer $CRON_SECRET`.
- * It sends only when the WIB day and hour match Settings → E-mail templates → Automatic follow-up, and only once
- * per slot (an audit row claims the slot first). Without CRON_SECRET and the service-role key it does nothing.
+ * Automatic follow-ups. Vercel Cron calls this once in every hour of the day (vercel.json: 24 daily jobs; the Hobby
+ * plan allows daily jobs only, each within its hour) with `Authorization: Bearer $CRON_SECRET`. For every switched-on
+ * automation it sends the reminder to the TMMIN PIC `leadHours` before a run, and the run itself on its WIB slot,
+ * each once. Without CRON_SECRET and the service-role key it does nothing.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return NextResponse.json({ error: "CRON_SECRET is not set; the schedule is off." }, { status: 503 });
+  if (!secret) return NextResponse.json({ error: "CRON_SECRET is not set; automations are off." }, { status: 503 });
   if (request.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const db = createAdminClient();
-  if (!db) return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY is not set; the schedule cannot read the master." }, { status: 503 });
-
-  const now = new Date(), slot = wibSlot(now);
-  const { data: cfgRow } = await db.from("imds_tracker_settings").select("value").eq("key", "followup_config").maybeSingle();
-  const cfg = sanitizeConfig(cfgRow?.value ?? DEFAULT_CONFIG);
-  if (!isDue(cfg.schedule, now)) return NextResponse.json({ ran: false, slot: slot.key, reason: cfg.schedule.enabled ? "Not a scheduled day/hour." : "The schedule is switched off." });
-
-  // Claim the slot: the first claim row for this slot wins, a second (retried) invocation stops here.
-  const { data: claim } = await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_CLAIM", entity_type: "imds_tracker_schedule", metadata: { slot: slot.key } }).select("id,created_at").single();
-  const { data: first } = await db.from("audit_events").select("id").eq("action", "IMDS_FOLLOWUP_SCHEDULE_CLAIM").eq("metadata->>slot", slot.key).order("created_at", { ascending: true }).limit(1);
-  if (!claim || (first && first[0] && first[0].id !== claim.id)) return NextResponse.json({ ran: false, slot: slot.key, reason: "This slot already ran." });
-
-  try {
-    const r = await runScheduledFollowups(db, { now, dryRun: false, actorId: null, budgetMs: 250_000 });
-    await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_RUN", entity_type: "imds_tracker_schedule", metadata: { slot: slot.key, sent: r.sent, failed: r.failed, skipped: r.skipped, note: r.note || null, suppliers: r.planned.map((p) => ({ s: p.supplier, n: p.parts, st: p.status || "PLANNED", e: p.error || p.skip || null })).slice(0, 300) } });
-    return NextResponse.json({ ran: true, slot: slot.key, sent: r.sent, failed: r.failed, skipped: r.skipped, note: r.note });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_RUN", entity_type: "imds_tracker_schedule", metadata: { slot: slot.key, error: message } });
-    return NextResponse.json({ ran: false, slot: slot.key, error: message }, { status: 500 });
+  if (!db) return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY is not set; automations cannot read the master." }, { status: 503 });
+  const now = new Date(), slot = wibSlot(now).key, done: unknown[] = [];
+  let ctx;
+  try { ctx = await loadContext(db); } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 }); }
+  for (const a of ctx.cfg.automations) {
+    try {
+      const runAt = noticeFor(a, now);
+      if (runAt && await claim(db, `notice:${a.id}@${wibSlot(runAt).key}`)) {
+        const preview = await runAutomation(db, a, { now: runAt, dryRun: true, actorId: null, slot: wibSlot(runAt).key }, ctx);
+        const n = await sendNotice(a, preview, runAt);
+        await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_NOTICE", entity_type: "imds_tracker_schedule", metadata: { automation: a.id, name: a.name, runSlot: wibSlot(runAt).key, to: n.to, ok: n.ok, error: n.error || null, emails: preview.planned.filter((p) => !p.skip).length } });
+        done.push({ automation: a.id, notice: n.ok });
+      }
+      if (isDue(a, now) && await claim(db, `${a.id}@${slot}`)) {
+        const r = await runAutomation(db, a, { now, dryRun: false, actorId: null, budgetMs: 240_000 }, ctx);
+        await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_RUN", entity_type: "imds_tracker_schedule", metadata: summarize(a, r, false) });
+        done.push({ automation: a.id, sent: r.sent, failed: r.failed, skipped: r.skipped });
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_RUN", entity_type: "imds_tracker_schedule", metadata: { automation: a.id, name: a.name, slot, error: message } });
+      done.push({ automation: a.id, error: message });
+    }
   }
+  return NextResponse.json({ slot, automations: ctx.cfg.automations.length, done });
 }

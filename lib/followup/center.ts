@@ -2,7 +2,7 @@
 // No I/O so everything here is unit-tested. Rendering happens in the browser (it knows model deadlines and the Directory);
 // the server only enforces the CC rules, builds attachments and sends.
 import { emailsOf } from "./recipients";
-import { DEFAULT_SCHEDULE, sanitizeSchedule, type Schedule } from "./schedule";
+import { sanitizeAutomations, type Automation } from "./schedule";
 
 export const KINDS = ["request", "followup", "recap"] as const;
 export type Kind = (typeof KINDS)[number];
@@ -29,8 +29,8 @@ export type FollowupConfig = {
   senderFooters: Record<string, string>;
   /** Default font of the HTML e-mail body (Outlook renders this; the plain-text body is unchanged). */
   font: { family: string; sizePt: number };
-  /** Weekly automatic follow-up (see lib/followup/schedule.ts). Off by default. */
-  schedule: Schedule;
+  /** Automatic follow-ups (Follow-up → Automatic; see lib/followup/schedule.ts). None by default. */
+  automations: Automation[];
 };
 
 export const FONT_FAMILIES = ["Calibri", "Arial", "Segoe UI", "Verdana", "Tahoma", "Aptos", "Times New Roman"] as const;
@@ -128,7 +128,7 @@ export const DEFAULT_CONFIG: FollowupConfig = {
   senderNames: DEFAULT_SENDER_NAMES,
   senderFooters: {},
   font: DEFAULT_FONT,
-  schedule: DEFAULT_SCHEDULE
+  automations: []
 };
 
 const text = (v: unknown, max: number) => String(v ?? "").replace(/\r\n/g, "\n").slice(0, max);
@@ -175,7 +175,7 @@ export function sanitizeConfig(input: unknown): FollowupConfig {
     senderNames: cleanNames(src.senderNames),
     senderFooters: cleanNames(src.senderFooters, {}, 1000),
     font: cleanFont(src.font),
-    schedule: sanitizeSchedule(src.schedule)
+    automations: sanitizeAutomations(src.automations, src.schedule)
   };
 }
 
