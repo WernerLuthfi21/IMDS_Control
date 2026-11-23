@@ -76,7 +76,7 @@
     });
 
     var records = Array.from(groups.values());
-    var openModels = new Set(records.filter(function (r) { return r.status === "missing"; }).map(function (r) { return r.model; }));
+    var openModels = new Set(records.filter(function (r) { return OPEN(r.status); }).map(function (r) { return r.model; }));
     records.forEach(function (r, index) {
       r.id = index;
       if (!openModels.has(r.model)) r.pastDue = false;
@@ -357,7 +357,8 @@
     }
     function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
     // The two boxes that handle their own files (Directory import, the local-file fallback).
-    function own(t) { return t && t.closest && t.closest("#dir-drop,#dropzone"); }
+    // The supplier drawer takes the supplier's clarification file itself (Tracker → Suppliers → a supplier).
+    function own(t) { return t && t.closest && t.closest("#dir-drop,#dropzone,#supplier-drawer"); }
     // Around those boxes a drop must neither open the file in the browser nor import it: drop on the box.
     function near(t) { return t && t.closest && t.closest("#dir-import,section[aria-labelledby='h-source']"); }
     var idle = 0;
@@ -592,8 +593,8 @@
   function partLines(kind, parts, include) {
     if (!include) return "(please see the attached file)";
     return parts.map(function (r, i) {
-      if (kind === "request") return (i + 1) + ". " + r.partNo + " — " + (r.partName || "") + (r.targetDate ? " — Target Date: " + datePretty(r.targetDate) : "") + (r.pastDue ? " — PAST DUE" : "");
-      return (i + 1) + ". " + r.partNo + " — " + (r.partName || "(part name not on file)") + (r.pastDue ? " — PAST DUE" : "");
+      if (kind === "request") return (i + 1) + ". " + r.partNo + " — " + (r.partName || "") + (r.targetDate ? " — Target Date: " + datePretty(r.targetDate) : "") + (r.status === "rejected" ? " — REJECTED, please resubmit" : "") + (r.pastDue ? " — PAST DUE" : "");
+      return (i + 1) + ". " + r.partNo + " — " + (r.partName || "(part name not on file)") + (r.status === "rejected" ? " — REJECTED, please resubmit" : "") + (r.pastDue ? " — PAST DUE" : "");
     }).join("\n");
   }
   function dedupeMail(list, skip) {
@@ -621,7 +622,7 @@
     box.innerHTML = '<div id="fu-state" class="banner" role="status">Loading…</div>' +
       '<div class="mh"><i>1</i>What do you want to send?</div><div class="mk" id="fu-kinds" role="group" aria-label="Type of e-mail"></div>' +
       '<div class="mh"><i>2</i>Which parts and which models?</div><div class="fu-grid">' +
-      '<label class="field"><span>Parts to include</span><select id="fu-scope"><option value="open">Not submitted yet (supplier must act)</option><option value="notdone">Everything not accepted yet (includes TMMIN working)</option></select></label>' +
+      '<label class="field"><span>Parts to include</span><select id="fu-scope"><option value="open">Not submitted yet or rejected (supplier must act)</option><option value="notdone">Everything not accepted yet (includes TMMIN working)</option></select></label>' +
       '<div class="fu-box"><h3>Models</h3><div class="fu-chips" id="fu-models" role="group" aria-label="Models"></div><p class="muted small" id="fu-models-hint" style="margin:4px 0 0"></p></div></div>' +
       '<div class="mh"><i>3</i>Message</div><div class="fu-grid">' +
       '<label class="field"><span>Template <span class="muted" id="fu-tdef"></span></span><select id="fu-template"></select></label>' +
@@ -688,7 +689,7 @@
     function currentTemplate() { var id = $("fu-template").value; return mailCfg.templates.filter(function (t) { return t.id === id; })[0] || templatesOfKind()[0]; }
 
     function selectedParts() {
-      return visibleRecords().filter(function (r) { return (r.status === "missing" || (S.scope === "notdone" && r.status === "process")) && (!S.models.length || S.models.indexOf(r.model) >= 0) && (!S.only || r.company === S.only); });
+      return visibleRecords().filter(function (r) { return (OPEN(r.status) || (S.scope === "notdone" && r.status === "process")) && (!S.models.length || S.models.indexOf(r.model) >= 0) && (!S.only || r.company === S.only); });
     }
     function ccFor(lookups, to) {
       var me = team()[$("fu-sender").value] || "";
@@ -1059,6 +1060,8 @@
     initBuyerPaste();
     initDirectorySync().then(seedBuyers, seedBuyers);
     startFast();
+    // Tracker part operations (target dates, Check, Stop run) reload the shared master after the server saved them.
+    window.__imdsRefreshData = function () { return refreshSharedMaster(true); };
     window.setTimeout(autoSync, 4000);
     window.setInterval(autoSync, 60000);
     timer = window.setInterval(function () {
