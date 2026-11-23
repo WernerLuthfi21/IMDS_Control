@@ -5,9 +5,8 @@ import { BUILTIN_BUYERS, findEntry, resolveContacts, type Directory } from "@/li
 import { classifyStatus, dateLong, maskProj, modelKey, renderSupplierEmail, TEAM } from "@/lib/followup/render";
 import { describe as describeAuto, isDue, nextRuns, noticeFor, sanitizeAutomation, sanitizeAutomations, wibSlot } from "@/lib/followup/schedule";
 import { DEFAULT_CONFIG, sanitizeConfig } from "@/lib/followup/center";
-import { pickLibrary, sanitizeLibrary } from "@/lib/followup/library";
-import { buildEmails, groupParts, noticeEmail, summaryRows, type Context, type MasterRow } from "@/lib/followup/scheduled-run";
-import { buildSummaryPdf } from "@/lib/imds-master/summary-pdf";
+import { EXEC_SUMMARY_ID, execSummary, listLibrary, pickLibrary, sanitizeLibrary } from "@/lib/followup/library";
+import { buildEmails, groupParts, noticeEmail, type Context, type MasterRow } from "@/lib/followup/scheduled-run";
 
 // FIXTURE directory, invented names and addresses.
 const dir: Directory = {
@@ -159,7 +158,6 @@ describe("automation e-mails", () => {
     expect(groupParts({ ...a, includeWorking: true }, rows, "2026-11-23").map((g) => g.name)).toContain("GAMMA");
     expect(groupParts({ ...a, models: ["688D"] }, rows, "2026-11-23").map((g) => g.name)).toEqual(["BETA COMPONENTS"]);
     expect(groupParts({ ...a, onlyPastDue: true }, rows, "2026-11-23").map((g) => g.name)).toEqual(["ALPHA PARTS"]);
-    expect(summaryRows(groupParts(a, rows, "2026-11-23"), rows, a, ctx.due)[0]).toMatchObject({ supplier: "ALPHA PARTS", total: 2, submitted: 1, missing: 1, due: "2026-11-25" });
   });
   it("per supplier: recipients from the Directory, middle management when there is no PIC, the chosen files", async () => {
     const b = await buildEmails(ctx, sanitizeAutomation({ attachments: { pdf: false, xlsx: true, library: ["f1"] }, sender: "Werner" }), { now });
@@ -171,13 +169,25 @@ describe("automation e-mails", () => {
     expect(files[1].contentBytes).toBe("UEsDBA==");
     expect(b.out[0].plan.body).toContain("Abdullah Luthfi Werner");
   });
-  it("summary: one e-mail to every supplier's PIC with the summary PDF", async () => {
-    const b = await buildEmails(ctx, sanitizeAutomation({ kind: "recap", attachments: { pdf: true, xlsx: false, library: [] } }), { now });
+  it("summary: one e-mail to every supplier's PIC with ONLY the Tracker's executive summary PDF", async () => {
+    const pdf = Buffer.from("%PDF-1.3 FIXTURE executive summary " + "x".repeat(300)).toString("base64");
+    const withPdf = (at: string): Context => ({ ...ctx, lib: sanitizeLibrary({ files: [...ctx.lib.files, { id: EXEC_SUMMARY_ID, name: "IMDS_Supplier_Submission_Summary.pdf", contentType: "application/pdf", base64: pdf, at }] }) });
+    const a = sanitizeAutomation({ kind: "recap", attachments: { pdf: true, xlsx: true, library: ["f1"] } });
+    const b = await buildEmails(withPdf("2026-11-23T01:00:00Z"), a, { now });
     expect(b.out).toHaveLength(1);
     expect(b.out[0].plan.to).toEqual(["pic@alpha.test", "to2@alpha.test", "dph@beta.test", "gm@beta.test"]);
+    expect(b.out[0].plan.attachments).toEqual(["IMDS_Supplier_Submission_Summary.pdf"]);
+    expect(b.out[0].plan.skip).toBeUndefined();
     const files = await b.out[0].files();
-    expect(files[0].name).toBe("IMDS_Submission_Summary_2026-11-23.pdf");
-    expect(Buffer.from(files[0].contentBytes, "base64").subarray(0, 4).toString("latin1")).toBe("%PDF");
+    expect(files.map((f) => [f.name, f.contentBytes])).toEqual([["IMDS_Supplier_Submission_Summary_2026-11-23.pdf", pdf]]);
+    expect((await buildEmails(ctx, a, { now })).out[0].plan.skip).toMatch(/has not been made yet/);
+    expect((await buildEmails(withPdf("2026-11-10T00:00:00Z"), a, { now })).out[0].plan.skip).toMatch(/13 days old/);
+    expect((await buildEmails(withPdf("2026-11-21T00:00:00Z"), a, { now })).out[0].plan.info).toMatch(/over a day old/);
+  });
+  it("the executive summary PDF is a system file: not in the list, found by execSummary", () => {
+    const lib = sanitizeLibrary({ files: [{ id: EXEC_SUMMARY_ID, name: "x.pdf", contentType: "application/pdf", base64: "JVBERi0=", at: "2026-11-23T00:00:00Z" }] });
+    expect(listLibrary(lib)).toEqual([]);
+    expect(execSummary(lib, new Date("2026-11-23T06:00:00Z"))?.ageH).toBe(6);
   });
   it("the reminder says what goes out, when, and where to stop it", () => {
     const a = sanitizeAutomation({ name: "Weekly 737D", enabled: true, days: [1], hour: 9 });
@@ -188,11 +198,6 @@ describe("automation e-mails", () => {
     expect(m.body).toContain("1. ALPHA PARTS — 2 part(s) — To: pic@alpha.test — CC: 1 — Files: Form.xlsx");
     expect(m.body).toContain("- GAMMA: No e-mail address");
     expect(m.body).toContain("https://app.test/imds-tracker#followup");
-  });
-  it("summary PDF is a valid PDF", async () => {
-    const pdf = await buildSummaryPdf({ title: "IMDS Submission Summary", subtitle: "FIXTURE", models: ["7*7D"], generatedAt: now, rows: Array.from({ length: 45 }, (_, i) => ({ supplier: "SUPPLIER " + i + " (FIXTURE)", code: String(9000 + i), total: 10, submitted: i % 10, missing: 10 - (i % 10), rejected: 0, working: 0, due: "2026-11-30" })) });
-    expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
-    expect(pdf.length).toBeGreaterThan(1500);
   });
 });
 

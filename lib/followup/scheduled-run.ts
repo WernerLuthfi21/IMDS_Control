@@ -9,18 +9,19 @@ import { DEFAULT_CONFIG, mergeCc, sanitizeConfig, type FollowupConfig, type Temp
 import { resolveContacts, type Directory } from "./directory";
 import { buildSupplierEmailPayload, parseSenders, pickSender, type Attachment } from "./payload";
 import { gapHoursFromEnv, recentlySent } from "./guard";
-import { classifyStatus, maskProj, modelKey, renderSupplierEmail, supDueKey, TEAM, type Bucket, type DueDates, type RenderPart } from "./render";
+import { classifyStatus, modelKey, renderSupplierEmail, TEAM, type Bucket, type DueDates, type RenderPart } from "./render";
 import { describe, KIND_NAMES, wibSlot, type Automation } from "./schedule";
-import { pickLibrary, sanitizeLibrary, type Library } from "./library";
+import { EXEC_SUMMARY_MAX_AGE_H, EXEC_SUMMARY_NAME, execSummary, pickLibrary, sanitizeLibrary, type Library } from "./library";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
-import { buildSummaryPdf, type SummaryRow } from "@/lib/imds-master/summary-pdf";
 
 type Db = SupabaseClient;
 export type MasterRow = XlsxPart & { id: string; vendor_code?: string | null; main_pic_email?: string | null; supplier_promise_date?: string | null };
 export type PlannedEmail = {
   supplier: string; code: string; parts: number; to: string[]; cc: string[]; toFrom: string; subject: string; body?: string;
   attachments: string[]; skip?: string; status?: "SENT" | "HANDED_OFF" | "FAILED" | "SKIPPED"; error?: string;
+  /** Extra information shown in the preview and the reminder (e.g. when the executive summary PDF was made). */
+  info?: string;
 };
 export type RunResult = { automationId: string; name: string; slot: string; dryRun: boolean; planned: PlannedEmail[]; sent: number; failed: number; skipped: number; from: string; note?: string };
 
@@ -71,21 +72,6 @@ export function groupParts(a: Automation, rows: MasterRow[], today: string): Gro
   return groups.sort((x, y) => y.parts.length - x.parts.length || x.name.localeCompare(y.name));
 }
 
-/** Per-supplier counts over ALL parts of the supplier (for the summary PDF), only suppliers that are in `groups`. */
-export function summaryRows(groups: Group[], rows: MasterRow[], a: Automation, due: DueDates): SummaryRow[] {
-  return groups.map((g) => {
-    const all = rows.filter((r) => String(r.company_name || "").trim() === g.name && r.part_no && (!a.models.length || a.models.includes(modelKey(r.project))));
-    const seen = new Set<string>(), c = { total: 0, submitted: 0, missing: 0, rejected: 0, working: 0 };
-    for (const r of all) {
-      const k = modelKey(r.project) + "|" + String(r.part_no).toUpperCase(); if (seen.has(k)) continue; seen.add(k);
-      const s = classifyStatus(r.imds_status); if (s === "stop" || s === "review") continue;
-      c.total++; if (s === "complete") c.submitted++; else if (s === "missing") c.missing++; else if (s === "rejected") c.rejected++; else if (s === "process") c.working++;
-    }
-    const dues = [...new Set(g.parts.map((p) => p.model))].map((m) => (due.suppliers || {})[supDueKey(g.name, m)] || (due.models || {})[m]).filter(Boolean).sort();
-    return { supplier: g.name, code: g.code, ...c, due: dues[0] || "" };
-  });
-}
-
 function templateFor(cfg: FollowupConfig, a: Automation): Template {
   return cfg.templates.find((t) => t.id === a.templateId && t.kind === a.kind) || cfg.templates.find((t) => t.id === cfg.defaults[a.kind])!;
 }
@@ -108,21 +94,18 @@ export async function buildEmails(ctx: Context, a: Automation, o: BuildOptions) 
     const cc = mergeCc({ to, cc: [...team, ...roleCc], required: cfg.requiredCc, senderEmail });
     const parts = groups.flatMap((g) => g.parts);
     const mail = renderSupplierEmail({ template, config: cfg, kind: "recap", supplier: "IMDS Team", code: "", parts, due, sender: senderShort, now: o.now, includeList: false });
-    const names = [a.attachments.pdf ? "IMDS_Submission_Summary.pdf" : "", a.attachments.xlsx ? "IMDS_Outstanding_ALL.xlsx" : "", ...libNames].filter(Boolean);
-    const stamp = o.now.toISOString().slice(0, 10);
-    const files = async () => {
-      const att: Attachment[] = [];
-      if (a.attachments.pdf) {
-        const models = [...new Set(parts.map((p) => maskProj(p.model === "UNASSIGNED" ? "Unassigned" : p.model)))];
-        att.push({ name: `IMDS_Submission_Summary_${stamp}.pdf`, contentType: "application/pdf", contentBytes: (await buildSummaryPdf({ title: "IMDS Submission Summary", subtitle: `Suppliers with outstanding parts, ${new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(o.now)}`, rows: summaryRows(groups, rows, a, due), models, generatedAt: o.now })).toString("base64") });
-      }
-      if (a.attachments.xlsx && parts.length) att.push({ name: `IMDS_Outstanding_ALL_${stamp}.xlsx`, contentType: XLSX_TYPE, contentBytes: (await buildUnsubmittedXlsx("ALL SUPPLIERS", "", groups.flatMap((g) => g.rows).map((p) => ({ ...p, submission_plan: p.supplier_promise_date || p.submission_plan })))).toString("base64") });
-      att.push(...libFiles);
-      return att;
-    };
-    const plan: PlannedEmail = { supplier: `All suppliers (${groups.length})`, code: "", parts: parts.length, to, cc, toFrom: "pic", subject: mail.subject, body: mail.body, attachments: names };
+    // Only the Tracker's own Executive summary PDF (the same PDF as the "Executive summary PDF" button), saved by the
+    // browser. Missing or older than 7 days: the summary is not sent.
+    const ex = execSummary(lib, o.now), stamp = o.now.toISOString().slice(0, 10);
+    const exWhen = ex ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date(ex.at)) + " WIB" : "";
+    const names = ex ? [EXEC_SUMMARY_NAME] : [];
+    const files = async () => (ex ? [{ name: `IMDS_Supplier_Submission_Summary_${stamp}.pdf`, contentType: "application/pdf", contentBytes: ex.base64 }] : []) as Attachment[];
+    const plan: PlannedEmail = { supplier: `All suppliers (${groups.length})`, code: "", parts: parts.length, to, cc, toFrom: "pic", subject: mail.subject, body: mail.body, attachments: names,
+      info: ex ? `Executive summary PDF made by the Tracker on ${exWhen}${ex.ageH > 24 ? " — over a day old; open the Tracker (Follow-up → Automatic) to update it" : ""}.` : "" };
     if (!groups.length) plan.skip = "No supplier has outstanding parts.";
     else if (!to.length) plan.skip = "No e-mail address for any supplier.";
+    else if (!ex) plan.skip = "The executive summary PDF has not been made yet: open the Tracker → Follow-up → Automatic once (it is made from the data on screen).";
+    else if (ex.ageH > EXEC_SUMMARY_MAX_AGE_H) plan.skip = `The executive summary PDF is ${Math.round(ex.ageH / 24)} days old: open the Tracker → Follow-up → Automatic to update it.`;
     out.push({ plan, files, partIds: groups.flatMap((g) => g.rows.map((r) => r.id)) });
     return { out, senderShort, senderEmail, total: groups.length };
   }
@@ -214,7 +197,7 @@ export async function draftFor(ctx: Context, a: Automation, supplier: string, no
 export function noticeEmail(a: Automation, r: RunResult, runAt: Date, appUrl: string) {
   const when = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(runAt) + " WIB";
   const send = r.planned.filter((p) => !p.skip), skip = r.planned.filter((p) => p.skip);
-  const lines = send.slice(0, 60).map((p, i) => `${i + 1}. ${p.supplier} — ${p.parts} part(s) — To: ${p.to.join(", ")}${p.toFrom === "mid" ? " (no IMDS PIC: middle management)" : ""} — CC: ${p.cc.length} — Files: ${p.attachments.join(", ") || "none"}`);
+  const lines = send.slice(0, 60).map((p, i) => `${i + 1}. ${p.supplier} — ${p.parts} part(s) — To: ${p.to.join(", ")}${p.toFrom === "mid" ? " (no IMDS PIC: middle management)" : ""} — CC: ${p.cc.length} — Files: ${p.attachments.join(", ") || "none"}${p.info ? " — " + p.info : ""}`);
   const subject = `[IMDS automation] "${a.name}" will send ${send.length} e-mail(s) on ${when}`.slice(0, 240);
   const body = [
     "Hello,", "",

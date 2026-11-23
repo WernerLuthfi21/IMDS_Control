@@ -50,7 +50,7 @@ Command palette: Ctrl/⌘ K (modules, part / CAS / supplier search, theme).
    e-mails go through one payload (`lib/followup/payload.ts`) to the e-mail flow.
 6. **Automatic follow-ups**: Vercel Cron (24 daily jobs) → `/api/cron/followups` → per automation (`schedule.ts`):
    reminder to the TMMIN PIC, then `scheduled-run.ts` renders the template server-side (`render.ts`), resolves contacts
-   from the Directory strata (`directory.ts`), adds PDF / Excel / summary PDF (`summary-pdf.ts`) and standard files
+   from the Directory strata (`directory.ts`), adds PDF / Excel, the Tracker's saved Executive summary PDF (summary e-mails) and standard files
    (`library.ts`, unchanged) and hands each e-mail to the flow.
 
 ## API groups (`app/api`)

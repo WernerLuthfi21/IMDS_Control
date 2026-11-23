@@ -582,13 +582,22 @@
       ".au-pill{font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px}.au-pill.on{background:var(--ok-soft,#e4f4eb);color:var(--ok-ink,#126b42)}.au-pill.off{background:var(--neutral-soft,rgba(127,127,127,.15));color:var(--muted)}.au-empty{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px dashed var(--line-strong,#ccc);border-radius:12px}" +
       ".au-edit{border:1px solid var(--line-strong,#ddd);border-radius:12px;padding:14px;margin:12px 0;background:var(--surface-2,transparent)}.au-edit-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.au-edit-h h3{margin:0;font-size:16px}.au-edit input[type=number],.au-edit input[type=date],.au-edit input[type=text]{width:100%;min-height:38px;padding:0 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}" +
       ".au-edit-bar{position:sticky;bottom:0;background:var(--surface-2,var(--surface));padding:8px 0;border-top:1px solid var(--line)}.au-files{margin:12px 0}.au-planbox{margin:12px 0}.au-plan-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.au-plan-h h3{margin:0}" +
+      ".au-stats{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted);margin-top:4px}.au-stats b{color:var(--ink)}" +
+      ".au-split{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:12px;margin-top:10px;align-items:start}.au-side{position:sticky;top:72px}.au-pick{display:none}" +
+      ".au-sup{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:min(62vh,560px);overflow:auto;border:1px solid var(--line,#e8e1f1);border-radius:10px;padding:4px}" +
+      ".au-sup button{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:8px 10px;border-radius:8px;cursor:pointer}.au-sup button:hover{background:var(--surface-2,rgba(127,127,127,.06))}.au-sup button[aria-selected=true]{background:var(--lilac);box-shadow:inset 3px 0 0 var(--violet,#7c3aed)}.au-sup button:focus-visible{outline:2px solid var(--focus,#6d28d9);outline-offset:1px}" +
+      ".au-sup-n{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.au-sup-m{grid-column:1/-1;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+      ".au-st{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;white-space:nowrap;align-self:start}.au-st.go{background:var(--lilac);color:var(--brand-text)}.au-st.ok{background:var(--ok-soft,#e4f4eb);color:var(--ok-ink,#126b42)}.au-st.held{background:var(--warn-soft,#fbf0dc);color:var(--warn-ink,#865008)}.au-st.err{background:var(--bad-soft,#fde8ec);color:var(--bad,#c62840)}" +
+      ".au-detail{border:1px solid var(--line,#e8e1f1);border-radius:10px;padding:12px 14px;background:var(--surface);min-width:0}.au-nav{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 8px}" +
+      ".au-detail .au-body{max-height:min(52vh,520px);overflow:auto}.au-cc summary{cursor:pointer;color:var(--brand-text);font-weight:600}.au-cc{overflow-wrap:anywhere}.au-files-l{display:flex;flex-wrap:wrap;gap:4px 8px}.au-file{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--surface-2,rgba(127,127,127,.08));border:1px solid var(--line);font-size:12px;overflow-wrap:anywhere}" +
+      "@media (max-width:860px){.au-split{grid-template-columns:1fr}.au-side{position:static}.au-sup{display:none}.au-pick{display:block}.au-pick select{width:100%;min-height:40px}.au-mh{grid-template-columns:70px minmax(0,1fr)}}" +
       ".au-mailcard{margin-top:12px}.au-mh{display:grid;grid-template-columns:80px minmax(0,1fr);gap:4px 10px;font-size:13px;margin-bottom:10px}.au-mh span{color:var(--muted);font-weight:600}.au-mh b{font-weight:500;overflow-wrap:anywhere}.au-body{max-height:none}" +
       ".fu-attf{display:flex;gap:8px;align-items:flex-start;margin-top:2px}.fu-attf>span{display:flex;flex-direction:column;gap:2px;min-width:0}" +
       ".sc-planbox .fu-mail{max-width:300px;white-space:normal;overflow-wrap:anywhere}.sc-grid input[type=number]{width:100%;min-height:38px;padding:0 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}" +
       ".sc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin:10px 0}.sc-switch{display:flex;gap:8px;align-items:center;margin:0 0 10px}.sc-days{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.sc-models{margin-top:10px}" +
       ".sc-ready{display:flex;flex-wrap:wrap;gap:8px 18px;padding:10px 12px;border-radius:10px;background:var(--surface-2,rgba(127,127,127,.06));border:1px solid var(--line,#e8e1f1);font-size:13px}.sc-r.ok{color:var(--ok-ink,#126B42);font-weight:600}.sc-r.no{color:var(--bad,#C62840);font-weight:600}.sc-h{font-size:13px;margin:14px 0 6px}.sc-planbox{margin:10px 0}" +
       ".fu-ccs{display:grid;gap:6px}.fu-ccs .inline-check{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:baseline}" +
-      ".fu-res.ok{color:var(--ok-ink,#126B42);font-weight:600}.fu-res.err{color:var(--bad,#C62840);font-weight:600}.fu-res.skip{color:var(--warn-ink,#865008);font-weight:600}.fu-det td{background:rgba(127,127,127,.08)}.fu-det textarea{width:100%;font:13px/1.45 ui-monospace,monospace;min-height:240px}.fu-det input[type=text]{width:100%}.fu-mail{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fu-only{display:inline-flex;gap:6px;align-items:center}" +
+      ".fu-res.ok{color:var(--ok-ink,#126B42);font-weight:600}.fu-res.err{color:var(--bad,#C62840);font-weight:600}.fu-res.held{color:var(--warn-ink,#865008);font-weight:600}.fu-det td{background:rgba(127,127,127,.08)}.fu-det textarea{width:100%;font:13px/1.45 ui-monospace,monospace;min-height:240px}.fu-det input[type=text]{width:100%}.fu-mail{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fu-only{display:inline-flex;gap:6px;align-items:center}" +
       ".fu-sql{width:100%;min-height:150px;font:12px/1.4 ui-monospace,monospace}" +
       ".fu-signs{display:block;margin-top:4px;font-size:12px}.mk button{position:relative}.fu-tag{position:absolute;top:10px;right:12px;font:700 10px/1 var(--f-ui,sans-serif);letter-spacing:.06em;text-transform:uppercase;font-style:normal;padding:4px 7px;border-radius:99px;background:rgba(127,127,127,.14);color:var(--muted,#6b7280)}.fu-tag.l{background:rgba(198,40,64,.12);color:var(--bad,#C62840)}.fu-tag.t{background:rgba(18,107,66,.12);color:var(--ok-ink,#126B42)}" +
       ".fu-adv{border:1px solid var(--line,#e8e1f1);border-radius:12px;padding:10px 14px;margin:4px 0 8px}.fu-adv>summary{cursor:pointer;font-weight:600;font-size:13px}.fu-adv[open]>summary{margin-bottom:6px}#fu-testto-wrap{max-width:440px}.fu-checks{display:flex;flex-direction:column;gap:6px;justify-content:end}.fu-tools{margin:6px 0}" +
@@ -1037,10 +1046,10 @@
       for (var i = 0; i < todo.length; i++) {
         var g = todo[i];
         $("fu-prog-text").textContent = (S.send === "draft" ? "Preparing " : S.live ? "Sending " : "Test ") + (i + 1) + " of " + todo.length + " — " + g.name;
-        S.results[g.key] = { kind: "skip", text: "Sending…" }; renderTable();
+        S.results[g.key] = { kind: "held", text: "Sending…" }; renderTable();
         try { var r = await sendOne(g); if (r.draft) drafts.push({ name: r.fileName, b64: r.eml }); S.results[g.key] = { kind: "ok", text: r.draft ? "Draft ready" : S.live ? "Handed to Power Automate" : "Test sent to " + testTo }; ok++; last = r.sentFrom || ""; if (S.live) { S.selected[g.key] = false; mailInfo.lastSent[g.name] = new Date().toISOString(); } }
         catch (e) {
-          if (e.payload && e.payload.skipped === "RECENTLY_SENT") { S.results[g.key] = { kind: "skip", text: "Skipped — e-mailed recently" }; skip++; }
+          if (e.payload && e.payload.skipped === "RECENTLY_SENT") { S.results[g.key] = { kind: "held", text: "Skipped — e-mailed recently" }; skip++; }
           else { S.results[g.key] = { kind: "err", text: e.message }; fail++; if ($("fu-stop").checked) { stopped = true; done++; break; } }
         }
         done++; $("fu-prog").style.width = Math.round(done / todo.length * 100) + "%";
@@ -1089,13 +1098,39 @@
 
   // ---- Settings → E-mail templates ----
   // ---- Standard files (file library): uploaded once, attached exactly as uploaded. Used by the composer and automations. ----
-  var LIB = { files: [], canEdit: false, loaded: false, error: "", maxBytes: 3145728 };
+  var LIB = { files: [], canEdit: false, canPublish: false, loaded: false, error: "", maxBytes: 3145728, exec: null };
   var libViews = [];
   function libSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
   async function loadLibrary() {
-    try { var r = await api("/api/imds-master/attachments"); LIB.files = r.files || []; LIB.canEdit = !!r.canEdit; LIB.error = r.error || ""; LIB.maxBytes = r.maxBytes || LIB.maxBytes; }
+    try { var r = await api("/api/imds-master/attachments"); LIB.files = r.files || []; LIB.canEdit = !!r.canEdit; LIB.canPublish = !!r.canPublishSummary; LIB.exec = r.execSummary || null; LIB.error = r.error || ""; LIB.maxBytes = r.maxBytes || LIB.maxBytes; }
     catch (e) { LIB.error = e.message; }
     LIB.loaded = true; libViews.forEach(function (v) { v(); });
+  }
+  /**
+   * The Tracker's own "Executive summary PDF" (same function as the button) saved on the server, so summary e-mails
+   * of the automations attach exactly that PDF. Made from the data on screen; refreshed when Follow-up → Automatic
+   * opens (if older than an hour or the data changed), before a preview / send now, and every 2 hours while open.
+   */
+  var execBusy = false;
+  function dataStamp() { try { return String(D.records.length) + "|" + String(SRC && SRC.lastSync ? +SRC.lastSync : "") + "|" + D.records.filter(function (r) { return r.status === "complete"; }).length; } catch (e) { return ""; } }
+  async function publishExecSummary(force) {
+    if (execBusy || !LIB.canPublish || typeof generateSummaryPDF !== "function" || !window.jspdf || !D.records || !D.records.length) return false;
+    var stamp = dataStamp(), fresh = LIB.exec && LIB.exec.ageH < 1 && lsGet("imds-exec-stamp") === stamp;
+    if (!force && fresh) return false;
+    execBusy = true;
+    try {
+      var doc = generateSummaryPDF({ returnDoc: true }); if (!doc) return false;
+      var uri = doc.output("datauristring");
+      var r = await api("/api/imds-master/attachments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "exec-summary", base64: uri.slice(uri.indexOf(",") + 1) }) });
+      LIB.exec = { at: r.at, size: r.size, ageH: 0 }; lsSet("imds-exec-stamp", stamp); libViews.forEach(function (v) { v(); });
+      return true;
+    } catch (e) { console.warn("Executive summary PDF not saved:", e.message); return false; }
+    finally { execBusy = false; }
+  }
+  function execText() {
+    if (!LIB.exec) return "not made yet — it is made from the data on screen when this page is open";
+    var t = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date(LIB.exec.at)) + " WIB";
+    return "updated " + t + " (" + libSize(LIB.exec.size || 0) + ")";
   }
   function fileToBase64(file) {
     return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).split(",")[1] || ""); }; fr.onerror = function () { rej(new Error("The file could not be read.")); }; fr.readAsDataURL(file); });
@@ -1175,7 +1210,7 @@
           '<div class="au-card-b"><span>🗓 ' + esc(a.describe) + "</span>" +
           '<span>' + (a.enabled && a.next.length ? "Next: <b>" + esc(when(a.next[0])) + "</b>" + (a.skip ? ' <span class="fu-tagx mid">skipping ' + esc(a.skip.replace("@", " ") + ":00") + "</span>" : "") : '<span class="muted">Not scheduled (switched off)</span>') + "</span>" +
           '<span>' + (a.notify.enabled ? "🔔 Reminder " + a.notify.leadHours + " h before" + (a.noticeAt ? " (" + esc(when(a.noticeAt)) + ")" : "") + " to " + esc(a.noticeTo.join(", ")) : '<span class="t-bad">No reminder before sending</span>') + "</span>" +
-          '<span class="muted small">Files: ' + esc([a.attachments.pdf ? (a.kind === "recap" ? "Summary PDF" : "PDF") : "", a.attachments.xlsx ? "Excel" : ""].concat(a.attachments.library.map(function (id) { var f = (st.library || []).find(function (x) { return x.id === id; }); return f ? f.name : "(removed file)"; })).filter(Boolean).join(" + ") || "none") + "</span></div>" +
+          '<span class="muted small">Files: ' + esc(a.kind === "recap" ? "Executive summary PDF only (" + execText() + ")" : [a.attachments.pdf ? "PDF" : "", a.attachments.xlsx ? "Excel" : ""].concat(a.attachments.library.map(function (id) { var f = (st.library || []).find(function (x) { return x.id === id; }); return f ? f.name : "(removed file)"; })).filter(Boolean).join(" + ") || "none") + "</span></div>" +
           '<div class="au-card-a"><button type="button" class="btn btn-secondary btn-sm" data-au="edit">Edit</button><button type="button" class="btn btn-secondary btn-sm" data-au="preview">Preview</button>' +
           (st.canRun ? '<button type="button" class="btn btn-ghost btn-sm" data-au="toggle">' + (a.enabled ? "Switch off" : "Switch on") + "</button>" + (a.enabled && a.next.length ? '<button type="button" class="btn btn-ghost btn-sm" data-au="skip">' + (a.skip ? "Undo skip" : "Skip next run") + "</button>" : "") + '<button type="button" class="btn btn-ghost btn-sm" data-au="run">Send now…</button><button type="button" class="btn btn-ghost btn-sm t-bad" data-au="delete">Delete</button>' : "") + "</div></article>";
       }).join("") : '<div class="au-empty"><b>No automation yet.</b><span class="muted small">Create one: for example a weekly follow-up every Monday 09:00 WIB, or a monthly summary PDF to all suppliers.</span></div>';
@@ -1190,8 +1225,10 @@
     async function load() {
       try { st = await api("/api/imds-master/followups/schedule"); ready(); list(); runs(); $("au-new").hidden = !st.canRun; }
       catch (e) { $("au-ready").textContent = e.message; }
-      loadLibrary();
+      await loadLibrary();
+      if (st && st.automations.some(function (a) { return a.kind === "recap"; }) && await publishExecSummary(false)) list();
     }
+    setInterval(function () { if (st && st.automations.some(function (a) { return a.kind === "recap" && a.enabled; })) publishExecSummary(false); }, 2 * 3600000);
     async function saveAll(mutate, msg) {
       var g = await api("/api/imds-master/settings?key=followup_config"), value = Object.assign({}, g.value || {});
       value.automations = mutate((value.automations || []).slice());
@@ -1219,16 +1256,17 @@
         '<div class="mh"><i>3</i>Which parts</div><div class="fu-grid"><div class="fu-box"><h3>Models</h3><div class="fu-chips" id="ae-models">' + (keys.map(function (k) { return '<button type="button" class="fu-chip" data-m="' + esc(k) + '" aria-pressed="' + (a.models.indexOf(k) >= 0) + '">' + esc(k) + "</button>"; }).join("") || '<span class="muted small">Models appear once the master is loaded.</span>') + '</div><p class="muted small" style="margin:4px 0 0">' + (a.models.length ? "Only the selected models." : "All models (tap to limit).") + "</p></div>" +
         '<div class="fu-box"><h3>Parts and limits</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-working"' + (a.includeWorking ? " checked" : "") + "> Also parts under TMMIN judgement (Working)</label><label class=\"inline-check\"><input type=\"checkbox\" id=\"ae-pastdue\"" + (a.onlyPastDue ? " checked" : "") + "> Only suppliers with a part past its target date</label></div>" +
         (recap ? "" : '<label class="field" style="margin-top:8px"><span>At most, suppliers per run</span><input type="number" id="ae-max" min="1" max="300" value="' + a.maxSuppliers + '"></label>') + "</div></div>" +
-        '<div class="mh"><i>4</i>Message</div><div class="fu-grid"><label class="field"><span>Template</span><select id="ae-tpl"><option value="">Default ' + esc(KINDS[a.kind].toLowerCase()) + " template</option>" + tl.map(function (t) { return '<option value="' + esc(t.id) + '"' + (a.templateId === t.id ? " selected" : "") + ">" + esc(t.name) + "</option>"; }).join("") + "</select></label>" +
+        '<div class="mh"><i>4</i>Message</div><div class="fu-grid"><label class="field"><span>Template</span><select id="ae-tpl"><option value="">Default ' + ({ followup: "follow-up", request: "request", recap: "status recap" })[a.kind] + " template</option>" + tl.map(function (t) { return '<option value="' + esc(t.id) + '"' + (a.templateId === t.id ? " selected" : "") + ">" + esc(t.name) + "</option>"; }).join("") + "</select></label>" +
         '<label class="field"><span>Sender (sign-off)</span><select id="ae-sender">' + team.map(function (t) { return '<option value="' + esc(t.name) + '"' + (a.sender === t.name ? " selected" : "") + ">" + esc(t.name) + " · " + esc(t.email) + "</option>"; }).join("") + "</select></label></div>" +
         '<div class="mh"><i>5</i>Recipients and files</div><div class="fu-grid"><div class="fu-box"><h3>CC</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-cc-mid"' + (a.cc.mid ? " checked" : "") + '> Middle management</label><label class="inline-check"><input type="checkbox" id="ae-cc-top"' + (a.cc.top ? " checked" : "") + '> Top management</label><label class="inline-check"><input type="checkbox" id="ae-cc-dir"' + (a.cc.dir ? " checked" : "") + '> Director</label><label class="inline-check"><input type="checkbox" id="ae-cc-buyer"' + (a.cc.buyer ? " checked" : "") + '> PUD buyer</label><label class="inline-check"><input type="checkbox" id="ae-fallback"' + (a.fallbackMid ? " checked" : "") + "> No IMDS PIC → send to middle management</label></div><p class=\"muted small\" style=\"margin:6px 0 0\">Always: the mandatory CC, the IMDS team and “Always CC” contacts.</p></div>" +
-        '<div class="fu-box"><h3>Files</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-pdf"' + (a.attachments.pdf ? " checked" : "") + "> " + (recap ? "Summary PDF of all suppliers (outstanding, submitted / not submitted per supplier)" : "PDF recap of the supplier’s parts") + '</label><label class="inline-check"><input type="checkbox" id="ae-xlsx"' + (a.attachments.xlsx ? " checked" : "") + "> " + (recap ? "Excel list of all outstanding parts" : "Excel list (supplier fills the plan date)") + '</label></div><p class="muted small" style="margin:8px 0 4px">Standard files (attached unchanged):</p><div id="ae-lib"></div></div></div>' +
+        (recap ? '<div class="fu-box"><h3>File</h3><p style="margin:0 0 6px"><b>Executive summary PDF</b> only — the same PDF as the “Executive summary PDF” button, made by the Tracker from its data.</p><p class="muted small" style="margin:0 0 8px" id="ae-exec">' + esc(execText()) + '</p><div class="fu-bar" style="margin:0"><button type="button" class="btn btn-secondary btn-sm" id="ae-exec-now">Update it now</button>' + (LIB.exec ? '<a class="link-btn" href="/api/imds-master/attachments?id=sys_exec_summary" download>Download to check</a>' : "") + '</div><p class="muted small" style="margin:8px 0 0">Not made yet or older than 7 days at sending time → the summary is not sent and the reminder says so.</p><input type="checkbox" id="ae-pdf" checked hidden><input type="checkbox" id="ae-xlsx" hidden></div></div>' :
+        '<div class="fu-box"><h3>Files</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-pdf"' + (a.attachments.pdf ? " checked" : "") + '> PDF recap of the supplier’s parts</label><label class="inline-check"><input type="checkbox" id="ae-xlsx"' + (a.attachments.xlsx ? " checked" : "") + '> Excel list (supplier fills the plan date)</label></div><p class="muted small" style="margin:8px 0 4px">Standard files (attached unchanged):</p><div id="ae-lib"></div></div></div>') +
         '<div class="mh"><i>6</i>Reminder to the TMMIN PIC before sending</div><div class="fu-grid"><label class="sc-switch"><input type="checkbox" id="ae-notify"' + (a.notify.enabled ? " checked" : "") + '> <b>Send a reminder first</b></label>' +
         '<label class="field"><span>How long before</span><select id="ae-lead">' + [1, 2, 4, 12, 24, 48, 72].map(function (h) { return '<option value="' + h + '"' + (a.notify.leadHours === h ? " selected" : "") + ">" + (h < 24 ? h + " hour" + (h > 1 ? "s" : "") : h / 24 + " day" + (h > 24 ? "s" : "")) + " before</option>"; }).join("") + "</select></label>" +
         '<label class="field"><span>Reminder to (separate with ;)</span><input type="text" id="ae-to" value="' + esc(a.notify.to.join("; ")) + '" placeholder="' + esc(me) + ' (the sender)"></label></div>' +
         '<div class="fu-bar au-edit-bar"><button type="button" class="btn btn-primary btn-sm" id="ae-save">Save</button><button type="button" class="btn btn-secondary btn-sm" id="ae-preview">Preview this run</button><button type="button" class="btn btn-secondary btn-sm" id="ae-notice">Send the reminder now (test)</button><button type="button" class="btn btn-ghost btn-sm" id="ae-cancel">Close</button><span class="muted small" id="au-msg" role="status"></span></div>';
       ed.querySelector("#ae-freq").value = a.frequency;
-      libraryView(ed.querySelector("#ae-lib"), { selected: function () { return draft ? draft.attachments.library : []; }, onChange: function (ids) { draft.attachments.library = ids; } });
+      if (ed.querySelector("#ae-lib")) libraryView(ed.querySelector("#ae-lib"), { selected: function () { return draft ? draft.attachments.library : []; }, onChange: function (ids) { draft.attachments.library = ids; } });
       whenText();
     }
     function whenText() {
@@ -1245,7 +1283,7 @@
       a.includeWorking = v("ae-working").checked; a.onlyPastDue = v("ae-pastdue").checked; if (v("ae-max")) a.maxSuppliers = Math.max(1, Math.min(300, Number(v("ae-max").value) || 60));
       a.sender = v("ae-sender").value;
       a.cc = { mid: v("ae-cc-mid").checked, top: v("ae-cc-top").checked, dir: v("ae-cc-dir").checked, buyer: v("ae-cc-buyer").checked }; a.fallbackMid = v("ae-fallback").checked;
-      a.attachments.pdf = v("ae-pdf").checked; a.attachments.xlsx = v("ae-xlsx").checked;
+      a.attachments.pdf = v("ae-pdf").checked; a.attachments.xlsx = v("ae-xlsx").checked; if (a.kind === "recap") { a.attachments = { pdf: true, xlsx: false, library: [] }; }
       a.notify = { enabled: v("ae-notify").checked, leadHours: Number(v("ae-lead").value), to: v("ae-to").value.split(/[;,\s]+/).map(function (x) { return x.trim(); }).filter(function (x) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); }) };
     }
     function openEditor(a) { draft = JSON.parse(JSON.stringify(a)); $("au-edit").hidden = false; editor(); $("au-prev").hidden = true; $("au-edit").scrollIntoView({ behavior: "smooth", block: "start" }); }
@@ -1267,6 +1305,7 @@
           else if (what === "delete") { if (window.confirm("Delete the automation “" + a.name + "”? Nothing is sent by it any more.")) await saveAll(function (l) { return l.filter(function (x) { return x.id !== a.id; }); }, "Automation deleted"); }
           else if (what === "run") {
             if (!window.confirm("Send “" + a.name + "” NOW to the suppliers in its preview (live e-mails through Power Automate)? Check the preview first.")) return;
+            if (a.kind === "recap") await publishExecSummary(true);
             toast("Sending… this can take a few minutes.", "info");
             var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "run-now", id: a.id }) });
             draft = JSON.parse(JSON.stringify(a)); showPlan(r, "Sent now"); toast(r.sent + " handed off, " + r.failed + " failed, " + r.skipped + " skipped", r.failed ? "err" : "ok"); load();
@@ -1284,6 +1323,7 @@
         return;
       }
       if (id === "ae-preview" && draft) { read(); preview(); return; }
+      if (id === "ae-exec-now") { var el = $("ae-exec"); el.textContent = "Making the executive summary PDF…"; var ok = await publishExecSummary(true); if (ok && draft) { read(); editor(); } else el.textContent = "Could not make it here (load the data first; reviewer, preparer or admin role)."; list(); return; }
       if (id === "ae-notice" && draft) {
         read(); say("Sending the reminder…");
         try { var n = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "notice-test", automation: draft }) }); say("Reminder handed off to " + n.to.join(", ") + "."); load(); }
@@ -1294,35 +1334,59 @@
     var plan = null;
     async function preview() {
       if (busy) return; busy = true;
+      if (draft && draft.kind === "recap") await publishExecSummary(false);
       var box = $("au-prev"); box.hidden = false; box.innerHTML = '<div class="fu-box"><p class="muted">Building the preview from the current master, Directory and files…</p></div>';
       try { var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", automation: draft }) }); showPlan(r, "Preview of the next run — nothing is sent"); }
       catch (e) { box.innerHTML = '<div class="fu-box"><p class="t-bad">' + esc(e.message) + "</p></div>"; }
       busy = false;
     }
+    var sel = 0;
+    function chip(p) {
+      return p.skip ? '<span class="au-st held">Skipped</span>' : p.status === "FAILED" ? '<span class="au-st err">Failed</span>' : p.status === "HANDED_OFF" ? '<span class="au-st ok">Handed off</span>' : p.status === "SENT" ? '<span class="au-st ok">Sent</span>' : '<span class="au-st go">Will send</span>';
+    }
     function showPlan(r, title) {
       plan = r; var rows = r.planned || [], box = $("au-prev"); box.hidden = false;
       var go = rows.filter(function (p) { return !p.skip; }).length;
-      var tag = function (p) { return p.toFrom === "mid" ? ' <span class="fu-tagx mid">via middle mgmt</span>' : p.toFrom === "master" ? ' <span class="fu-tagx">master sheet</span>' : ""; };
-      box.innerHTML = '<div class="fu-box au-planbox"><div class="au-plan-h"><div><h3>' + esc(title) + '</h3><p class="muted small" style="margin:2px 0 0">' + esc(draft ? draft.name : "") + (r.runAt ? " · runs " + esc(when(r.runAt)) : "") + " · from " + esc(r.from) + " · <b>" + go + " e-mail(s)</b>" + (rows.length - go ? " · " + (rows.length - go) + " skipped" : "") + (r.note ? " · " + esc(r.note) : "") + '</p></div><button type="button" class="btn btn-ghost btn-sm" id="au-prev-x">Close preview</button></div>' +
-        '<div class="table-wrap"><table class="tbl compact"><thead><tr><th scope="col">Supplier</th><th scope="col" class="r">Parts</th><th scope="col">To</th><th scope="col" class="r">CC</th><th scope="col">Subject</th><th scope="col">Files / result</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead><tbody>' +
-        (rows.length ? rows.map(function (p, i) {
-          return '<tr data-pi="' + i + '"><th scope="row">' + esc(p.supplier) + '<div class="muted small">' + esc(p.code || "") + '</div></th><td class="r">' + p.parts + '</td><td class="fu-mail" title="' + esc(p.to.join("; ")) + '">' + (p.to.length ? '<span class="fu-to1">' + esc(p.to[0]) + "</span>" + (p.to.length > 1 ? ' <span class="fu-more">+' + (p.to.length - 1) + "</span>" : "") : "—") + tag(p) + '</td><td class="r" title="' + esc(p.cc.join("; ")) + '">' + p.cc.length + "</td><td>" + esc(p.subject) + "</td><td>" +
-            (p.skip ? '<span class="fu-res skip">' + esc(p.skip) + "</span>" : p.status === "FAILED" ? '<span class="fu-res err">' + esc(p.error || "Failed") + "</span>" : p.status ? '<span class="fu-res ok">' + (p.status === "HANDED_OFF" ? "Handed off" : "Sent") + "</span>" : '<span class="muted small">' + esc(p.attachments.join(" + ") || "no files") + "</span>") +
-            '</td><td>' + (p.body != null && !p.skip ? '<button type="button" class="btn btn-ghost btn-sm" data-open="' + i + '">View</button>' : "") + "</td></tr>";
-        }).join("") : '<tr><td colspan="7" class="muted">No supplier has outstanding parts for these settings.</td></tr>') + '</tbody></table></div><div id="au-mail"></div></div>';
+      sel = Math.max(0, rows.findIndex(function (p) { return !p.skip; }));
+      box.innerHTML = '<div class="fu-box au-planbox"><div class="au-plan-h"><div><h3>' + esc(title) + "</h3>" +
+        '<div class="au-stats"><span><b>' + go + "</b> e-mail" + (go === 1 ? "" : "s") + "</span>" + (rows.length - go ? "<span><b>" + (rows.length - go) + "</b> skipped</span>" : "") + (r.runAt ? "<span>Runs " + esc(when(r.runAt)) + "</span>" : "") + "<span>From " + esc(r.from) + "</span></div>" +
+        (r.note ? '<p class="small t-warn" style="margin:4px 0 0">' + esc(r.note) + "</p>" : "") + '</div><button type="button" class="btn btn-ghost btn-sm" id="au-prev-x">Close preview</button></div>' +
+        (rows.length ? '<div class="au-split"><div class="au-side"><label class="au-pick"><span class="sr-only">E-mail</span><select id="au-sel">' + rows.map(function (p, i) { return '<option value="' + i + '">' + esc(p.supplier) + (p.skip ? " — skipped" : "") + "</option>"; }).join("") + "</select></label>" +
+          '<ul class="au-sup" role="listbox" aria-label="E-mails in this run">' + rows.map(function (p, i) {
+            return '<li><button type="button" role="option" data-pi="' + i + '" aria-selected="false"><span class="au-sup-n">' + esc(p.supplier) + "</span>" + chip(p) +
+              '<span class="au-sup-m">' + p.parts + " part" + (p.parts === 1 ? "" : "s") + (p.to.length ? " · " + esc(p.to[0]) + (p.to.length > 1 ? " +" + (p.to.length - 1) : "") : "") + "</span></button></li>";
+          }).join("") + '</ul></div><div class="au-detail" id="au-detail" aria-live="polite"></div></div>'
+          : '<p class="muted">No supplier has outstanding parts for these settings.</p>') + "</div>";
+      if (rows.length) pick(sel);
       box.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+    function pick(i) {
+      var rows = plan.planned, p = rows[i]; if (!p) return; sel = i;
+      Array.prototype.forEach.call($("au-prev").querySelectorAll(".au-sup [data-pi]"), function (b) { b.setAttribute("aria-selected", String(Number(b.getAttribute("data-pi")) === i)); });
+      var s2 = $("au-sel"); if (s2) s2.value = String(i);
+      var on = $("au-prev").querySelector('.au-sup [data-pi="' + i + '"]'); if (on) on.scrollIntoView({ block: "nearest" });
+      var tag = p.toFrom === "mid" ? ' <span class="fu-tagx mid">no IMDS PIC → middle management</span>' : p.toFrom === "master" ? ' <span class="fu-tagx">from the master sheet</span>' : "";
+      $("au-detail").innerHTML = '<div class="au-nav"><button type="button" class="btn btn-ghost btn-sm" data-step="-1"' + (i ? "" : " disabled") + '>‹ Previous</button><span class="muted small">' + (i + 1) + " of " + rows.length + '</span><button type="button" class="btn btn-ghost btn-sm" data-step="1"' + (i < rows.length - 1 ? "" : " disabled") + ">Next ›</button></div>" +
+        '<div class="au-mh"><span>Supplier</span><b>' + esc(p.supplier) + (p.code ? ' <span class="muted">· ' + esc(p.code) + "</span>" : "") + " " + chip(p) + "</b>" +
+        "<span>To</span><b>" + (esc(p.to.join("; ")) || "—") + tag + "</b>" +
+        '<span>CC</span><b><details class="au-cc"><summary>' + p.cc.length + " people</summary>" + esc(p.cc.join("; ") || "—") + "</details></b>" +
+        "<span>Subject</span><b>" + esc(p.subject) + "</b>" +
+        '<span>Files</span><b class="au-files-l">' + (p.attachments.length ? p.attachments.map(function (n) { return '<span class="au-file">📎 ' + esc(n) + "</span>"; }).join("") : "none") + "</b></div>" +
+        (p.info ? '<p class="small muted" style="margin:0 0 8px">' + esc(p.info) + "</p>" : "") +
+        (p.skip ? '<p class="fu-res held" style="margin:0 0 8px">Not sent: ' + esc(p.skip) + "</p>" : "") +
+        (p.status === "FAILED" ? '<p class="fu-res err" style="margin:0 0 8px">' + esc(p.error || "Failed") + "</p>" : "") +
+        (p.body ? '<div class="fs-preview au-body">' + previewHtml(p.body) + "</div>" : "") +
+        (p.body && !p.skip ? '<div class="fu-bar" style="margin:10px 0 0"><button type="button" class="btn btn-secondary btn-sm" data-draft="' + esc(p.supplier) + '">Download as Outlook draft (with the real files)</button><span class="muted small" id="au-draft-msg"></span></div>' : "");
+    }
+    $("au-prev").addEventListener("change", function (ev) { if (ev.target.id === "au-sel") pick(Number(ev.target.value)); });
+    $("au-prev").addEventListener("keydown", function (ev) {
+      if (!plan || !ev.target.closest(".au-sup")) return;
+      if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); var n = Math.max(0, Math.min(plan.planned.length - 1, sel + (ev.key === "ArrowDown" ? 1 : -1))); pick(n); var b = $("au-prev").querySelector('.au-sup [data-pi="' + n + '"]'); if (b) b.focus(); }
+    });
     $("au-prev").addEventListener("click", async function (ev) {
       if (ev.target.id === "au-prev-x") { $("au-prev").hidden = true; return; }
-      var o = ev.target.closest("[data-open]");
-      if (o && plan) {
-        var p = plan.planned[Number(o.getAttribute("data-open"))];
-        $("au-mail").innerHTML = '<div class="fu-mailcard au-mailcard"><div class="au-mh"><span>From</span><b>' + esc(plan.from) + '</b><span>To</span><b>' + esc(p.to.join("; ") || "—") + '</b><span>CC</span><b>' + esc(p.cc.join("; ") || "—") + '</b><span>Subject</span><b>' + esc(p.subject) + '</b><span>Files</span><b>' + esc(p.attachments.join(" · ") || "none") + "</b></div>" +
-          '<div class="fs-preview au-body">' + previewHtml(p.body || "") + "</div>" +
-          '<div class="fu-bar" style="margin-bottom:0"><button type="button" class="btn btn-secondary btn-sm" data-draft="' + esc(p.supplier) + '">Download as Outlook draft (with the real files)</button><span class="muted small" id="au-draft-msg"></span></div></div>';
-        $("au-mail").scrollIntoView({ behavior: "smooth", block: "nearest" });
-        return;
-      }
+      var o = ev.target.closest("[data-pi]"); if (o && plan) { pick(Number(o.getAttribute("data-pi"))); return; }
+      var stp = ev.target.closest("[data-step]"); if (stp && plan) { pick(sel + Number(stp.getAttribute("data-step"))); return; }
       var d = ev.target.closest("[data-draft]");
       if (d && draft) {
         var m = $("au-draft-msg"); m.textContent = "Building the draft with its files…";
