@@ -5,6 +5,11 @@ export type LibraryFile = { id: string; name: string; contentType: string; size:
 export type Library = { files: LibraryFile[] };
 
 export const LIBRARY_MAX_FILE = 3 * 1024 * 1024;
+/** System file: the Tracker's own "Executive summary PDF", saved by the browser (same PDF as the button). */
+export const EXEC_SUMMARY_ID = "sys_exec_summary";
+export const EXEC_SUMMARY_NAME = "IMDS_Supplier_Submission_Summary.pdf";
+/** Older than this, a summary e-mail is not sent (the reminder says why). */
+export const EXEC_SUMMARY_MAX_AGE_H = 7 * 24;
 export const LIBRARY_MAX_FILES = 12;
 const OK_TYPES = /^(application\/(pdf|vnd\.openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document|presentationml\.presentation)|vnd\.ms-excel|msword|zip)|image\/(png|jpeg)|text\/(plain|csv))$/;
 
@@ -14,7 +19,7 @@ export const safeName = (n: unknown) => String(n ?? "").replace(/[\r\n"\\/:*?<>|
 export function sanitizeLibrary(v: unknown): Library {
   const src = v && typeof v === "object" && Array.isArray((v as Library).files) ? (v as Library).files : [];
   const seen = new Set<string>(), files: LibraryFile[] = [];
-  for (const f of src.slice(0, LIBRARY_MAX_FILES)) {
+  for (const f of src.slice(0, LIBRARY_MAX_FILES + 1)) {
     const o = (f && typeof f === "object" ? f : {}) as Record<string, unknown>;
     const id = String(o.id ?? "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
     const base64 = String(o.base64 ?? "").replace(/\s+/g, "");
@@ -33,4 +38,11 @@ export function pickLibrary(lib: Library, ids: string[]): { name: string; conten
   return ids.map((id) => lib.files.find((f) => f.id === id)).filter((f): f is LibraryFile => !!f).map((f) => ({ name: f.name, contentType: f.contentType, contentBytes: f.base64 }));
 }
 /** Same list without the bytes (what the page needs to show names and sizes). */
-export const listLibrary = (lib: Library) => lib.files.map((f) => ({ id: f.id, name: f.name, contentType: f.contentType, size: f.size, at: f.at, by: f.by, note: f.note }));
+export const listLibrary = (lib: Library) => lib.files.filter((f) => f.id !== EXEC_SUMMARY_ID).map((f) => ({ id: f.id, name: f.name, contentType: f.contentType, size: f.size, at: f.at, by: f.by, note: f.note }));
+/** The saved Executive summary PDF, if any, with its age in hours at `now`. */
+export function execSummary(lib: Library, now: Date): (LibraryFile & { ageH: number }) | null {
+  const f = lib.files.find((x) => x.id === EXEC_SUMMARY_ID);
+  if (!f) return null;
+  const t = Date.parse(f.at);
+  return { ...f, ageH: Number.isFinite(t) ? Math.max(0, (now.getTime() - t) / 3600000) : Infinity };
+}

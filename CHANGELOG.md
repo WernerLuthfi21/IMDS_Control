@@ -2,6 +2,18 @@
 
 ## 2026-11-23
 
+### Automatic: clearer preview; summary e-mail sends only the Tracker's Executive summary PDF
+- Preview: two panes. On the left the e-mails of the run (supplier, parts, first recipient, Will send / Skipped);
+  on the right the selected supplier's e-mail (To, CC folded, subject, file chips, full text, skip reason, Outlook
+  draft). Previous / Next and arrow keys; one dropdown on a phone. No long scrolling.
+- Summary to all suppliers: only ONE file, the Tracker's own **Executive summary PDF** (same function as the button).
+  - The page saves it to the server: when Follow-up → Automatic opens (data changed or over an hour old), before a
+    preview or "Send now", every 2 hours while open, or with "Update it now".
+  - Missing or older than 7 days at sending time → the summary is not sent and the reminder says so.
+  - The server-built summary PDF and the `pdf-lib` dependency are removed.
+- Fix: "Skipped" chips and results used the class `.skip` of the skip-to-content link, so they were positioned off
+  screen. They now use their own class.
+
 ### Follow-up → Automatic: several automations, reminder before sending, previews and drafts; standard files
 - Automatic follow-ups moved from Settings to **Follow-up → Automatic**. Several automations, each with:
   - its own type: follow-up per supplier, request per supplier, or **summary to all suppliers** (one e-mail with a

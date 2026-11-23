@@ -249,11 +249,11 @@ Semua e-mail ke supplier sekarang lewat **satu tempat**. Tombol *Remind*, *Send 
 
 1. Vercel → Settings → Environment Variables: tambah `CRON_SECRET` (acak, panjang), pastikan `SUPABASE_SERVICE_ROLE_KEY`, `POWER_AUTOMATE_EMAIL_URL`, `POWER_AUTOMATE_SECRET` dan `APP_BASE_URL` ada, lalu **Redeploy**.
 2. Tracker → Follow-up → tab **Automatic** → **+ New automation**:
-   - jenis: follow-up per supplier, request per supplier, atau **ringkasan ke semua supplier** (satu e-mail + PDF ringkasan);
+   - jenis: follow-up per supplier, request per supplier, atau **ringkasan ke semua supplier** (satu e-mail, hanya berisi **Executive summary PDF** dari Tracker, sama dengan tombolnya; dibuat browser dan disimpan otomatis saat tab Automatic dibuka, sebelum preview/Send now, atau lewat *Update it now*; jika belum ada atau lebih dari 7 hari, ringkasan tidak dikirim);
    - frekuensi: tiap minggu, tiap 2 minggu (pilih minggu pertama), atau tiap bulan (minggu ke-1 sampai ke-4, atau minggu terakhir);
    - hari dan jam (WIB), model, part, template, pengirim, CC, file (PDF, Excel, dan **Standard files**);
    - **pengingat ke PIC TMMIN** (default 24 jam sebelumnya, ke e-mail pengirim; bisa diubah). Isinya daftar lengkap supplier, penerima, CC dan file.
-3. **Preview this run**: semua e-mail yang akan terkirim, teks lengkap (View) dan **Download as Outlook draft** dengan file aslinya. Tidak ada yang terkirim.
+3. **Preview this run**: kiri daftar e-mail per supplier, kanan isi e-mail supplier yang dipilih (To, CC, subjek, file, teks lengkap) dengan Previous/Next, dan **Download as Outlook draft** dengan file aslinya. Tidak ada yang terkirim.
 4. Di kartu automation: **Switch on/off**, **Skip next run**, **Send now…**, **Edit**, **Delete**. Riwayat (pengingat dan pengiriman) ada di bawahnya.
 
 Cara kerja: `vercel.json` berisi 24 cron harian (satu per jam; paket Hobby hanya boleh harian dan menjalankannya dalam jam itu, ±59 menit). Setiap jam `/api/cron/followups` mengirim pengingat yang jatuh tempo dan menjalankan automation yang cocok hari/jam WIB-nya; setiap slot hanya sekali (dicatat di `audit_events`). Supplier yang baru dikirimi dalam `FOLLOWUP_MIN_GAP_HOURS` dilewati. "Handed off" = flow menerima (HTTP 202), bukan bukti terkirim.
