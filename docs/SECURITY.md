@@ -16,6 +16,13 @@ The workbook import endpoint requires explicit classification and rejects CONFID
 - Only publishable/anon Supabase keys are used by browser-facing code.
 - Never put a Supabase service-role key in `NEXT_PUBLIC_*` or a client component.
 - Rotate credentials if they are ever committed or disclosed.
+- `CRON_SECRET` (server-only) protects `/api/cron/followups`: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; any
+  other caller gets 401, and without the variable the endpoint does nothing (503). The job uses the service-role key
+  only to read the master, settings and G-CATS findings and to write follow-up logs and audit rows; it sends only
+  through the configured Power Automate flow, only on the saved WIB day/hour, once per slot. “Preview” and “Send now”
+  in Settings run with the signed-in user's own session (RLS) and need preparer/admin (preview also reviewer).
+- Supplier contact data (Directory) lives in the database (`imds_tracker_settings.directory`), never in the repository.
+  The PUD buyer list in code holds only TMMIN staff work e-mails, as the mandatory CC list already does.
 
 ## Access
 
