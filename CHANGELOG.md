@@ -2,6 +2,14 @@
 
 ## 2026-11-23
 
+### Tracker: supplier due date → "Apply to all parts" of that model
+- Each model row in "Due dates for this supplier" now shows either "✓ All N parts follow this date" or a button
+  "Apply to all N parts · M differ" that gives the date (supplier due date, else the model deadline) to every part of
+  that supplier × model, also parts that had their own date ("This part only"). It asks once, then saves to the shared
+  master and the Excel sync.
+- Setting a supplier due date still applies it to all parts of that model automatically (now after a short pause, so
+  typing a date does not save half-typed dates), and the part rows below refresh at once.
+
 ### Tracker: sidebar follows light/dark, larger centred 3D cubes, tidy phone top bar
 - The sidebar now follows the theme like the top bar: white with violet accents in light, plum in dark (tokens only;
   the active item, counts, avatar and logo frame keep their contrast in both).
