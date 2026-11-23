@@ -2,6 +2,23 @@
 
 ## 2026-11-23
 
+### Tracker: parts workbench in the supplier drawer
+- One **Target date** column (the submission plan).
+  - A model deadline change sets every part of the model; a supplier × model due date sets that supplier's parts.
+  - A single part can still be changed.
+  - The cell says where the date came from (model deadline / supplier due / this part only).
+  - Saved to `submission_plan` in the shared master (kept over imports) and queued for the Excel sync.
+- **Part search** in the drawer.
+- Every row shows **Check**, **Stop run** and **Move…** (other supplier or model, status kept).
+- Rows can be selected (bulk bar) or **dragged** onto the Check / Stop run / Move lanes.
+- **Supplier clarification file:** drop the supplier's Excel on the drawer.
+  - Dead → Stop run; no data / not theirs → Check; Continue with a tracker model → Move.
+  - Every line is shown first and can be changed. Nothing is applied until Apply.
+- **Check** tab (all models) and **Stop run log** with the part's last identity and Restore.
+- **Rejected** is a general status.
+- These features were first built in the closed PR #61 and are rebuilt here on the new shell.
+- Server: `POST /api/imds-master/part-ops` (set-target, to-check, resolve, stop-run, restore, reassign), rules in `lib/imds-master/part-log.ts` (tested). It needs migration `20261119020000` (part_log key).
+
 ### Database fixes from the closed 2026-11-19 pull requests
 - `20261119010000_tracker_due_dates.sql` no longer drops the `autojudge_config` settings key. The old version failed on the live database with 23514.
 - `20261119020000_tracker_part_log.sql` adds the `part_log` key used by the Tracker's Check tab and Stop run log.
