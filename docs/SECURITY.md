@@ -44,6 +44,9 @@ Classification selection is an explicit user attestation. The application does n
 - Exposed `public` tables are protected by Row Level Security policies. The later bulk-preparation RPC is `SECURITY INVOKER`, so it remains subject to the caller's table policies; the migration grants reviewer update access to the register while the judgement guard trigger still restricts KM fields to reviewer/admin.
 - Bulk preparation accepts only `assigned_person`, `starting_date`, and `judgement_procedure`, verifies all selected rows share one exact historical Error Type label, and writes a change log for each row. It cannot update Judge, OK/NG comments or KM review fields.
 - `current_app_role()` and `has_any_role()` are granted only to authenticated users and are used by row policies. Trigger-only functions are revoked from `PUBLIC` and `anon`. Guarded commit/finalization RPCs have explicit role checks and authenticated-only execution grants.
+- **Reviewed exception (2026-11-19, migration `20261119030000`):** `current_app_role()` runs as `SECURITY DEFINER`.
+  - Why: as invoker it read `profiles`, whose policy calls `has_any_role()` → `current_app_role()` again. With Supabase's non-leakproof `auth.uid()` the policy runs on every profile row, so with two or more users it looped to `stack depth limit exceeded`, SQLSTATE 54001 ("database error, code: 54001" in Storage). Reproduced on PG16 and fixed.
+  - Threat review: no arguments; returns only the caller's role (`where id = auth.uid()`); fixed `search_path`; no writes; not executable by `anon`. `has_any_role()` stays invoker.
 - Never replace a failed RLS policy with a broad `SECURITY DEFINER` function. Any future definer function must have an explicit threat review, fixed search path, internal role check, least-privilege execute grants and a documented reason it cannot run as invoker.
 
 ## Access requests, approval and password recovery

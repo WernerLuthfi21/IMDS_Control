@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-23
+
+### Database fixes from the closed 2026-11-19 pull requests
+- `20261119010000_tracker_due_dates.sql` no longer drops the `autojudge_config` settings key. The old version failed on the live database with 23514.
+- `20261119020000_tracker_part_log.sql` adds the `part_log` key used by the Tracker's Check tab and Stop run log.
+- `20261119030000_role_helpers_no_rls_recursion.sql` ends the 54001 role-check loop that broke uploads for every account but the first. The same SQL was already given to Werner on 2026-11-19; running it again is safe.
+- `tests/settings-key-check.test.ts` fails if a later migration drops an earlier settings key.
+
 ## 2026-11-21
 
 ### One surface system: Judge board and Tracker look like one app
