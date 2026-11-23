@@ -10,9 +10,7 @@ import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
 import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, signOff, type Kind } from "@/lib/followup/center";
 import { buildEml, emlFileName } from "@/lib/followup/eml";
-import { buildCheckFormXlsx } from "@/lib/followup/check-form";
-import { findingsFor, formContacts } from "@/lib/followup/scheduled-run";
-import { findEntry, type Directory } from "@/lib/followup/directory";
+import { pickLibrary, sanitizeLibrary } from "@/lib/followup/library";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -53,7 +51,7 @@ export async function GET() {
 
 type SendBody = {
   kind?: string; supplierCode?: string; supplierName?: string; to?: string[]; cc?: string[]; subject?: string; messageBody?: string;
-  sender?: string; force?: boolean; partIds?: string[]; attachments?: { pdf?: boolean; xlsx?: boolean; checkForm?: boolean };
+  sender?: string; force?: boolean; partIds?: string[]; attachments?: { pdf?: boolean; xlsx?: boolean; library?: string[] };
   /** A PDF built in the browser (the executive summary for the recap). */
   extraPdf?: { name?: string; base64?: string };
   /** The supplier PDF exactly as the Tracker's "Supplier PDF" button makes it (built in the browser). */
@@ -144,12 +142,11 @@ export async function POST(request: NextRequest) {
     attachments.push({ name: `${stem}.pdf`, contentType: "application/pdf", contentBytes: browserPdf.toString("base64") });
   } else if (!recap && wantPdf && parts.length) attachments.push({ name: `${stem}.pdf`, contentType: "application/pdf", contentBytes: buildSupplierReportPdf(supplierName, supplierCode, parts).toString("base64") });
   if (wantXlsx && parts.length) attachments.push({ name: `${stem}.xlsx`, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", contentBytes: (await buildUnsubmittedXlsx(recap ? "ALL SUPPLIERS" : supplierName, supplierCode, parts)).toString("base64") });
-  // IMDS Supplier Check Form: the supplier's outstanding parts, earlier G-CATS findings and current contacts filled in.
-  if (!recap && body.attachments?.checkForm && parts.length) {
-    const { data: dirRow } = await supabase.from("imds_tracker_settings").select("value").eq("key", "directory").maybeSingle();
-    const dir = (dirRow?.value || {}) as Directory, hit = findEntry(dir, supplierName, supplierCode);
-    const form = await buildCheckFormXlsx({ supplierName, supplierCode, parts, findings: await findingsFor(supabase, supplierCode), contacts: formContacts(dir, hit?.key ?? null) });
-    attachments.push({ name: `IMDS_Supplier_Check_Form_${supplierCode || "SUPPLIER"}_${dateTag}.xlsx`, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", contentBytes: form.toString("base64") });
+  // Standard files from the library (e.g. the IMDS Supplier Check Form template), attached exactly as uploaded.
+  const libIds = Array.isArray(body.attachments?.library) ? body.attachments!.library!.map(String).slice(0, 10) : [];
+  if (libIds.length) {
+    const { data: libRow } = await supabase.from("imds_tracker_settings").select("value").eq("key", "attachment_library").maybeSingle();
+    attachments.push(...pickLibrary(sanitizeLibrary(libRow?.value), libIds));
   }
   if (recap && body.extraPdf?.base64) {
     const bytes = Buffer.from(String(body.extraPdf.base64), "base64");

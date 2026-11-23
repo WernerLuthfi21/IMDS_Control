@@ -576,6 +576,13 @@
       ".fu-box{border:1px solid var(--line,#e8e1f1);border-radius:12px;padding:12px}.fu-box h3{font-size:13px;margin:0 0 6px}.fu-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}.fu-prog{height:6px;border-radius:99px;background:rgba(127,127,127,.25);overflow:hidden;flex:1;min-width:140px}.fu-prog i{display:block;height:100%;width:0;background:#6d28d9;transition:width .25s}" +
       ".fu-mail{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fu-to1{font-weight:600}.fu-more{display:inline-block;padding:0 6px;border-radius:99px;background:var(--neutral-soft,rgba(127,127,127,.15));color:var(--muted);font-size:12px;font-weight:600}" +
       ".fu-tagx{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:99px;border:1px solid var(--line-strong,#ddd);color:var(--muted);font-size:11px;font-weight:600;vertical-align:1px}.fu-tagx.mid{border-color:var(--warn,#9a5a08);color:var(--warn-ink,#865008);background:var(--warn-soft,#fbf0dc)}" +
+      ".lib-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}.lib-list li{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid var(--line,#e8e1f1);border-radius:8px}.lib-name{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}.lib-act{display:flex;gap:10px;font-size:13px}.lib-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}" +
+      ".au-top{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-start;margin-bottom:10px}.au-h2{font-size:18px;margin:0}.au-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:12px;margin:12px 0}" +
+      ".au-card{border:1px solid var(--line,#e8e1f1);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}.au-card.on{border-color:var(--violet,#7c3aed);box-shadow:inset 3px 0 0 var(--violet,#7c3aed)}.au-card-h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}.au-card-b{display:flex;flex-direction:column;gap:4px;font-size:13px}.au-card-a{display:flex;flex-wrap:wrap;gap:6px}" +
+      ".au-pill{font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px}.au-pill.on{background:var(--ok-soft,#e4f4eb);color:var(--ok-ink,#126b42)}.au-pill.off{background:var(--neutral-soft,rgba(127,127,127,.15));color:var(--muted)}.au-empty{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px dashed var(--line-strong,#ccc);border-radius:12px}" +
+      ".au-edit{border:1px solid var(--line-strong,#ddd);border-radius:12px;padding:14px;margin:12px 0;background:var(--surface-2,transparent)}.au-edit-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.au-edit-h h3{margin:0;font-size:16px}.au-edit input[type=number],.au-edit input[type=date],.au-edit input[type=text]{width:100%;min-height:38px;padding:0 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}" +
+      ".au-edit-bar{position:sticky;bottom:0;background:var(--surface-2,var(--surface));padding:8px 0;border-top:1px solid var(--line)}.au-files{margin:12px 0}.au-planbox{margin:12px 0}.au-plan-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.au-plan-h h3{margin:0}" +
+      ".au-mailcard{margin-top:12px}.au-mh{display:grid;grid-template-columns:80px minmax(0,1fr);gap:4px 10px;font-size:13px;margin-bottom:10px}.au-mh span{color:var(--muted);font-weight:600}.au-mh b{font-weight:500;overflow-wrap:anywhere}.au-body{max-height:none}" +
       ".fu-attf{display:flex;gap:8px;align-items:flex-start;margin-top:2px}.fu-attf>span{display:flex;flex-direction:column;gap:2px;min-width:0}" +
       ".sc-planbox .fu-mail{max-width:300px;white-space:normal;overflow-wrap:anywhere}.sc-grid input[type=number]{width:100%;min-height:38px;padding:0 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}" +
       ".sc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin:10px 0}.sc-switch{display:flex;gap:8px;align-items:center;margin:0 0 10px}.sc-days{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.sc-models{margin-top:10px}" +
@@ -654,7 +661,7 @@
     injectFollowCss();
     var head = follow.querySelector("header.view-head");
     var actions = head && head.querySelector(".view-actions");
-    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Who to chase</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Send e-mails</button></div>';
+    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Who to chase</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Send e-mails</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button></div>';
     var box = document.createElement("section");
     box.className = "panel"; box.id = "shared-followup-panel"; box.hidden = true;
     box.innerHTML = '<div id="fu-state" class="banner" role="status">Loading…</div>' +
@@ -671,7 +678,7 @@
       '<div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="fu-cc-mid"> Middle management <span class="muted small">staff · supervisor · dept. head · GM</span></label><label class="inline-check"><input type="checkbox" id="fu-cc-top"> Top management <span class="muted small">marketing director</span></label><label class="inline-check"><input type="checkbox" id="fu-cc-dir"> Director <span class="muted small">president / vice president</span></label><label class="inline-check"><input type="checkbox" id="fu-cc-buyer"> PUD buyer <span class="muted small">TMMIN purchasing</span></label></div>' +
       '<p class="muted small" style="margin:6px 0 0">Contacts marked “Always CC” in the Directory are added automatically.</p>' +
       '<label class="field" style="margin-top:8px"><span>Extra CC (optional, separate with ;)</span><input type="text" id="fu-extra" autocomplete="off" placeholder="name@company.com"></label></div>' +
-      '<div class="fu-box"><h3>Attachments</h3><label class="inline-check"><input type="checkbox" id="fu-att-pdf"> <span id="fu-att-pdf-l"></span></label><br><label class="inline-check"><input type="checkbox" id="fu-att-xlsx"> <span id="fu-att-xlsx-l"></span></label><br><label class="inline-check fu-attf" id="fu-att-form-wrap"><input type="checkbox" id="fu-att-form"><span>IMDS Supplier Check Form<span class="muted small">Parts, earlier G-CATS findings and contacts filled in; the Excel checks mass and substances.</span></span></label><p class="muted small" style="margin:8px 0 0" id="fu-att-note"></p></div></div>' +
+      '<div class="fu-box"><h3>Attachments</h3><label class="inline-check"><input type="checkbox" id="fu-att-pdf"> <span id="fu-att-pdf-l"></span></label><br><label class="inline-check"><input type="checkbox" id="fu-att-xlsx"> <span id="fu-att-xlsx-l"></span></label><p class="muted small" style="margin:10px 0 4px">Standard files (attached unchanged):</p><div id="fu-lib"></div><p class="muted small" style="margin:8px 0 0" id="fu-att-note"></p></div></div>' +
       '<div class="mh"><i>5</i>How should it go out?</div>' +
       '<div class="mk" id="fu-mode" role="group" aria-label="Send mode">' +
       '<button type="button" data-send="test" aria-pressed="true"><em class="fu-tag t">Safe</em><b>Test to myself</b><span>Only you receive it, marked [TEST]. No supplier, no CC.</span></button>' +
@@ -693,33 +700,38 @@
     var anchor = follow.querySelector("#follow-sub") || follow.lastElementChild;
     anchor.insertAdjacentElement("afterend", box);
     var $ = function (id) { return box.querySelector("#" + id); };
-    var S = { kind: "followup", scope: "open", models: [], only: "", selected: {}, edits: {}, results: {}, sending: false, mode: "queues", ready: false, open: "" };
+    var auto = null;
+    var S = { lib: [], kind: "followup", scope: "open", models: [], only: "", selected: {}, edits: {}, results: {}, sending: false, mode: "queues", ready: false, open: "" };
     var team = function () { return typeof SENDERS === "object" ? SENDERS : {}; };
     var saved = {}; try { saved = JSON.parse(lsGet(MAIL_KEY) || "{}"); } catch (e) { saved = {}; }
     ["kind", "scope"].forEach(function (k) { if (saved[k]) S[k] = saved[k]; });
     if (!KIND_META[S.kind]) S.kind = "followup";
     var sender = saved.sender && team()[saved.sender] ? saved.sender : (Object.keys(team())[0] || "");
     S.send = saved.send === "live" || saved.send === "draft" || saved.send === "test" ? saved.send : (saved.live === true ? "live" : ""); S.live = S.send === "live"; S.testTo = saved.testTo || ""; S.limit = saved.limit != null ? String(saved.limit) : "1"; S.pause = saved.pause || "0"; S.stop = saved.stop !== false;
-    function persist() { lsSet(MAIL_KEY, JSON.stringify({ send: S.send, live: S.live, testTo: S.testTo, limit: S.limit, pause: S.pause, stop: S.stop, kind: S.kind, scope: S.scope, sender: $("fu-sender").value, roles: roles(), att: { pdf: $("fu-att-pdf").checked, xlsx: $("fu-att-xlsx").checked, form: $("fu-att-form").checked }, list: $("fu-list").checked })); }
+    function persist() { lsSet(MAIL_KEY, JSON.stringify({ send: S.send, live: S.live, testTo: S.testTo, limit: S.limit, pause: S.pause, stop: S.stop, kind: S.kind, scope: S.scope, sender: $("fu-sender").value, roles: roles(), att: { pdf: $("fu-att-pdf").checked, xlsx: $("fu-att-xlsx").checked, lib: S.lib }, list: $("fu-list").checked })); }
     function roles() { return { mid: $("fu-cc-mid").checked, top: $("fu-cc-top").checked, dir: $("fu-cc-dir").checked, buyer: $("fu-cc-buyer").checked }; }
 
     function setMode(m) {
       S.mode = m;
-      ["follow-tabs", "follow-panel", "follow-sub"].forEach(function (id) { var el = follow.querySelector("#" + id); if (el) el.hidden = m === "email"; });
+      ["follow-tabs", "follow-panel", "follow-sub"].forEach(function (id) { var el = follow.querySelector("#" + id); if (el) el.hidden = m !== "queues"; });
       box.hidden = m !== "email";
+      if (m === "auto" && !auto) auto = initAutoPanel(follow, box);
+      if (auto) { follow.querySelector("#shared-auto-panel").hidden = m !== "auto"; if (m === "auto") auto.open(); }
       Array.prototype.forEach.call(follow.querySelectorAll("[data-fmode]"), function (b) { var on = b.getAttribute("data-fmode") === m; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
       if (m === "email") boot();
     }
     follow.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-fmode]"); if (b) setMode(b.getAttribute("data-fmode")); });
 
+    libraryView($("fu-lib"), { selected: function () { return S.lib || []; }, onChange: function (ids) { S.lib = ids; persist(); draw(); } });
     async function boot() {
       try {
+        loadLibrary();
         var res = await Promise.all([loadMailConfig(false), api("/api/imds-master/followups")]);
         mailInfo = res[1];
         if (!S.ready) {
           var cfg = res[0], rs = saved.roles || cfg.ccRoles, at = saved.att || cfg.attachments;
           $("fu-cc-mid").checked = !!rs.mid; $("fu-cc-top").checked = !!rs.top; $("fu-cc-dir").checked = !!rs.dir; $("fu-cc-buyer").checked = !!rs.buyer;
-          $("fu-att-pdf").checked = at.pdf !== false; $("fu-att-xlsx").checked = at.xlsx !== false; $("fu-att-form").checked = at.form === true; $("fu-list").checked = saved.list !== false;
+          $("fu-att-pdf").checked = at.pdf !== false; $("fu-att-xlsx").checked = at.xlsx !== false; S.lib = Array.isArray(at.lib) ? at.lib : []; $("fu-list").checked = saved.list !== false;
           $("fu-scope").value = S.scope;
           $("fu-sender").innerHTML = Object.keys(team()).map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + " · " + esc(team()[n]) + "</option>"; }).join("");
           if (sender) $("fu-sender").value = sender;
@@ -806,7 +818,6 @@
       $("fu-att-pdf-l").textContent = recap ? "Executive summary PDF (all suppliers)" : "PDF recap of this supplier's parts";
       $("fu-att-xlsx-l").textContent = recap ? "Excel list of all outstanding parts" : "Excel list of unsubmitted part numbers (supplier fills the plan date)";
       $("fu-att-note").textContent = recap ? "Generated now from the current data." : "Generated per supplier, only with the parts listed in its e-mail.";
-      $("fu-att-form-wrap").hidden = recap;
       $("fu-list").closest("label").hidden = recap;
       $("fu-all-wrap").hidden = recap;
       $("fu-send").className = "btn btn-primary" + (S.live ? " fu-live" : "");
@@ -864,7 +875,8 @@
       var lim = Number($("fu-limit").value) || 0; if (S.kind !== "recap" && lim) todo = todo.slice(0, lim);
       return todo;
     }
-    function attText() { return [$("fu-att-pdf").checked ? "PDF" : "", $("fu-att-xlsx").checked ? "Excel" : "", $("fu-att-form").checked && S.kind !== "recap" ? "Check form" : ""].filter(Boolean).join(" + ") || "no attachments"; }
+    function attText() { return [$("fu-att-pdf").checked ? "PDF" : "", $("fu-att-xlsx").checked ? "Excel" : "", libNames().length ? libNames().join(", ") : ""].filter(Boolean).join(" + ") || "no attachments"; }
+    function libNames() { return (S.lib || []).map(function (id) { var f = LIB.files.find(function (x) { return x.id === id; }); return f ? f.name : ""; }).filter(Boolean); }
     /** One plain sentence above the main button: what happens when it is pressed. */
     function summary() {
       var todo = todoList(), n = todo.length, recap = S.kind === "recap", names = todo.slice(0, 3).map(function (g) { return g.name; }).join(", ") + (n > 3 ? " +" + (n - 3) + " more" : "");
@@ -896,7 +908,7 @@
       var files = [];
       if ($("fu-att-pdf").checked) files.push("IMDS_" + fileBase(g) + ".pdf");
       if ($("fu-att-xlsx").checked) files.push("Excel list of " + g.parts.length + " part(s)");
-      if ($("fu-att-form").checked && S.kind !== "recap") files.push("IMDS Supplier Check Form (" + g.parts.length + " part(s))");
+      libNames().forEach(function (n) { files.push(n); });
       var test = S.send === "test", tt = ($("fu-testto").value || "").trim();
       return '<tr class="fu-det" data-d="' + i + '"><td colspan="9"><div class="fu-mailcard">' +
         (test ? '<p class="fu-note">Test mode: this goes only to ' + esc(tt || "your address") + ", without CC, subject starts with [TEST].</p>" : "") +
@@ -928,7 +940,7 @@
 
     $("fu-kinds").onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-kind]"); if (!b) return; S.kind = b.getAttribute("data-kind"); S.open = ""; $("fu-template").value = ""; redraw(); };
     $("fu-scope").onchange = function () { S.scope = this.value; redraw(); };
-    ["fu-template", "fu-sender", "fu-list", "fu-cc-mid", "fu-cc-top", "fu-cc-dir", "fu-cc-buyer", "fu-att-pdf", "fu-att-xlsx", "fu-att-form"].forEach(function (id) { $(id).onchange = function () { if (id === "fu-sender") lsSet("imds-sender", this.value); if (id === "fu-att-pdf" || id === "fu-att-xlsx") { persist(); return; } redraw(); }; });
+    ["fu-template", "fu-sender", "fu-list", "fu-cc-mid", "fu-cc-top", "fu-cc-dir", "fu-cc-buyer", "fu-att-pdf", "fu-att-xlsx"].forEach(function (id) { $(id).onchange = function () { if (id === "fu-sender") lsSet("imds-sender", this.value); if (id === "fu-att-pdf" || id === "fu-att-xlsx") { persist(); return; } redraw(); }; });
     var tmr; $("fu-extra").oninput = function () { window.clearTimeout(tmr); tmr = window.setTimeout(redraw, 350); };
     $("fu-models").onclick = function (e) {
       var b = e.target.closest && e.target.closest("button[data-m]"); if (!b) return;
@@ -985,7 +997,7 @@
       var ed = S.edits[g.key] || {};
       var payload = { kind: S.kind, supplierCode: g.code, supplierName: g.name, to: g.to, cc: g.cc, subject: ed.subject != null ? ed.subject : g.subject, messageBody: ed.body != null ? ed.body : g.body,
         sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: S.send === "test" || undefined, testTo: S.send === "test" ? ($("fu-testto").value || "").trim() : undefined, mode: S.send === "draft" ? "draft" : "send", partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
-        attachments: { pdf: $("fu-att-pdf").checked && S.kind !== "recap", xlsx: $("fu-att-xlsx").checked, checkForm: $("fu-att-form").checked && S.kind !== "recap" } };
+        attachments: { pdf: $("fu-att-pdf").checked && S.kind !== "recap", xlsx: $("fu-att-xlsx").checked, library: (S.lib || []).filter(function (id) { return LIB.files.some(function (f) { return f.id === id; }); }) } };
       if (S.kind === "recap") payload.extraPdf = await recapPdf();
       // Attach the same PDF the "Supplier PDF" button makes, drawn here in the browser (the server's text PDF is only a fallback).
       else if ($("fu-att-pdf").checked) {
@@ -1076,131 +1088,260 @@
   }
 
   // ---- Settings → E-mail templates ----
-  // ---- Settings → Automatic follow-up (weekly). Saved inside followup_config.schedule; run by /api/cron/followups. ----
-  function initScheduleSettings(after) {
+  // ---- Standard files (file library): uploaded once, attached exactly as uploaded. Used by the composer and automations. ----
+  var LIB = { files: [], canEdit: false, loaded: false, error: "", maxBytes: 3145728 };
+  var libViews = [];
+  function libSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+  async function loadLibrary() {
+    try { var r = await api("/api/imds-master/attachments"); LIB.files = r.files || []; LIB.canEdit = !!r.canEdit; LIB.error = r.error || ""; LIB.maxBytes = r.maxBytes || LIB.maxBytes; }
+    catch (e) { LIB.error = e.message; }
+    LIB.loaded = true; libViews.forEach(function (v) { v(); });
+  }
+  function fileToBase64(file) {
+    return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).split(",")[1] || ""); }; fr.onerror = function () { rej(new Error("The file could not be read.")); }; fr.readAsDataURL(file); });
+  }
+  async function uploadLibFile(file, replaceId) {
+    if (file.size > LIB.maxBytes) { toast(file.name + " is larger than " + libSize(LIB.maxBytes) + ".", "err"); return; }
+    try {
+      var b64 = await fileToBase64(file);
+      await api("/api/imds-master/attachments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, contentType: file.type || (/\.xlsx$/i.test(file.name) ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : /\.pdf$/i.test(file.name) ? "application/pdf" : ""), base64: b64, replaceId: replaceId || undefined }) });
+      toast((replaceId ? "Replaced: " : "Added to the files: ") + file.name, "ok"); await loadLibrary();
+    } catch (e) { toast(e.message, "err"); }
+  }
+  /**
+   * Renders the file list into `host`. opts.selected: array of ids (ticked), opts.onChange(ids) when ticks change.
+   * Admins / preparers also get Add, Replace, Remove. Every file can be downloaded to check it is the original.
+   */
+  function libraryView(host, opts) {
+    function draw() {
+      var sel = opts.selected();
+      if (!LIB.loaded) { host.innerHTML = '<p class="muted small">Loading files…</p>'; return; }
+      host.innerHTML = (LIB.error ? '<p class="small t-bad" style="margin:0 0 6px">' + esc(LIB.error) + "</p>" : "") +
+        (LIB.files.length ? '<ul class="lib-list">' + LIB.files.map(function (f) {
+          return '<li><label class="inline-check">' + (opts.manageOnly ? "" : '<input type="checkbox" data-libid="' + esc(f.id) + '"' + (sel.indexOf(f.id) >= 0 ? " checked" : "") + ">") + '<span class="lib-name">' + esc(f.name) + '<span class="muted small">' + libSize(f.size) + (f.at ? " · " + esc(new Date(f.at).toLocaleDateString()) : "") + "</span></span></label>" +
+            '<span class="lib-act"><a class="link-btn" href="/api/imds-master/attachments?id=' + encodeURIComponent(f.id) + '" download>Download</a>' +
+            (LIB.canEdit ? '<button type="button" class="link-btn" data-libreplace="' + esc(f.id) + '">Replace</button><button type="button" class="link-btn t-bad" data-libdel="' + esc(f.id) + '">Remove</button>' : "") + "</span></li>";
+        }).join("") + "</ul>" : '<p class="muted small" style="margin:0">No standard files yet.' + (LIB.canEdit ? " Add one, for example your IMDS Supplier Check Form." : "") + "</p>") +
+        (LIB.canEdit ? '<div class="lib-add"><button type="button" class="btn btn-secondary btn-sm" data-libadd="1">+ Add file</button><span class="muted small">Attached exactly as uploaded (PDF, Excel, Word, PowerPoint, image; max ' + libSize(LIB.maxBytes) + ")</span></div>" : "");
+    }
+    var input = document.createElement("input"); input.type = "file"; input.hidden = true; input.accept = ".xlsx,.xls,.pdf,.docx,.doc,.pptx,.png,.jpg,.jpeg,.csv,.txt";
+    var replaceId = ""; host.after(input);
+    input.addEventListener("change", function () { var f = input.files && input.files[0]; input.value = ""; if (f) uploadLibFile(f, replaceId); });
+    host.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-libadd],[data-libreplace],[data-libdel]"); if (!t) return;
+      if (t.hasAttribute("data-libadd")) { replaceId = ""; input.click(); }
+      else if (t.hasAttribute("data-libreplace")) { replaceId = t.getAttribute("data-libreplace"); input.click(); }
+      else if (window.confirm("Remove this file from the standard files? E-mails and automations that use it stop attaching it.")) {
+        api("/api/imds-master/attachments?id=" + encodeURIComponent(t.getAttribute("data-libdel")), { method: "DELETE" }).then(function () { toast("File removed", "ok"); loadLibrary(); }, function (er) { toast(er.message, "err"); });
+      }
+    });
+    host.addEventListener("change", function (e) {
+      var c = e.target.closest("[data-libid]"); if (!c) return;
+      var ids = Array.prototype.map.call(host.querySelectorAll("[data-libid]:checked"), function (x) { return x.getAttribute("data-libid"); });
+      opts.onChange(ids);
+    });
+    libViews.push(draw); draw();
+    return draw;
+  }
+
+  // ---- Follow-up → Automatic: automations (weekly / every 2 weeks / monthly), reminder to the TMMIN PIC, preview, drafts ----
+  function initAutoPanel(follow, after) {
     var DAYS = [[1, "Mon"], [2, "Tue"], [3, "Wed"], [4, "Thu"], [5, "Fri"], [6, "Sat"], [0, "Sun"]];
-    var DAYL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var KINDS = { followup: "Follow-up per supplier", request: "Request per supplier", recap: "Summary to all suppliers (one e-mail + PDF)" };
     var sec = document.createElement("section");
-    sec.className = "panel"; sec.id = "followup-schedule-panel";
-    sec.innerHTML = '<div class="panel-head"><div><h2>Automatic follow-up (weekly)</h2><p class="panel-sub">On the chosen days and hour (WIB) the follow-up e-mail goes to every supplier with outstanding parts, through Power Automate, with the same template, CC rules, sign-off and files as a manual send. Off until you switch it on.</p></div></div>' +
-      '<div class="sc-ready" id="sc-ready" role="status">Loading…</div>' +
-      '<div class="sc-grid">' +
-      '<div class="fu-box"><h3>When</h3><label class="sc-switch"><input type="checkbox" id="sc-on"> <b>Send automatically</b></label>' +
-      '<div class="sc-days" id="sc-days" role="group" aria-label="Days of the week">' + DAYS.map(function (d) { return '<button type="button" class="fu-chip" data-day="' + d[0] + '" aria-pressed="false">' + d[1] + "</button>"; }).join("") + "</div>" +
-      '<label class="field"><span>Time (WIB)</span><select id="sc-hour">' + Array.from({ length: 24 }, function (_, h) { var t = (h < 10 ? "0" : "") + h; return '<option value="' + h + '">' + t + ":00 – " + t + ":59</option>"; }).join("") + "</select></label>" +
-      '<p class="muted small" id="sc-next" style="margin:6px 0 0"></p></div>' +
-      '<div class="fu-box"><h3>What</h3><div class="fu-grid" style="margin:0"><label class="field"><span>E-mail type</span><select id="sc-kind"><option value="followup">Follow-up (please submit)</option><option value="request">Request (confirm status and plan)</option></select></label>' +
-      '<label class="field"><span>Template</span><select id="sc-tpl"></select></label><label class="field"><span>Sender (sign-off)</span><select id="sc-sender"></select></label>' +
-      '<label class="field"><span>At most, per run</span><input type="number" id="sc-max" min="1" max="300" step="1"></label></div>' +
-      '<div class="fu-checks"><label class="inline-check"><input type="checkbox" id="sc-working"> Also parts under TMMIN judgement (Working)</label><label class="inline-check"><input type="checkbox" id="sc-pastdue"> Only suppliers with a part past its target date</label></div>' +
-      '<div class="sc-models"><span class="muted small">Models</span><div class="fu-chips" id="sc-models" role="group" aria-label="Models to include"></div><p class="muted small" id="sc-models-hint" style="margin:2px 0 0"></p></div></div>' +
-      '<div class="fu-box"><h3>Recipients and files</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="sc-cc-mid"> CC middle management</label><label class="inline-check"><input type="checkbox" id="sc-cc-top"> CC top management</label><label class="inline-check"><input type="checkbox" id="sc-cc-dir"> CC director</label><label class="inline-check"><input type="checkbox" id="sc-cc-buyer"> CC PUD buyer</label>' +
-      '<label class="inline-check"><input type="checkbox" id="sc-fallback"> No IMDS PIC → send to middle management</label></div>' +
-      '<p class="muted small" style="margin:6px 0">Always: the mandatory CC, the IMDS team and “Always CC” contacts from the Directory. Suppliers e-mailed in the last hours (minimum gap) are skipped.</p>' +
-      '<div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="sc-pdf"> PDF recap of the supplier’s parts</label><label class="inline-check"><input type="checkbox" id="sc-xlsx"> Excel list (supplier fills the plan date)</label><label class="inline-check"><input type="checkbox" id="sc-form"> IMDS Supplier Check Form</label></div></div>' +
-      "</div>" +
-      '<div class="fu-bar"><button type="button" class="btn btn-primary btn-sm" id="sc-save">Save schedule</button><button type="button" class="btn btn-secondary btn-sm" id="sc-preview">Preview the next run</button><button type="button" class="btn btn-ghost btn-sm" id="sc-run">Send now…</button><span class="muted small" id="sc-msg" role="status"></span></div>' +
-      '<div id="sc-plan"></div><h3 class="sc-h">Last runs</h3><div class="table-wrap"><table class="tbl compact"><thead><tr><th scope="col">When</th><th scope="col">How</th><th scope="col" class="r">Handed off</th><th scope="col" class="r">Failed</th><th scope="col" class="r">Skipped</th><th scope="col">Note</th></tr></thead><tbody id="sc-runs"></tbody></table></div>';
+    sec.className = "panel"; sec.id = "shared-auto-panel"; sec.hidden = true;
+    sec.innerHTML = '<div class="au-top"><div><h2 class="au-h2">Automatic follow-ups</h2><p class="muted small" style="margin:2px 0 0">Each automation sends on its own days and hour (WIB) through Power Automate, with the template, CC rules, sign-off and files you choose. Before every run the TMMIN PIC gets a reminder with the full list, so a run can still be checked, changed or skipped.</p></div><button type="button" class="btn btn-primary btn-sm" id="au-new">+ New automation</button></div>' +
+      '<div class="sc-ready" id="au-ready" role="status">Loading…</div>' +
+      '<div id="au-list" class="au-list"></div>' +
+      '<div id="au-edit" class="au-edit" hidden></div>' +
+      '<div id="au-prev" hidden></div>' +
+      '<details class="fu-adv au-files" open><summary><b>Standard files</b> <span class="muted small">— your own files, attached unchanged (e.g. IMDS Supplier Check Form)</span></summary><div id="au-lib"></div></details>' +
+      '<h3 class="sc-h">History</h3><div class="table-wrap"><table class="tbl compact"><thead><tr><th scope="col">When</th><th scope="col">Automation</th><th scope="col">What</th><th scope="col" class="r">Handed off</th><th scope="col" class="r">Failed</th><th scope="col" class="r">Skipped</th><th scope="col">Note</th></tr></thead><tbody id="au-runs"></tbody></table></div>';
     after.insertAdjacentElement("afterend", sec);
     var $ = function (id) { return sec.querySelector("#" + id); };
-    var st = null, sched = null, cfg = null, version = 0;
-    function say(t, bad) { var m = $("sc-msg"); m.textContent = t; m.style.color = bad ? "var(--bad)" : ""; }
-    function when(iso) { return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date(iso)) + " WIB"; }
-    function nextText() {
-      if (!sched.enabled) return "Switched off. Nothing is sent automatically.";
-      if (!sched.days.length) return "Pick at least one day.";
-      var h = (sched.hour < 10 ? "0" : "") + sched.hour;
-      return "Every " + sched.days.map(function (d) { return DAYL[d]; }).join(", ") + " between " + h + ":00 and " + h + ":59 WIB." + (st && st.next && st.next.length ? " Next: " + st.next.map(when).join(" · ") + "." : "");
-    }
+    var st = null, draft = null, busy = false;
+    libraryView($("au-lib"), { manageOnly: true, selected: function () { return []; }, onChange: function () {} });
+    function say(t, bad) { var el = $("au-msg"); if (el) { el.textContent = t; el.style.color = bad ? "var(--bad)" : ""; } else if (t) toast(t, bad ? "err" : "ok"); }
+    function when(iso) { return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date(iso)) + " WIB"; }
     function ready() {
       var r = (st && st.ready) || {}, tick = function (ok, t, fix) { return '<span class="sc-r ' + (ok ? "ok" : "no") + '">' + (ok ? "✓ " : "✕ ") + t + (ok ? "" : ' <span class="muted small">— ' + fix + "</span>") + "</span>"; };
-      $("sc-ready").innerHTML = tick(r.cron, "Scheduler", "add CRON_SECRET in Vercel → Settings → Environment Variables, then redeploy") + tick(r.serviceKey, "Server access to the master", "SUPABASE_SERVICE_ROLE_KEY in Vercel") + tick(r.flow, "Power Automate e-mail flow", "POWER_AUTOMATE_EMAIL_URL + POWER_AUTOMATE_SECRET");
+      $("au-ready").innerHTML = tick(r.cron, "Scheduler", "add CRON_SECRET in Vercel → Environment Variables, then redeploy") + tick(r.serviceKey, "Server access to the master", "SUPABASE_SERVICE_ROLE_KEY in Vercel") + tick(r.flow, "Power Automate e-mail flow", "POWER_AUTOMATE_EMAIL_URL + POWER_AUTOMATE_SECRET");
     }
-    function fill() {
-      $("sc-on").checked = sched.enabled; $("sc-hour").value = String(sched.hour); $("sc-kind").value = sched.kind; $("sc-max").value = sched.maxSuppliers;
-      Array.prototype.forEach.call($("sc-days").querySelectorAll("[data-day]"), function (b) { b.setAttribute("aria-pressed", String(sched.days.indexOf(Number(b.getAttribute("data-day"))) >= 0)); });
-      var tl = (cfg.templates || []).filter(function (t) { return t.kind === sched.kind; });
-      $("sc-tpl").innerHTML = '<option value="">Default ' + (sched.kind === "request" ? "request" : "follow-up") + " template</option>" + tl.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.name) + "</option>"; }).join("");
-      $("sc-tpl").value = tl.some(function (t) { return t.id === sched.templateId; }) ? sched.templateId : "";
-      var team = (st && st.team) || [];
-      $("sc-sender").innerHTML = team.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
-      $("sc-sender").value = team.indexOf(sched.sender) >= 0 ? sched.sender : (team[0] || "");
-      $("sc-working").checked = sched.includeWorking; $("sc-pastdue").checked = sched.onlyPastDue;
-      $("sc-cc-mid").checked = sched.cc.mid; $("sc-cc-top").checked = sched.cc.top; $("sc-cc-dir").checked = sched.cc.dir; $("sc-cc-buyer").checked = sched.cc.buyer; $("sc-fallback").checked = sched.fallbackMid;
-      $("sc-pdf").checked = sched.attachments.pdf; $("sc-xlsx").checked = sched.attachments.xlsx; $("sc-form").checked = sched.attachments.checkForm;
-      var keys = typeof M === "object" && M.keys ? M.keys().filter(function (k) { return k !== "UNASSIGNED"; }) : [];
-      sched.models.forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
-      $("sc-models").innerHTML = keys.map(function (k) { return '<button type="button" class="fu-chip" data-m="' + esc(k) + '" aria-pressed="' + (sched.models.indexOf(k) >= 0) + '">' + esc(k) + "</button>"; }).join("") || '<span class="muted small">Models appear once the master is loaded.</span>';
-      $("sc-models-hint").textContent = sched.models.length ? "Only the selected models." : "All models. Tap a model to limit the e-mails to it.";
-      $("sc-next").textContent = nextText();
-      $("sc-run").hidden = !(st && st.canRun);
-      runs();
-    }
-    function read() {
-      sched.enabled = $("sc-on").checked; sched.hour = Number($("sc-hour").value); sched.kind = $("sc-kind").value; sched.templateId = $("sc-tpl").value; sched.sender = $("sc-sender").value;
-      sched.maxSuppliers = Math.max(1, Math.min(300, Number($("sc-max").value) || 60));
-      sched.includeWorking = $("sc-working").checked; sched.onlyPastDue = $("sc-pastdue").checked; sched.fallbackMid = $("sc-fallback").checked;
-      sched.cc = { mid: $("sc-cc-mid").checked, top: $("sc-cc-top").checked, dir: $("sc-cc-dir").checked, buyer: $("sc-cc-buyer").checked };
-      sched.attachments = { pdf: $("sc-pdf").checked, xlsx: $("sc-xlsx").checked, checkForm: $("sc-form").checked };
+    function list() {
+      var items = (st && st.automations) || [];
+      $("au-list").innerHTML = items.length ? items.map(function (a) {
+        var skipped = a.skip && a.nextSlot !== a.skip ? "" : "";
+        return '<article class="au-card' + (a.enabled ? " on" : "") + '" data-id="' + esc(a.id) + '"><div class="au-card-h"><span class="au-pill ' + (a.enabled ? "on" : "off") + '">' + (a.enabled ? "On" : "Off") + '</span><b>' + esc(a.name) + '</b><span class="muted small">' + esc(KINDS[a.kind]) + "</span></div>" +
+          '<div class="au-card-b"><span>🗓 ' + esc(a.describe) + "</span>" +
+          '<span>' + (a.enabled && a.next.length ? "Next: <b>" + esc(when(a.next[0])) + "</b>" + (a.skip ? ' <span class="fu-tagx mid">skipping ' + esc(a.skip.replace("@", " ") + ":00") + "</span>" : "") : '<span class="muted">Not scheduled (switched off)</span>') + "</span>" +
+          '<span>' + (a.notify.enabled ? "🔔 Reminder " + a.notify.leadHours + " h before" + (a.noticeAt ? " (" + esc(when(a.noticeAt)) + ")" : "") + " to " + esc(a.noticeTo.join(", ")) : '<span class="t-bad">No reminder before sending</span>') + "</span>" +
+          '<span class="muted small">Files: ' + esc([a.attachments.pdf ? (a.kind === "recap" ? "Summary PDF" : "PDF") : "", a.attachments.xlsx ? "Excel" : ""].concat(a.attachments.library.map(function (id) { var f = (st.library || []).find(function (x) { return x.id === id; }); return f ? f.name : "(removed file)"; })).filter(Boolean).join(" + ") || "none") + "</span></div>" +
+          '<div class="au-card-a"><button type="button" class="btn btn-secondary btn-sm" data-au="edit">Edit</button><button type="button" class="btn btn-secondary btn-sm" data-au="preview">Preview</button>' +
+          (st.canRun ? '<button type="button" class="btn btn-ghost btn-sm" data-au="toggle">' + (a.enabled ? "Switch off" : "Switch on") + "</button>" + (a.enabled && a.next.length ? '<button type="button" class="btn btn-ghost btn-sm" data-au="skip">' + (a.skip ? "Undo skip" : "Skip next run") + "</button>" : "") + '<button type="button" class="btn btn-ghost btn-sm" data-au="run">Send now…</button><button type="button" class="btn btn-ghost btn-sm t-bad" data-au="delete">Delete</button>' : "") + "</div></article>";
+      }).join("") : '<div class="au-empty"><b>No automation yet.</b><span class="muted small">Create one: for example a weekly follow-up every Monday 09:00 WIB, or a monthly summary PDF to all suppliers.</span></div>';
     }
     function runs() {
-      var list = (st && st.runs) || [];
-      $("sc-runs").innerHTML = list.length ? list.map(function (r) {
-        return "<tr><td>" + esc(when(r.at)) + "</td><td>" + (r.manual ? "Send now" : "Scheduled") + '</td><td class="r">' + (r.sent || 0) + '</td><td class="r">' + (r.failed ? '<b class="t-bad">' + r.failed + "</b>" : 0) + '</td><td class="r">' + (r.skipped || 0) + "</td><td>" + esc(r.error || r.note || "") + "</td></tr>";
-      }).join("") : '<tr><td colspan="6" class="muted">No run yet.</td></tr>';
+      var l = (st && st.runs) || [];
+      $("au-runs").innerHTML = l.length ? l.map(function (r) {
+        var what = r.kind === "notice" ? (r.test ? "Test reminder" : "Reminder") + " → " + esc((r.to || []).join(", ")) : r.manual ? "Send now" : "Scheduled run";
+        return "<tr><td>" + esc(when(r.at)) + "</td><td>" + esc(r.name || r.automation || "—") + "</td><td>" + what + '</td><td class="r">' + (r.kind === "notice" ? (r.ok ? "✓" : "—") : (r.sent || 0)) + '</td><td class="r">' + (r.failed ? '<b class="t-bad">' + r.failed + "</b>" : r.kind === "notice" && !r.ok ? '<b class="t-bad">✕</b>' : 0) + '</td><td class="r">' + (r.skipped || 0) + "</td><td>" + esc(r.error || r.note || "") + "</td></tr>";
+      }).join("") : '<tr><td colspan="7" class="muted">Nothing has run yet.</td></tr>';
     }
     async function load() {
-      try {
-        var a = await api("/api/imds-master/followups/schedule"), g = await api("/api/imds-master/settings?key=followup_config");
-        st = a; cfg = g.value || {}; version = g.version || 0; sched = JSON.parse(JSON.stringify(a.schedule));
-        ready(); fill(); say("");
-      } catch (e) { $("sc-ready").textContent = e.message; }
+      try { st = await api("/api/imds-master/followups/schedule"); ready(); list(); runs(); $("au-new").hidden = !st.canRun; }
+      catch (e) { $("au-ready").textContent = e.message; }
+      loadLibrary();
     }
-    sec.addEventListener("click", function (ev) {
-      var d = ev.target.closest("[data-day]"), m = ev.target.closest("[data-m]");
-      if (d && sched) { var n = Number(d.getAttribute("data-day")), i = sched.days.indexOf(n); if (i >= 0) sched.days.splice(i, 1); else sched.days.push(n); sched.days.sort(); read(); fill(); }
-      if (m && sched) { var k = m.getAttribute("data-m"), j = sched.models.indexOf(k); if (j >= 0) sched.models.splice(j, 1); else sched.models.push(k); read(); fill(); }
+    async function saveAll(mutate, msg) {
+      var g = await api("/api/imds-master/settings?key=followup_config"), value = Object.assign({}, g.value || {});
+      value.automations = mutate((value.automations || []).slice());
+      await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "followup_config", value: value, baseVersion: g.version }) });
+      if (typeof window.__imdsReloadMailSettings === "function") window.__imdsReloadMailSettings();
+      await load(); if (msg) toast(msg, "ok");
+    }
+    function todayIso() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date()); }
+    function blank() { return { id: "a" + Date.now().toString(36), name: "Weekly follow-up", enabled: false, kind: "followup", frequency: "weekly", days: [1], hour: 9, anchor: todayIso(), monthWeek: 1, templateId: "", sender: (function () { var last = lsGet("imds-sender"); return st.team.some(function (t) { return t.name === last; }) ? last : (st.team[0] || {}).name || ""; })(), models: [], includeWorking: false, onlyPastDue: false, maxSuppliers: 60, fallbackMid: true, cc: { mid: false, top: false, dir: false, buyer: true }, attachments: { pdf: true, xlsx: true, library: [] }, notify: { enabled: true, leadHours: 24, to: [] }, skip: "" }; }
+    function editor() {
+      var a = draft, ed = $("au-edit"), team = st.team || [], tl = (st.templates || []).filter(function (t) { return t.kind === a.kind; });
+      var recap = a.kind === "recap", keys = typeof M === "object" && M.keys ? M.keys().filter(function (k) { return k !== "UNASSIGNED"; }) : [];
+      a.models.forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
+      var me = (team.find(function (t) { return t.name === a.sender; }) || team[0] || {}).email || "";
+      ed.innerHTML = '<div class="au-edit-h"><h3>' + (st.automations.some(function (x) { return x.id === a.id; }) ? "Edit automation" : "New automation") + '</h3><span class="muted small">Nothing is sent while you edit. Save keeps it; switch it on when the preview looks right.</span></div>' +
+        '<div class="mh"><i>1</i>Name and type</div><div class="fu-grid"><label class="field"><span>Name</span><input type="text" id="ae-name" value="' + esc(a.name) + '" maxlength="80"></label>' +
+        '<label class="field"><span>What to send</span><select id="ae-kind">' + Object.keys(KINDS).map(function (k) { return '<option value="' + k + '"' + (a.kind === k ? " selected" : "") + ">" + KINDS[k] + "</option>"; }).join("") + "</select></label>" +
+        '<label class="sc-switch" style="align-self:end"><input type="checkbox" id="ae-on"' + (a.enabled ? " checked" : "") + "> <b>Switched on</b></label></div>" +
+        '<div class="mh"><i>2</i>When</div><div class="fu-grid"><label class="field"><span>How often</span><select id="ae-freq"><option value="weekly">Every week</option><option value="biweekly">Every 2 weeks</option><option value="monthly">Every month</option></select></label>' +
+        '<div class="field"><span>Day(s)</span><div class="sc-days" id="ae-days">' + DAYS.map(function (d) { return '<button type="button" class="fu-chip" data-day="' + d[0] + '" aria-pressed="' + (a.days.indexOf(d[0]) >= 0) + '">' + d[1] + "</button>"; }).join("") + "</div></div>" +
+        '<label class="field"><span>Time (WIB)</span><select id="ae-hour">' + Array.from({ length: 24 }, function (_, h) { var t = (h < 10 ? "0" : "") + h; return '<option value="' + h + '"' + (a.hour === h ? " selected" : "") + ">" + t + ":00 – " + t + ":59</option>"; }).join("") + "</select></label>" +
+        (a.frequency === "biweekly" ? '<label class="field"><span>First sending week (any date in it)</span><input type="date" id="ae-anchor" value="' + esc(a.anchor) + '"></label>' : "") +
+        (a.frequency === "monthly" ? '<label class="field"><span>Week of the month</span><select id="ae-mweek">' + [[1, "First"], [2, "Second"], [3, "Third"], [4, "Fourth"], [5, "Last"]].map(function (w) { return '<option value="' + w[0] + '"' + (a.monthWeek === w[0] ? " selected" : "") + ">" + w[1] + " week</option>"; }).join("") + "</select></label>" : "") +
+        "</div><p class=\"muted small\" id=\"ae-when\"></p>" +
+        '<div class="mh"><i>3</i>Which parts</div><div class="fu-grid"><div class="fu-box"><h3>Models</h3><div class="fu-chips" id="ae-models">' + (keys.map(function (k) { return '<button type="button" class="fu-chip" data-m="' + esc(k) + '" aria-pressed="' + (a.models.indexOf(k) >= 0) + '">' + esc(k) + "</button>"; }).join("") || '<span class="muted small">Models appear once the master is loaded.</span>') + '</div><p class="muted small" style="margin:4px 0 0">' + (a.models.length ? "Only the selected models." : "All models (tap to limit).") + "</p></div>" +
+        '<div class="fu-box"><h3>Parts and limits</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-working"' + (a.includeWorking ? " checked" : "") + "> Also parts under TMMIN judgement (Working)</label><label class=\"inline-check\"><input type=\"checkbox\" id=\"ae-pastdue\"" + (a.onlyPastDue ? " checked" : "") + "> Only suppliers with a part past its target date</label></div>" +
+        (recap ? "" : '<label class="field" style="margin-top:8px"><span>At most, suppliers per run</span><input type="number" id="ae-max" min="1" max="300" value="' + a.maxSuppliers + '"></label>') + "</div></div>" +
+        '<div class="mh"><i>4</i>Message</div><div class="fu-grid"><label class="field"><span>Template</span><select id="ae-tpl"><option value="">Default ' + esc(KINDS[a.kind].toLowerCase()) + " template</option>" + tl.map(function (t) { return '<option value="' + esc(t.id) + '"' + (a.templateId === t.id ? " selected" : "") + ">" + esc(t.name) + "</option>"; }).join("") + "</select></label>" +
+        '<label class="field"><span>Sender (sign-off)</span><select id="ae-sender">' + team.map(function (t) { return '<option value="' + esc(t.name) + '"' + (a.sender === t.name ? " selected" : "") + ">" + esc(t.name) + " · " + esc(t.email) + "</option>"; }).join("") + "</select></label></div>" +
+        '<div class="mh"><i>5</i>Recipients and files</div><div class="fu-grid"><div class="fu-box"><h3>CC</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-cc-mid"' + (a.cc.mid ? " checked" : "") + '> Middle management</label><label class="inline-check"><input type="checkbox" id="ae-cc-top"' + (a.cc.top ? " checked" : "") + '> Top management</label><label class="inline-check"><input type="checkbox" id="ae-cc-dir"' + (a.cc.dir ? " checked" : "") + '> Director</label><label class="inline-check"><input type="checkbox" id="ae-cc-buyer"' + (a.cc.buyer ? " checked" : "") + '> PUD buyer</label><label class="inline-check"><input type="checkbox" id="ae-fallback"' + (a.fallbackMid ? " checked" : "") + "> No IMDS PIC → send to middle management</label></div><p class=\"muted small\" style=\"margin:6px 0 0\">Always: the mandatory CC, the IMDS team and “Always CC” contacts.</p></div>" +
+        '<div class="fu-box"><h3>Files</h3><div class="fu-ccs"><label class="inline-check"><input type="checkbox" id="ae-pdf"' + (a.attachments.pdf ? " checked" : "") + "> " + (recap ? "Summary PDF of all suppliers (outstanding, submitted / not submitted per supplier)" : "PDF recap of the supplier’s parts") + '</label><label class="inline-check"><input type="checkbox" id="ae-xlsx"' + (a.attachments.xlsx ? " checked" : "") + "> " + (recap ? "Excel list of all outstanding parts" : "Excel list (supplier fills the plan date)") + '</label></div><p class="muted small" style="margin:8px 0 4px">Standard files (attached unchanged):</p><div id="ae-lib"></div></div></div>' +
+        '<div class="mh"><i>6</i>Reminder to the TMMIN PIC before sending</div><div class="fu-grid"><label class="sc-switch"><input type="checkbox" id="ae-notify"' + (a.notify.enabled ? " checked" : "") + '> <b>Send a reminder first</b></label>' +
+        '<label class="field"><span>How long before</span><select id="ae-lead">' + [1, 2, 4, 12, 24, 48, 72].map(function (h) { return '<option value="' + h + '"' + (a.notify.leadHours === h ? " selected" : "") + ">" + (h < 24 ? h + " hour" + (h > 1 ? "s" : "") : h / 24 + " day" + (h > 24 ? "s" : "")) + " before</option>"; }).join("") + "</select></label>" +
+        '<label class="field"><span>Reminder to (separate with ;)</span><input type="text" id="ae-to" value="' + esc(a.notify.to.join("; ")) + '" placeholder="' + esc(me) + ' (the sender)"></label></div>' +
+        '<div class="fu-bar au-edit-bar"><button type="button" class="btn btn-primary btn-sm" id="ae-save">Save</button><button type="button" class="btn btn-secondary btn-sm" id="ae-preview">Preview this run</button><button type="button" class="btn btn-secondary btn-sm" id="ae-notice">Send the reminder now (test)</button><button type="button" class="btn btn-ghost btn-sm" id="ae-cancel">Close</button><span class="muted small" id="au-msg" role="status"></span></div>';
+      ed.querySelector("#ae-freq").value = a.frequency;
+      libraryView(ed.querySelector("#ae-lib"), { selected: function () { return draft ? draft.attachments.library : []; }, onChange: function (ids) { draft.attachments.library = ids; } });
+      whenText();
+    }
+    function whenText() {
+      var a = draft, el = $("ae-when"); if (!el) return;
+      var h = (a.hour < 10 ? "0" : "") + a.hour, names = a.days.map(function (d) { return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d]; }).join(", ");
+      el.textContent = !a.days.length ? "Pick at least one day." : (a.frequency === "biweekly" ? "Every 2 weeks (starting the week of " + a.anchor + ") on " : a.frequency === "monthly" ? "Every month, " + ["", "first", "second", "third", "fourth", "last"][a.monthWeek] + " week, on " : "Every ") + names + ", between " + h + ":00 and " + h + ":59 WIB." + (a.notify.enabled ? " Reminder " + a.notify.leadHours + " h before." : "");
+    }
+    function read() {
+      var a = draft, ed = $("au-edit"), v = function (id) { var el = ed.querySelector("#" + id); return el ? el : null; };
+      a.name = v("ae-name").value.trim() || "Automatic follow-up"; a.enabled = v("ae-on").checked;
+      var kind = v("ae-kind").value; if (kind !== a.kind) { a.kind = kind; a.templateId = ""; } else a.templateId = v("ae-tpl").value;
+      a.frequency = v("ae-freq").value; a.hour = Number(v("ae-hour").value);
+      if (v("ae-anchor")) a.anchor = v("ae-anchor").value || a.anchor; if (v("ae-mweek")) a.monthWeek = Number(v("ae-mweek").value);
+      a.includeWorking = v("ae-working").checked; a.onlyPastDue = v("ae-pastdue").checked; if (v("ae-max")) a.maxSuppliers = Math.max(1, Math.min(300, Number(v("ae-max").value) || 60));
+      a.sender = v("ae-sender").value;
+      a.cc = { mid: v("ae-cc-mid").checked, top: v("ae-cc-top").checked, dir: v("ae-cc-dir").checked, buyer: v("ae-cc-buyer").checked }; a.fallbackMid = v("ae-fallback").checked;
+      a.attachments.pdf = v("ae-pdf").checked; a.attachments.xlsx = v("ae-xlsx").checked;
+      a.notify = { enabled: v("ae-notify").checked, leadHours: Number(v("ae-lead").value), to: v("ae-to").value.split(/[;,\s]+/).map(function (x) { return x.trim(); }).filter(function (x) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); }) };
+    }
+    function openEditor(a) { draft = JSON.parse(JSON.stringify(a)); $("au-edit").hidden = false; editor(); $("au-prev").hidden = true; $("au-edit").scrollIntoView({ behavior: "smooth", block: "start" }); }
+    $("au-new").onclick = function () { if (st) openEditor(blank()); };
+    sec.addEventListener("click", async function (ev) {
+      var t = ev.target;
+      var day = t.closest && t.closest("#ae-days [data-day]"), mod = t.closest && t.closest("#ae-models [data-m]");
+      if (day && draft) { read(); var n = Number(day.getAttribute("data-day")), i = draft.days.indexOf(n); if (i >= 0) draft.days.splice(i, 1); else draft.days.push(n); draft.days.sort(); editor(); return; }
+      if (mod && draft) { read(); var k = mod.getAttribute("data-m"), j = draft.models.indexOf(k); if (j >= 0) draft.models.splice(j, 1); else draft.models.push(k); editor(); return; }
+      var card = t.closest && t.closest(".au-card"), act = t.closest && t.closest("[data-au]");
+      if (card && act && st) {
+        var a = st.automations.find(function (x) { return x.id === card.getAttribute("data-id"); }); if (!a) return;
+        var what = act.getAttribute("data-au");
+        try {
+          if (what === "edit") openEditor(a);
+          else if (what === "preview") { draft = JSON.parse(JSON.stringify(a)); $("au-edit").hidden = true; preview(); }
+          else if (what === "toggle") await saveAll(function (l) { return l.map(function (x) { return x.id === a.id ? Object.assign({}, x, { enabled: !a.enabled }) : x; }); }, a.enabled ? "Switched off" : "Switched on — " + a.describe);
+          else if (what === "skip") await saveAll(function (l) { return l.map(function (x) { return x.id === a.id ? Object.assign({}, x, { skip: a.skip ? "" : a.nextSlot }) : x; }); }, a.skip ? "The next run will send again" : "The next run (" + when(a.next[0]) + ") will be skipped");
+          else if (what === "delete") { if (window.confirm("Delete the automation “" + a.name + "”? Nothing is sent by it any more.")) await saveAll(function (l) { return l.filter(function (x) { return x.id !== a.id; }); }, "Automation deleted"); }
+          else if (what === "run") {
+            if (!window.confirm("Send “" + a.name + "” NOW to the suppliers in its preview (live e-mails through Power Automate)? Check the preview first.")) return;
+            toast("Sending… this can take a few minutes.", "info");
+            var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "run-now", id: a.id }) });
+            draft = JSON.parse(JSON.stringify(a)); showPlan(r, "Sent now"); toast(r.sent + " handed off, " + r.failed + " failed, " + r.skipped + " skipped", r.failed ? "err" : "ok"); load();
+          }
+        } catch (e) { toast(e.message, "err"); }
+        return;
+      }
+      var id = t.id;
+      if (id === "ae-cancel") { draft = null; $("au-edit").hidden = true; return; }
+      if (id === "ae-save" && draft) {
+        read(); if (!draft.days.length) { say("Pick at least one day.", true); return; }
+        var d = draft;
+        try { await saveAll(function (l) { var i = l.findIndex(function (x) { return x.id === d.id; }); if (i >= 0) l[i] = d; else l.push(d); return l; }, d.enabled ? "Saved and switched on" : "Saved (switched off)"); $("au-edit").hidden = true; draft = null; }
+        catch (e) { say(e.message, true); }
+        return;
+      }
+      if (id === "ae-preview" && draft) { read(); preview(); return; }
+      if (id === "ae-notice" && draft) {
+        read(); say("Sending the reminder…");
+        try { var n = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "notice-test", automation: draft }) }); say("Reminder handed off to " + n.to.join(", ") + "."); load(); }
+        catch (e) { say(e.message, true); }
+      }
     });
-    sec.addEventListener("change", function (ev) { if (!sched || !ev.target.id || ev.target.id.indexOf("sc-") !== 0) return; read(); if (ev.target.id === "sc-kind") sched.templateId = ""; fill(); });
-    $("sc-save").onclick = async function () {
-      if (!sched) return; read();
-      if (sched.enabled && !sched.days.length) { say("Pick at least one day.", true); return; }
-      try {
-        var g = await api("/api/imds-master/settings?key=followup_config"), value = Object.assign({}, g.value || {}, { schedule: sched });
-        var r = await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "followup_config", value: value, baseVersion: g.version }) });
-        version = r.version; say(sched.enabled ? "Saved. " + nextText() : "Saved. The schedule is off.");
-        if (typeof window.__imdsReloadMailSettings === "function") window.__imdsReloadMailSettings();
-        var a = await api("/api/imds-master/followups/schedule"); st = a; ready(); $("sc-next").textContent = nextText(); runs();
-      } catch (e) { say(e.message, true); }
-    };
-    function planTable(r, title) {
-      var rows = r.planned || [];
-      var tag = function (p) { return p.toFrom === "mid" ? ' <span class="fu-tagx mid">via middle mgmt</span>' : p.toFrom === "master" ? ' <span class="fu-tagx">master sheet</span>' : ""; };
-      $("sc-plan").innerHTML = '<div class="fu-box sc-planbox"><h3>' + esc(title) + '</h3><p class="muted small" style="margin:0 0 8px">' + rows.filter(function (p) { return !p.skip; }).length + " e-mail(s) · " + rows.filter(function (p) { return p.skip; }).length + " skipped" + (r.note ? " · " + esc(r.note) : "") + "</p>" +
-        '<div class="table-wrap"><table class="tbl compact"><thead><tr><th scope="col">Supplier</th><th scope="col" class="r">Parts</th><th scope="col">To</th><th scope="col" class="r">CC</th><th scope="col">Subject</th><th scope="col">Result</th></tr></thead><tbody>' +
-        (rows.length ? rows.map(function (p) { return "<tr><th scope=\"row\">" + esc(p.supplier) + '<div class="muted small">' + esc(p.code || "no code") + '</div></th><td class="r">' + p.parts + '</td><td class="fu-mail" title="' + esc(p.to.join("; ")) + '">' + (p.to.length ? '<span class="fu-to1">' + esc(p.to[0]) + "</span>" + (p.to.length > 1 ? ' <span class="fu-more">+' + (p.to.length - 1) + "</span>" : "") : "—") + tag(p) + '</td><td class="r" title="' + esc(p.cc.join("; ")) + '">' + p.cc.length + "</td><td>" + esc(p.subject) + "</td><td>" + (p.skip ? '<span class="fu-res skip">' + esc(p.skip) + "</span>" : p.status === "FAILED" ? '<span class="fu-res err">' + esc(p.error || "Failed") + "</span>" : p.status ? '<span class="fu-res ok">' + (p.status === "HANDED_OFF" ? "Handed off to the flow" : "Sent") + "</span>" : '<span class="muted small">' + esc(p.attachments.join(" + ") || "no files") + "</span>") + "</td></tr>"; }).join("") : '<tr><td colspan="6" class="muted">No supplier has outstanding parts for these settings.</td></tr>') +
-        "</tbody></table></div></div>";
+    sec.addEventListener("change", function (ev) { if (!draft || !ev.target.id || ev.target.id.indexOf("ae-") !== 0) return; var re = ["ae-kind", "ae-freq"].indexOf(ev.target.id) >= 0; read(); if (re) editor(); else whenText(); });
+    var plan = null;
+    async function preview() {
+      if (busy) return; busy = true;
+      var box = $("au-prev"); box.hidden = false; box.innerHTML = '<div class="fu-box"><p class="muted">Building the preview from the current master, Directory and files…</p></div>';
+      try { var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", automation: draft }) }); showPlan(r, "Preview of the next run — nothing is sent"); }
+      catch (e) { box.innerHTML = '<div class="fu-box"><p class="t-bad">' + esc(e.message) + "</p></div>"; }
+      busy = false;
     }
-    $("sc-preview").onclick = async function () {
-      if (!sched) return; read(); say("Building the preview…");
-      try { var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", schedule: sched }) }); planTable(r, "Preview — nothing is sent"); say(""); }
-      catch (e) { say(e.message, true); }
-    };
-    $("sc-run").onclick = async function () {
-      if (!sched) return;
-      if (!window.confirm("Send the follow-up now to every supplier in the preview, with the SAVED schedule settings (live e-mails through Power Automate)?")) return;
-      say("Sending… this can take a few minutes.");
-      try { var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "run-now" }) }); planTable(r, "Sent now"); say(r.sent + " handed off, " + r.failed + " failed, " + r.skipped + " skipped."); var a = await api("/api/imds-master/followups/schedule"); st = a; runs(); }
-      catch (e) { say(e.message, true); }
-    };
-    load();
+    function showPlan(r, title) {
+      plan = r; var rows = r.planned || [], box = $("au-prev"); box.hidden = false;
+      var go = rows.filter(function (p) { return !p.skip; }).length;
+      var tag = function (p) { return p.toFrom === "mid" ? ' <span class="fu-tagx mid">via middle mgmt</span>' : p.toFrom === "master" ? ' <span class="fu-tagx">master sheet</span>' : ""; };
+      box.innerHTML = '<div class="fu-box au-planbox"><div class="au-plan-h"><div><h3>' + esc(title) + '</h3><p class="muted small" style="margin:2px 0 0">' + esc(draft ? draft.name : "") + (r.runAt ? " · runs " + esc(when(r.runAt)) : "") + " · from " + esc(r.from) + " · <b>" + go + " e-mail(s)</b>" + (rows.length - go ? " · " + (rows.length - go) + " skipped" : "") + (r.note ? " · " + esc(r.note) : "") + '</p></div><button type="button" class="btn btn-ghost btn-sm" id="au-prev-x">Close preview</button></div>' +
+        '<div class="table-wrap"><table class="tbl compact"><thead><tr><th scope="col">Supplier</th><th scope="col" class="r">Parts</th><th scope="col">To</th><th scope="col" class="r">CC</th><th scope="col">Subject</th><th scope="col">Files / result</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead><tbody>' +
+        (rows.length ? rows.map(function (p, i) {
+          return '<tr data-pi="' + i + '"><th scope="row">' + esc(p.supplier) + '<div class="muted small">' + esc(p.code || "") + '</div></th><td class="r">' + p.parts + '</td><td class="fu-mail" title="' + esc(p.to.join("; ")) + '">' + (p.to.length ? '<span class="fu-to1">' + esc(p.to[0]) + "</span>" + (p.to.length > 1 ? ' <span class="fu-more">+' + (p.to.length - 1) + "</span>" : "") : "—") + tag(p) + '</td><td class="r" title="' + esc(p.cc.join("; ")) + '">' + p.cc.length + "</td><td>" + esc(p.subject) + "</td><td>" +
+            (p.skip ? '<span class="fu-res skip">' + esc(p.skip) + "</span>" : p.status === "FAILED" ? '<span class="fu-res err">' + esc(p.error || "Failed") + "</span>" : p.status ? '<span class="fu-res ok">' + (p.status === "HANDED_OFF" ? "Handed off" : "Sent") + "</span>" : '<span class="muted small">' + esc(p.attachments.join(" + ") || "no files") + "</span>") +
+            '</td><td>' + (p.body != null && !p.skip ? '<button type="button" class="btn btn-ghost btn-sm" data-open="' + i + '">View</button>' : "") + "</td></tr>";
+        }).join("") : '<tr><td colspan="7" class="muted">No supplier has outstanding parts for these settings.</td></tr>') + '</tbody></table></div><div id="au-mail"></div></div>';
+      box.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    $("au-prev").addEventListener("click", async function (ev) {
+      if (ev.target.id === "au-prev-x") { $("au-prev").hidden = true; return; }
+      var o = ev.target.closest("[data-open]");
+      if (o && plan) {
+        var p = plan.planned[Number(o.getAttribute("data-open"))];
+        $("au-mail").innerHTML = '<div class="fu-mailcard au-mailcard"><div class="au-mh"><span>From</span><b>' + esc(plan.from) + '</b><span>To</span><b>' + esc(p.to.join("; ") || "—") + '</b><span>CC</span><b>' + esc(p.cc.join("; ") || "—") + '</b><span>Subject</span><b>' + esc(p.subject) + '</b><span>Files</span><b>' + esc(p.attachments.join(" · ") || "none") + "</b></div>" +
+          '<div class="fs-preview au-body">' + previewHtml(p.body || "") + "</div>" +
+          '<div class="fu-bar" style="margin-bottom:0"><button type="button" class="btn btn-secondary btn-sm" data-draft="' + esc(p.supplier) + '">Download as Outlook draft (with the real files)</button><span class="muted small" id="au-draft-msg"></span></div></div>';
+        $("au-mail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+        return;
+      }
+      var d = ev.target.closest("[data-draft]");
+      if (d && draft) {
+        var m = $("au-draft-msg"); m.textContent = "Building the draft with its files…";
+        try {
+          var r = await api("/api/imds-master/followups/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "draft", automation: draft, supplier: d.getAttribute("data-draft") }) });
+          var bin = atob(r.eml), bytes = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          var url = URL.createObjectURL(new Blob([bytes], { type: "message/rfc822" })), link = document.createElement("a"); link.href = url; link.download = r.fileName; document.body.appendChild(link); link.click(); link.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+          m.textContent = "Downloaded " + r.fileName + " · files: " + r.attachments.map(function (x) { return x.name; }).join(", ") + ". Nothing was sent.";
+        } catch (e) { m.textContent = e.message; m.style.color = "var(--bad)"; }
+      }
+    });
+    return { open: load };
   }
 
   function initFollowupSettings(settings, after) {
     injectFollowCss();
     var sec = document.createElement("section");
     sec.className = "panel"; sec.id = "followup-settings-panel";
-    sec.innerHTML = '<div class="panel-head"><div><h2>E-mail templates and rules</h2><p class="panel-sub">Templates for the three e-mail types, the mandatory CC and the defaults. Saved on the server for everyone.</p></div></div>' +
+    sec.innerHTML = '<div class="panel-head"><div><h2>E-mail templates and rules</h2><p class="panel-sub">Templates for the three e-mail types, the mandatory CC and the defaults. Saved on the server for everyone. Automatic sending and standard files are in <b>Follow-up → Automatic</b>.</p></div></div>' +
       '<div id="fs-msg" class="banner" role="status">Loading…</div><div id="fs-sql" hidden></div>' +
       '<div class="fu-grid"><label class="field"><span>Template</span><select id="fs-tsel"></select></label>' +
       '<div class="fu-bar" style="margin:0;align-self:end"><button type="button" class="btn btn-secondary btn-sm" id="fs-add">+ New</button><button type="button" class="btn btn-secondary btn-sm" id="fs-dup">Duplicate</button><button type="button" class="btn btn-ghost btn-sm" id="fs-del">Delete</button><button type="button" class="btn btn-ghost btn-sm" id="fs-def">Make default</button></div></div>' +
@@ -1300,14 +1441,13 @@
       cfg.font = { family: $("fs-font").value, sizePt: Number($("fs-size").value) };
       cfg.senderNames = {}; $("fs-names").value.split("\n").forEach(function (line) { var m = /^\s*([^=]+?)\s*=\s*(.+?)\s*$/.exec(line); if (m) cfg.senderNames[m[1]] = m[2]; });
       try {
-        var clean = { templates: cfg.templates, defaults: cfg.defaults, requiredCc: cfg.requiredCc, ccRoles: cfg.ccRoles, attachments: cfg.attachments, signature: cfg.signature, senderNames: cfg.senderNames, senderFooters: cfg.senderFooters, font: cfg.font, fallbackMid: cfg.fallbackMid !== false, schedule: cfg.schedule };
+        var clean = { templates: cfg.templates, defaults: cfg.defaults, requiredCc: cfg.requiredCc, ccRoles: cfg.ccRoles, attachments: cfg.attachments, signature: cfg.signature, senderNames: cfg.senderNames, senderFooters: cfg.senderFooters, font: cfg.font, fallbackMid: cfg.fallbackMid !== false, automations: cfg.automations || [] };
         var r = await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "followup_config", value: clean, baseVersion: version }) });
         version = r.version; await load(); say("Saved. The e-mail center uses these templates now.");
       } catch (e) { if (e.payload && e.payload.tableMissing) showSql(true); say(e.payload && e.payload.conflict ? e.message + " (Press F5 to reload.)" : e.message, true); }
     };
     window.__imdsReloadMailSettings = load;
     load();
-    initScheduleSettings(sec);
   }
 
   // ---- Directory → PUD buyers: paste the buyer list once ----
