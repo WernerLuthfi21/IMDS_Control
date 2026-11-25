@@ -264,6 +264,12 @@ Cara kerja: `vercel.json` berisi 24 cron harian (satu per jam; paket Hobby hanya
 
 **File update Directory:** Directory → *Restore backup / update file* menerima file update (mode *merge*): supplier baru ditambah, yang ada diisi tanpa menimpa isian manual tim, kecuali koreksi yang ditandai di file.
 
+## 6e. Menambah dan mengganti part number di Tracker
+
+- Buka supplier → **+ Add part numbers** → tempel baris dari Excel/e-mail/daftar (kolom bebas urutannya, header boleh ada atau tidak) → **Check the rows** → periksa daftar (Ready / Check / Not added + apa yang diisi otomatis) → **Add N part numbers**. Supplier, vendor code, PIC e-mail, model, status dan plan date diisi otomatis; duplikat ditolak. Baris baru masuk master bersama dan antrean Excel.
+- Part number berubah (suffix baru, ECI): di baris part → **New P/N…**. Baris, KEY Excel, status dan tanggal tetap; nomor lama tercatat di log.
+- Pencarian atas mencari supplier **dan part number** (boleh tanpa tanda "-"); klik part langsung membuka supplier-nya di part itu.
+
 ## 7. Flow B: Excel Master → website (edit manual di Excel)
 
 Detail lengkap: `POWER_AUTOMATE_ALL_FLOWS.md` Lampiran C. Ringkas:

@@ -13,8 +13,11 @@ export const DEFAULT_OPEN_STATUS = "NOT SUBMITTED YET";
 export const RESOLVE_STATUSES = ["NOT SUBMITTED YET", "WORKING", "ACCEPTED", "REJECTED"] as const;
 export const MAX_EVENTS = 5000;
 
-export type Action = "set-target" | "to-check" | "resolve" | "stop-run" | "restore" | "reassign";
-export const ACTIONS: Action[] = ["set-target", "to-check", "resolve", "stop-run", "restore", "reassign"];
+export type Action = "set-target" | "to-check" | "resolve" | "stop-run" | "restore" | "reassign" | "renumber";
+export const ACTIONS: Action[] = ["set-target", "to-check", "resolve", "stop-run", "restore", "reassign", "renumber"];
+/** Part number as stored (trimmed, upper case, inner spaces removed) and the normalised form used for matching. */
+export const cleanPartNo = (v: unknown) => String(v ?? "").toUpperCase().replace(/\s+/g, "").replace(/[^A-Z0-9\-._/]/g, "").slice(0, 40);
+export const normPartNo = (v: unknown) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 /** Who and what a part was at a moment: enough to recognise it after it leaves the Tracker. */
 export type Identity = {
@@ -35,8 +38,10 @@ export type MasterRow = {
 export type Options = {
   reason?: string; date?: string | null;
   company?: string; vendorCode?: string; email?: string; model?: string; status?: string;
+  /** renumber: the new part number and (optional) new part name. */
+  partNo?: string; partName?: string;
 };
-export type Patch = Partial<Pick<Required<MasterRow>, "company_name" | "vendor_code" | "project" | "imds_status" | "submission_plan" | "main_pic_email">>;
+export type Patch = Partial<Pick<Required<MasterRow>, "company_name" | "vendor_code" | "project" | "imds_status" | "submission_plan" | "main_pic_email" | "part_no" | "part_name">> & { part_no_norm?: string };
 /** release = fields handed back to the Excel import (removed from manual_overrides), e.g. the status after Check. */
 export type Update = { id: string; patch: Patch; release?: string[] };
 export type Plan = { log: PartLog; updates: Update[]; logChanged: boolean };
@@ -76,7 +81,7 @@ export function sanitizePartLog(v: unknown): PartLog {
     if (!e || typeof e !== "object") continue;
     const x = e as Record<string, unknown>;
     const action = txt(x.action, 20) as LogEvent["action"];
-    if (!["to-check", "resolve", "stop-run", "restore", "reassign"].includes(action) || !/^[0-9a-f-]{36}$/i.test(txt(x.id, 40))) continue;
+    if (!["to-check", "resolve", "stop-run", "restore", "reassign", "renumber"].includes(action) || !/^[0-9a-f-]{36}$/i.test(txt(x.id, 40))) continue;
     const ev: LogEvent = { id: txt(x.id, 40), at: txt(x.at, 40), by: txt(x.by, 120), action, reason: txt(x.reason, 500), before: cleanIdentity(x.before) };
     if (x.after && typeof x.after === "object") {
       const a = cleanIdentity(x.after), after: Partial<Identity> = {};
@@ -118,6 +123,10 @@ export function validate(action: string, ids: string[], o: Options): string | nu
   }
   if (action === "stop-run" && !txt(o.reason)) return "Write why the part stopped running (it goes into the log).";
   if (action === "reassign" && !txt(o.company) && !txt(o.model)) return "Choose the correct supplier or the correct model.";
+  if (action === "renumber") {
+    if (ids.length !== 1) return "Change one part number at a time.";
+    if (normPartNo(o.partNo).length < 5) return "Enter the new part number (at least 5 letters or digits).";
+  }
   return null;
 }
 
@@ -172,6 +181,20 @@ export function planPartOps(action: Action, rows: MasterRow[], current: PartLog,
       if (model && model !== me.model) { patch.project = model; after.model = model; }
       if (!Object.keys(patch).length) continue;
       log.events.push({ id: r.id, at, by, action, reason, before: me, after });
+      updates.push({ id: r.id, patch });
+      logChanged = true;
+      continue;
+    }
+    if (action === "renumber") {
+      // The supplier / Toyota changed the part number (e.g. a new suffix). Same row, same Excel KEY, status kept;
+      // the old number stays in the log so it can still be found.
+      const partNo = cleanPartNo(o.partNo), name = txt(o.partName);
+      const patch: Patch = {}, after: Partial<Identity> = {};
+      if (partNo && normPartNo(partNo) !== normPartNo(me.partNo)) { patch.part_no = partNo; patch.part_no_norm = normPartNo(partNo); after.partNo = partNo; }
+      else if (partNo && partNo !== me.partNo) { patch.part_no = partNo; after.partNo = partNo; }
+      if (name && name !== me.partName) { patch.part_name = name; after.partName = name; }
+      if (!Object.keys(patch).length) continue;
+      log.events.push({ id: r.id, at, by, action, reason: reason || "Part number updated", before: me, after });
       updates.push({ id: r.id, patch });
       logChanged = true;
       continue;

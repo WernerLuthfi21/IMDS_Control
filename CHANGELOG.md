@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-11-25
+
+### Tracker: add part numbers by pasting, change a part number, search finds part numbers
+- Supplier panel → **+ Add part numbers**: paste rows from Excel, an e-mail or a list (tabs, `;` or wide spaces;
+  header row optional, columns in any order).
+  - The server recognises part number, part name, model, status and plan date.
+  - It fills the rest: supplier, vendor code and PIC e-mail from the supplier's rows; model and status from the
+    dialog; plan date from the supplier due date, else the model deadline.
+  - It flags problems: no part number, pasted twice, already in the tracker for this supplier and model, listed for
+    another supplier, new model.
+  - Step 2 lists every row with Ready / Check / Not added and what was filled. Only clean rows are inserted, with the
+    same KEY formula as the master import, and queued for the Excel master. `POST /api/imds-master/parts/add`
+    (preview / commit), `lib/imds-master/part-add.ts`.
+- Each part → **New P/N…**: the part number (and name) changed, e.g. a new suffix or an ECI.
+  - Same row, Excel KEY, status and target date.
+  - The old number goes into the part log (`renumber`).
+  - A duplicate for the same supplier and model is refused.
+- Search:
+  - Part numbers match with or without dashes and spaces.
+  - Parts come first when the query looks like a part number.
+  - Parts in Check or Stop run are included.
+  - Picking a part opens its supplier with that part filtered.
+  - The Suppliers list shows which part numbers matched. The drawer search ignores dashes too.
+
 ## 2026-11-23
 
 ### Automatic: clearer preview; summary e-mail sends only the Tracker's Executive summary PDF
