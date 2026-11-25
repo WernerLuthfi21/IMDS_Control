@@ -756,6 +756,22 @@ main{padding:27px 29px 32px}
 .pv-grid{display:grid;gap:6px}.pv-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px;font-size:var(--text-sm);align-items:baseline}
 .pv-l{font-weight:700;color:var(--muted)}.pv-v{overflow-wrap:anywhere}
 @media (max-width:760px){.dir-grid.dg-x{grid-template-columns:1fr 1fr}.dir-grid.dg-x .dg-h{display:none}.pv-row{grid-template-columns:1fr;gap:2px}.strata-h{grid-template-columns:auto minmax(0,1fr)}.strata-c{grid-column:2;justify-self:start}}
+
+/* Add part numbers / new P/N (2026-11-25) */
+.parts-tools{grid-template-columns:minmax(0,1fr) auto auto}
+.add-parts-btn{align-self:stretch;white-space:nowrap}
+.ap-text{width:100%;min-height:180px;font-size:var(--text-sm);line-height:1.5;padding:10px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);resize:vertical}
+.ap-grid{margin:8px 0 0}
+.ap-tbl td,.ap-tbl th{font-size:var(--text-sm)}
+.ap-st{display:inline-block;font-size:var(--text-xs);font-weight:700;padding:1px 8px;border-radius:99px;white-space:nowrap}
+.ap-st.ok{background:var(--ok-soft);color:var(--ok-ink)}.ap-st.warn{background:var(--warn-soft);color:var(--warn-ink)}.ap-st.bad{background:var(--bad-soft);color:var(--bad)}
+.ap-why{font-size:var(--text-xs);margin-top:3px;max-width:340px}
+.parthits{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:10px 14px;margin:0 0 var(--s-3);border:1px solid var(--line);border-radius:var(--r-2);background:var(--surface)}
+.parthits>b{font-size:var(--text-sm);margin-right:4px}
+.ph-item{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--line-strong);border-radius:99px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--text-sm);cursor:pointer}
+.ph-item:hover{border-color:var(--violet);background:var(--lilac)}.ph-item .mono{font-weight:700}
+.spop-tag{font-size:var(--text-xs);font-weight:700;padding:1px 7px;border-radius:99px;background:var(--warn-soft);color:var(--warn-ink)}
+@media (max-width:860px){.parts-tools{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -855,6 +871,7 @@ main{padding:27px 29px 32px}
         <button type="button" class="btn btn-ghost btn-sm" data-action="clear-filters">Reset filters</button>
       </div>
       <div class="toolbar"><div class="chips" id="status-chips" role="group" aria-label="Filter by submission status"></div><div class="toolbar-r"><label class="sort-field"><span>Sort</span><select id="f-sort" name="sort"><option value="supplier">Supplier A–Z</option><option value="supplier-desc">Supplier Z–A</option><option value="missing">Outstanding ↓</option><option value="progress">Progress ↑</option><option value="progress-desc">Progress ↓</option><option value="deadline">Deadline soonest</option><option value="status">Action first</option></select></label></div></div>
+      <div class="parthits" id="sup-parthits" hidden></div>
       <section class="panel flush">
         <div class="table-wrap tall"><table class="tbl sup-tbl"><caption class="sr-only">Suppliers. Select a supplier name to open its part-level details.</caption>
           <thead><tr><th scope="col" class="c-name">Supplier</th><th scope="col" class="c-parts">Parts</th><th scope="col" class="c-status">Status</th><th scope="col" class="c-pct">Done</th><th scope="col" class="c-contact">Contact</th><th scope="col" class="c-act"><span class="sr-only">Actions</span></th></tr></thead>
@@ -1544,11 +1561,18 @@ function aggregate(rows){
   }
   return Object.values(m).map(a=>({...a,open:a.missing+a.rejected,models:[...a.models].sort((x,y)=>M.get(x).sortOrder-M.get(y).sortOrder),pct:pct(a.complete,a.parts),contact:D.contacts.get(a.company.toUpperCase())||null}));
 }
+/* Part numbers match with or without dashes / spaces ("8211-VKK" finds 8211VKK030). */
+const normPN=s=>String(s==null?"":s).toUpperCase().replace(/[^A-Z0-9]/g,"");
+function qHit(r,q){
+  if(!q)return true;
+  if((r.partNo+" "+r.partName+" "+r.company+" "+M.label(r.model)).toLowerCase().includes(q))return true;
+  const n=normPN(q);return n.length>=3&&normPN(r.partNo).includes(n);
+}
 function computeView(){
   const q=F.q.trim().toLowerCase();
   UI.viewBase=D.records.filter(r=>M.isVisible(r.model)&&
     (F.model==="ALL"||r.model===F.model)&&(F.supplier==="ALL"||r.company===F.supplier)&&
-    (!q||(r.partNo+" "+r.partName+" "+r.company+" "+M.label(r.model)).toLowerCase().includes(q))&&
+    qHit(r,q)&&
     (F.urgency==="ALL"||urgencyForModel(r.model)===F.urgency));
   UI.filtered=F.status==="ALL"?UI.viewBase.slice():UI.viewBase.filter(r=>r.status===F.status);
 }
@@ -2090,7 +2114,15 @@ function partsCounts(a){
   const it=[["complete","ok","✓","Submitted"],["process","warn","◐","Working"],["missing","bad","✕","Not Submitted Yet"],["rejected","rej","⊘","Rejected"]];
   return it.filter(([k])=>a[k]>0).map(([k,cls,g,l])=>`<span class="pc t-${cls}" title="${l}"><span aria-hidden="true">${g}</span><b class="num">${a[k]}</b><span class="sr-only"> ${l}</span></span>`).join("");
 }
+function renderPartHits(){
+  const box=$("#sup-parthits");if(!box)return;
+  const q=F.q.trim().toLowerCase(),n=normPN(q);
+  const hits=q&&n.length>=3?UI.viewBase.filter(r=>normPN(r.partNo).includes(n)||String(r.partName||"").toLowerCase().includes(q)):[];
+  box.hidden=!hits.length;if(!hits.length){box.innerHTML="";return}
+  box.innerHTML=`<b>${fmt(hits.length)} part number${hits.length===1?"":"s"} match “${esc(F.q.trim())}”:</b>`+hits.slice(0,12).map(r=>`<button type="button" class="ph-item" data-action="search-pick" data-kind="part" data-value="${escAttr(r.company+"||"+r.partNo)}" title="Open ${escAttr(r.company)} at this part"><span class="mono">${esc(r.partNo)}</span><span class="muted">${esc(r.company)}</span>${badge(r.status)}</button>`).join("")+(hits.length>12?`<span class="muted small">+${fmt(hits.length-12)} more in the suppliers below</span>`:"");
+}
 function renderSuppliers(){
+  renderPartHits();
   const base=UI.viewBase,c=counts(base);
   const agg=sortAggregates(aggregate(supplierRowsForView()));
   const nSup=new Set(base.map(r=>r.company)).size;
@@ -2119,8 +2151,8 @@ function renderSuppliers(){
 /* =====================================================================
    SUPPLIER DRAWER (opens on selection — never rendered for every supplier)
    ===================================================================== */
-function openSupplier(name,opener){
-  UI.drill=name;UI.drillFilter="all";UI.drillQ="";UI.drillSel=new Set();UI.drawerOpener=opener||document.activeElement;
+function openSupplier(name,opener,partQ){
+  UI.drill=name;UI.drillFilter="all";UI.drillQ=partQ||"";UI.drillSel=new Set();UI.drawerOpener=opener||document.activeElement;
   renderDrawer({focus:true});
 }
 function closeDrawer({silent=false}={}){
@@ -2171,6 +2203,7 @@ function renderDrawer({keep=false,focus=false,focusRid=null}={}){
     ${base.length<all.length?`<p class="drawer-note">Showing ${fmt(base.length)} of ${fmt(all.length)} parts — the current scope filters apply. <button type="button" class="link-btn" data-action="clear-filters">Clear filters</button></p>`:""}
     <div class="parts-tools">
       <label class="parts-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="drill-q" value="${escAttr(UI.drillQ||"")}" placeholder="Find a part number or name" aria-label="Find a part of ${escAttr(name)}" autocomplete="off" spellcheck="false"></label>
+      <button type="button" class="btn btn-primary btn-sm add-parts-btn" data-action="parts-add" title="Paste rows from Excel, an e-mail or a list: the Tracker recognises the columns and fills what is missing">+ Add part numbers</button>
       <div class="clarify-drop" id="clarify-drop" role="button" tabindex="0" data-action="clarify-open" title="The supplier's answer file (Excel): Dead → Stop run, not theirs / no data → Check, other model → Move. You review before anything changes.">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span><b>Supplier clarification file</b><small>Drop the Excel here or click</small></span></div>
       <input type="file" id="clarify-input" accept=".xlsx,.xls" hidden>
@@ -2197,9 +2230,9 @@ function dateSourceOf(r){
   return{k:"part",t:"This part only"};
 }
 function drawerVisibleRows(){
-  const q=(UI.drillQ||"").trim().toLowerCase().replace(/\s+/g,"");
+  const q=(UI.drillQ||"").trim().toLowerCase().replace(/\s+/g,""),n=normPN(q);
   const rows=UI.drawerRows||[];
-  return q?rows.filter(r=>(String(r.partNo)+String(r.partName)).toLowerCase().replace(/\s+/g,"").includes(q)):rows;
+  return q?rows.filter(r=>(String(r.partNo)+String(r.partName)).toLowerCase().replace(/\s+/g,"").includes(q)||(n.length>=3&&normPN(r.partNo).includes(n))):rows;
 }
 function renderDrawerRows(){
   const tb=$("#drawer-rows");if(!tb)return;
@@ -2213,7 +2246,7 @@ function renderDrawerRows(){
       <td class="pr-date"><input type="date" class="promise-input tgt-input" data-action-change="part-target" data-rid="${r.id}" value="${escAttr(dateToISO(r.targetDate))}" aria-label="Target date for ${escAttr(r.partNo||"part")}" title="Change this part only. A new model deadline or supplier due date sets every part again.">
         <small class="src src-${src.k}">${esc(src.t)}${r.pastDue?' · <b class="t-bad">past due</b>':""}</small></td>
       <td class="pr-status">${badge(r.status)}</td>
-      <td class="pr-act"><button type="button" class="act" data-action="part-check" data-rid="${r.id}" title="Not theirs or wrong model: check it by hand">Check</button><button type="button" class="act stop" data-action="part-stop" data-rid="${r.id}" title="Dead / no longer running">Stop run</button><button type="button" class="act move" data-action="part-move" data-rid="${r.id}" title="Belongs to another supplier or model">Move…</button></td></tr>`}).join("")||`<tr><td colspan="6">${emptyHTML("🔎",UI.drillQ?"No part matches":"No parts in this status",UI.drillQ?"Clear the search to see every part.":"")}</td></tr>`;
+      <td class="pr-act"><button type="button" class="act" data-action="part-check" data-rid="${r.id}" title="Not theirs or wrong model: check it by hand">Check</button><button type="button" class="act stop" data-action="part-stop" data-rid="${r.id}" title="Dead / no longer running">Stop run</button><button type="button" class="act move" data-action="part-move" data-rid="${r.id}" title="Belongs to another supplier or model">Move…</button><button type="button" class="act" data-action="part-renumber" data-rid="${r.id}" title="The part number changed (new suffix, ECI): write the new one">New P/N…</button></td></tr>`}).join("")||`<tr><td colspan="6">${emptyHTML("🔎",UI.drillQ?"No part matches":"No parts in this status",UI.drillQ?"Clear the search to see every part.":"")}</td></tr>`;
   const all=$("#sel-all");if(all){all.checked=rows.length>0&&rows.every(r=>sel.has(r.id));all.indeterminate=!all.checked&&rows.some(r=>sel.has(r.id))}
   const bar=$("#sel-bar");
   if(bar){const n=sel.size;bar.hidden=!n;
@@ -2249,6 +2282,70 @@ async function moveParts(rows){
   try{await partOps(body);toast(`${one?one.partNo:rows.length+" parts"} moved${body.company?" to "+body.company:""}${v.model?" · "+M.label(v.model):""}`,"ok")}
   catch(e){toast("Not moved: "+e.message,"err")}
   reloadSoon();
+}
+/* The part number changed (new suffix, ECI…): same row and Excel KEY, status and dates kept, old number in the log. */
+async function renumberPart(r){
+  const v=await formDialog({
+    title:`New part number for ${r.partNo}`,
+    message:`${r.company} · ${M.label(r.model)} · ${(STATUS[r.status]||{}).label||r.status}. The row keeps its status, target date and Excel row; the old number is kept in the part log.`,
+    body:`<label class="field"><span>New part number</span><input type="text" id="rn-pn" value="${escAttr(r.partNo)}" data-autofocus autocomplete="off" spellcheck="false" class="mono"></label>
+      <label class="field"><span>Part name</span><input type="text" id="rn-name" value="${escAttr(r.partName||"")}" maxlength="200" autocomplete="off"></label>
+      <label class="field"><span>Why (optional)</span><input type="text" id="rn-why" maxlength="300" placeholder="e.g. ECI change, new suffix from the supplier"></label>`,
+    confirmLabel:"Change part number",
+    read:()=>{const pn=$("#rn-pn").value.trim().toUpperCase().replace(/\s+/g,""),name=$("#rn-name").value.trim();
+      if(normPN(pn).length<5)return{error:"Enter the new part number (at least 5 letters or digits)."};
+      if(normPN(pn)===normPN(r.partNo)&&name===(r.partName||""))return{error:"Nothing changed."};
+      const dup=D.records.concat(D.checks||[]).find(x=>x!==r&&x.company===r.company&&x.model===r.model&&normPN(x.partNo)===normPN(pn));
+      if(dup)return{error:`${pn} already exists for ${r.company} on ${M.label(r.model)}. Use Stop run on the old number instead.`};
+      return{partNo:pn,partName:name,reason:$("#rn-why").value.trim()}}
+  });
+  if(!v)return;
+  const ids=masterIds([r]);if(ids.length!==1){toast(ids.length?"This part has several master rows; change it in the master sheet.":"This part is not in the shared master.","err");return}
+  const old=r.partNo;
+  try{await partOps({action:"renumber",ids,partNo:v.partNo,partName:v.partName,reason:v.reason});
+    r.partNo=v.partNo;r.partName=v.partName||r.partName;(r.sourceRows||[]).forEach(x=>{x.partNo=r.partNo;x.partName=r.partName});
+    renderAll();if(UI.drill)renderDrawer({keep:true});toast(`${old} → ${v.partNo}`,"ok")}
+  catch(e){toast("Not changed: "+e.message,"err")}
+  reloadSoon();
+}
+/* Paste rows → the server recognises the columns, fills supplier, vendor code, PIC e-mail, model, status and plan
+   date, and flags duplicates → the user checks the list → only the clean rows are added. */
+async function addPartsFlow(company,prev){
+  const own=D.records.concat(D.checks||[]).filter(r=>r.company===company);
+  const models=[...new Set(own.map(r=>r.model))].filter(k=>k!==UNASSIGNED);
+  const allModels=M.keys().filter(k=>k!==UNASSIGNED);
+  const pre=prev||{text:"",model:models[0]||allModels[0]||"",status:"NOT SUBMITTED YET"};
+  const v=await formDialog({wide:true,
+    title:`Add part numbers to ${company}`,
+    message:"Paste rows from Excel, an e-mail or a list. One part per row; columns in any order (part number, part name, model, status, plan date). Only the part number is required: the rest is filled for you and shown before anything is saved.",
+    body:`<label class="field"><span>Paste here</span><textarea id="ap-text" rows="9" class="mono ap-text" spellcheck="false" data-autofocus placeholder="8211VKK030&#9;WIRE, ENGINE ROOM, NO.8&#9;737D&#10;74404-KK090&#9;CLAMP SUB-ASSY, BATTERY&#10;863C00K020; DAM, WINDOW GLASS; 688D; 30/11/2026">${esc(pre.text)}</textarea></label>
+      <div class="fu-grid ap-grid"><label class="field"><span>Model for rows without one</span><select id="ap-model">${allModels.map(k=>`<option value="${escAttr(k)}" ${k===pre.model?"selected":""}>${esc(M.label(k))}${models.includes(k)?" · this supplier":""}</option>`).join("")}<option value="" ${!pre.model?"selected":""}>Unassigned</option></select></label>
+      <label class="field"><span>Status for rows without one</span><select id="ap-status">${["NOT SUBMITTED YET","WORKING","ACCEPTED","REJECTED"].map(x=>`<option ${x===pre.status?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
+    confirmLabel:"Check the rows",
+    read:()=>{const text=$("#ap-text").value;return text.trim()?{text,model:$("#ap-model").value,status:$("#ap-status").value}:{error:"Paste at least one row."}}
+  });
+  if(!v)return;
+  let p;
+  try{const r=await fetch("/api/imds-master/parts/add",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"preview",text:v.text,company,model:v.model,status:v.status})});
+    p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||("HTTP "+r.status))}
+  catch(e){toast("Could not read the rows: "+e.message,"err");return}
+  const rows=p.rows||[],ok=rows.filter(x=>!x.errors.length),bad=rows.length-ok.length,warn=ok.filter(x=>x.warnings.length).length;
+  const tag=x=>x.errors.length?'<span class="ap-st bad">✕ Not added</span>':x.warnings.length?'<span class="ap-st warn">! Check</span>':'<span class="ap-st ok">✓ Ready</span>';
+  const go2=await formDialog({wide:true,
+    title:ok.length?`Add ${ok.length} part number${ok.length===1?"":"s"} to ${company}?`:"Nothing can be added yet",
+    message:`Filled for every row: supplier ${company}${p.supplier.vendorCode?" · vendor code "+p.supplier.vendorCode:" · no vendor code on file"}${p.supplier.email?" · PIC "+p.supplier.email:""}. ${bad?bad+" row(s) are not added (see why). ":""}${warn?warn+" row(s) to look at. ":""}Saved to the shared master and the Excel sync.`,
+    body:`<div class="clar-wrap"><table class="tbl compact clar-tbl ap-tbl"><thead><tr><th scope="col">#</th><th scope="col">Part number</th><th scope="col">Part name</th><th scope="col">Model</th><th scope="col">Status</th><th scope="col">Plan</th><th scope="col">Result</th></tr></thead><tbody>${rows.map(x=>`<tr class="${x.errors.length?"muted":""}"><td class="num">${x.line}</td><th scope="row" class="mono">${esc(x.partNo||"—")}</th><td>${esc(x.partName||"—")}</td><td>${esc(x.model==="UNASSIGNED"?"Unassigned":x.model)}</td><td>${esc(x.status)}</td><td class="num">${x.plan?esc(datePretty(isoToDate(x.plan))):"—"}</td><td>${tag(x)}<div class="ap-why">${x.errors.length?x.errors.map(esc).join(" · "):[x.warnings.map(esc).join(" · "),x.filled.length?`<span class="muted">Filled: ${esc(x.filled.join(", "))}</span>`:""].filter(Boolean).join("<br>")}</div></td></tr>`).join("")}</tbody></table></div>
+      <p class="muted small" style="margin:8px 0 0">Columns found: ${["partNo","partName","model","status","plan"].filter(k=>p.columns[k]>=0).map(k=>({partNo:"part number",partName:"part name",model:"model",status:"status",plan:"plan date"})[k]).join(", ")||"part numbers only"}${p.columns.header?" (from the header row)":""}. <button type="button" class="link-btn" data-action="ap-back">← Change the pasted rows</button></p>`,
+    confirmLabel:ok.length?`Add ${ok.length} part number${ok.length===1?"":"s"}`:"Close",
+    read:()=>({ok:true})
+  });
+  if(go2===null&&UI.apBack){UI.apBack=false;return addPartsFlow(company,v)}
+  if(!go2||!ok.length)return;
+  try{const r=await fetch("/api/imds-master/parts/add",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"commit",text:v.text,company,model:v.model,status:v.status})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    toast(`${j.added} part number${j.added===1?"":"s"} added to ${company}${j.skipped?` · ${j.skipped} not added`:""}`,"ok");
+    UI.drillQ="";if(typeof window.__imdsRefreshData==="function")window.__imdsRefreshData();else reloadSoon();
+  }catch(e){toast("Not added: "+e.message,"err")}
 }
 /* =====================================================================
    FOLLOW-UP CENTER
@@ -2536,9 +2633,12 @@ function searchResults(q){
   const sup=new Map();
   vis.forEach(r=>{if(r.company.toLowerCase().includes(t)){const a=sup.get(r.company)||{company:r.company,parts:0,missing:0};a.parts++;if(OPEN(r.status))a.missing++;sup.set(r.company,a)}});
   const suppliers=[...sup.values()].sort((a,b)=>(b.company.toLowerCase().startsWith(t)-a.company.toLowerCase().startsWith(t))||(b.missing-a.missing)||a.company.localeCompare(b.company)).slice(0,5);
-  const parts=vis.filter(r=>(r.partNo+" "+r.partName).toLowerCase().includes(t)).sort((a,b)=>(String(b.partNo).toLowerCase().startsWith(t)-String(a.partNo).toLowerCase().startsWith(t))||String(a.partNo).localeCompare(String(b.partNo))).slice(0,5);
+  const n=normPN(t),pnHit=r=>(r.partNo+" "+r.partName).toLowerCase().includes(t)||(n.length>=3&&normPN(r.partNo).includes(n));
+  const pool=vis.map(r=>({r,where:"tracker"})).concat((D.checks||[]).map(r=>({r,where:"check"})),(D.stopped||[]).map(r=>({r,where:"stop"})));
+  const hits=pool.filter(x=>pnHit(x.r));
+  const parts=hits.sort((a,b)=>(normPN(b.r.partNo).startsWith(n)-normPN(a.r.partNo).startsWith(n))||(a.where==="tracker"?0:1)-(b.where==="tracker"?0:1)||String(a.r.partNo).localeCompare(String(b.r.partNo))).slice(0,8);
   const models=M.keys().filter(k=>M.label(k).toLowerCase().includes(t)).slice(0,3);
-  return{suppliers,parts,models,totalParts:vis.filter(r=>(r.partNo+" "+r.partName+" "+r.company).toLowerCase().includes(t)).length};
+  return{suppliers,parts,models,pnFirst:/\d/.test(t)&&n.length>=4,totalParts:vis.filter(r=>qHit(r,t)).length,partHits:hits.length};
 }
 function renderSearchPop(q){
   const pop=$("#search-pop"),inp=$("#g-search");if(!pop)return;
@@ -2546,9 +2646,9 @@ function renderSearchPop(q){
   const r=searchResults(q);let n=0;const id=()=>"so-"+(n++);
   const grp=(title,arr)=>arr.length?`<div class="spop-group" role="group" aria-label="${title}"><div class="spop-h" aria-hidden="true">${title}</div>${arr.join("")}</div>`:"";
   const item=(kind,value,main,sub,extra="")=>{const i=id();SP.items.push({id:i,kind,value});return `<button type="button" role="option" id="${i}" class="spop-item" tabindex="-1" data-action="search-pick" data-kind="${kind}" data-value="${escAttr(value)}"><span class="spop-main">${main}</span><span class="spop-sub">${sub}</span>${extra}</button>`};
-  const html=
-    grp("Suppliers",r.suppliers.map(a=>item("supplier",a.company,`<b>${esc(a.company)}</b>`,`${a.parts} part${a.parts===1?"":"s"}${a.missing?` · <span class="t-bad">${a.missing} not submitted</span>`:""}`)))+
-    grp("Parts",r.parts.map(p=>item("supplier",p.company,`<b class="mono">${esc(p.partNo||"—")}</b> <span class="muted">${esc(p.partName)}</span>`,`${esc(p.company)}`,modelChip(p.model))))+
+  const supG=grp("Suppliers",r.suppliers.map(a=>item("supplier",a.company,`<b>${esc(a.company)}</b>`,`${a.parts} part${a.parts===1?"":"s"}${a.missing?` · <span class="t-bad">${a.missing} not submitted</span>`:""}`)));
+  const partG=grp(`Part numbers${r.partHits>r.parts.length?` (${fmt(r.partHits)})`:""}`,r.parts.map(({r:p,where})=>item(where==="tracker"?"part":"checkpart",where==="tracker"?p.company+"||"+p.partNo:p.partNo,`<b class="mono">${esc(p.partNo||"—")}</b> <span class="muted">${esc(p.partName)}</span>`,`${esc(p.company)} · ${where==="tracker"?(STATUS[p.status]||{}).label||"":where==="check"?"in Check":"Stop run"}`,(where==="tracker"?"":`<span class="spop-tag">${where==="check"?"Check":"Stop run"}</span>`)+modelChip(p.model))));
+  const html=(r.pnFirst?partG+supG:supG+partG)+
     grp("Models",r.models.map(k=>item("model",k,`<b translate="no">${esc(M.label(k))}</b>`,`${fmt(M.rows(k).length)} parts`)));
   const none=!SP.items.length;
   pop.innerHTML=(none?`<div class="spop-none">No suppliers, parts or models match “${esc(q)}”.</div>`:html)+`<button type="button" class="spop-foot" data-action="search-commit"><span>${none?"Search in Suppliers anyway":`See all ${fmt(r.totalParts)} matching part${r.totalParts===1?"":"s"} in Suppliers`}</span><kbd aria-hidden="true">↵</kbd></button>`;
@@ -2566,6 +2666,8 @@ function commitSearch(){
 function pickSearch(kind,value){
   closeSearchPop();
   if(kind==="supplier")openSupplier(value,$("#g-search"));
+  else if(kind==="part"){const [co,pn]=value.split("||");openSupplier(co,$("#g-search"),pn)}
+  else if(kind==="checkpart"){go("check");toast(value+" is in the Check tab (or Stop run)","info")}
   else if(kind==="model"){setFilter({model:value,status:"ALL"},{render:false});go("models");renderAll()}
 }
 let searchTimer;
@@ -3513,6 +3615,9 @@ const ACTIONS={
   "to-check":(el)=>{const r=D.records[+el.dataset.rid];if(r)moveToCheck([r])},
   "part-check":(el)=>{const r=D.records[+el.dataset.rid];if(r)moveToCheck([r])},
   "part-stop":(el)=>{const r=D.records[+el.dataset.rid];if(r)stopRun([r])},
+  "part-renumber":(el)=>{const r=D.records[+el.dataset.rid];if(r)renumberPart(r)},
+  "parts-add":()=>{if(UI.drill)addPartsFlow(UI.drill)},
+  "ap-back":()=>{UI.apBack=true;resolveForm(false)},
   "part-move":(el)=>{const r=D.records[+el.dataset.rid];if(r)moveParts([r])},
   "sel-check":()=>{const rs=selectedRows();UI.drillSel.clear();moveToCheck(rs)},
   "sel-stop":()=>{const rs=selectedRows();UI.drillSel.clear();stopRun(rs)},

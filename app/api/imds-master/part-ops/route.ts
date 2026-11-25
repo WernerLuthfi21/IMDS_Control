@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { enqueuePartMasterRows, dispatchPartMasterOutbox } from "@/lib/imds-master/outbox";
-import { groupUpdates, planPartOps, sanitizePartLog, validate, type Action, type MasterRow, type Options, type PartLog } from "@/lib/imds-master/part-log";
+import { cleanPartNo, groupUpdates, normPartNo, planPartOps, sanitizePartLog, validate, type Action, type MasterRow, type Options, type PartLog } from "@/lib/imds-master/part-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   if (!body) return NextResponse.json({ error: "A JSON body is required." }, { status: 400 });
   const action = String(body.action || "") as Action;
   const ids = [...new Set((Array.isArray(body.ids) ? body.ids : []).map(String))];
-  const opts: Options = { reason: body.reason, date: body.date, company: body.company, vendorCode: body.vendorCode, email: body.email, model: body.model, status: body.status };
+  const opts: Options = { reason: body.reason, date: body.date, company: body.company, vendorCode: body.vendorCode, email: body.email, model: body.model, status: body.status, partNo: body.partNo, partName: body.partName };
   const invalid = validate(action, ids, opts);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 422 });
 
@@ -68,6 +68,14 @@ export async function POST(request: NextRequest) {
   }
   if (!rows.length) return NextResponse.json({ error: "Those parts are no longer in the master. Refresh the Tracker." }, { status: 404 });
 
+  if (action === "renumber") {
+    // The new number must not already exist for this supplier and model (that would be a duplicate row).
+    const r0 = rows[0], norm = normPartNo(opts.partNo);
+    const { data: same } = await supabase.from("imds_master_parts").select("id,company_name,project").eq("part_no_norm", norm).neq("id", r0.id).limit(200);
+    const up = (v: unknown) => String(v ?? "").trim().toUpperCase();
+    if ((same || []).some((x: { company_name?: string | null; project?: string | null }) => up(x.company_name) === up(r0.company_name) && up(x.project) === up(r0.project)))
+      return NextResponse.json({ error: `${cleanPartNo(opts.partNo)} already exists for this supplier and model. Use Stop run on the old number instead.`, duplicate: true }, { status: 409 });
+  }
   const by = auth.email || auth.userId;
   let plan = planPartOps(action, rows, { checks: {}, events: [] }, opts, by, new Date());
   if (action !== "set-target") {
