@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, ArrowLeft, ArrowUpRight, ClipboardList, FileClock, Inbox, LayoutGrid, Mail, Menu, Moon, Search, Settings2, ShieldCheck, Sun, X } from "lucide-react";
+import { Activity, ArrowLeft, ArrowUpRight, ClipboardList, FileClock, Inbox, LayoutGrid, Mail, MessageCircle, Menu, Moon, Search, Settings2, ShieldCheck, Sun, X } from "lucide-react";
 import { SignOutButton } from "@/components/sign-out-button";
 import { SyncPill } from "@/components/sync-pill";
 import { CommandPalette } from "@/components/command-palette";
@@ -13,6 +13,7 @@ const navigation = [
   { label: "Daily G-CATS Update", href: "/daily-update", icon: FileClock, group: "WORK" },
   { label: "Supplier Pre-check", href: "/supplier-precheck", icon: Inbox, group: "SUPPLIER" },
   { label: "Supplier Follow-up", href: "/follow-up", icon: Mail, group: "SUPPLIER" },
+  { label: "WhatsApp Automation", href: "/whatsapp", icon: MessageCircle, group: "SUPPLIER" },
   { label: "Substance References", href: "/substances", icon: Activity, group: "REFERENCE" },
   { label: "Judgement Rules", href: "/rules", icon: ShieldCheck, group: "REFERENCE" },
   { label: "Settings", href: "/settings", icon: Settings2, group: "ADMIN" }
