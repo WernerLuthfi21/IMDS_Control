@@ -67,7 +67,7 @@ Endpoint GET memvalidasi hub challenge. Endpoint POST memvalidasi X-Hub-Signatur
 
 ## 5. Worker antrean otomatis
 
-Campaign otomatis memproses batch pertama saat dibuat. Campaign berikutnya diproses oleh endpoint:
+Campaign otomatis memproses batch pertama saat dibuat. Setiap batch worker dibatasi hingga 6 pesan dan timeout panggilan Meta 8 detik agar tetap sesuai batas durasi fungsi Vercel. Campaign berikutnya diproses oleh endpoint:
 
 POST https://imds-gcats-control.vercel.app/api/cron/whatsapp
 
@@ -96,8 +96,8 @@ select cron.schedule(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'imds_whatsapp_cron_secret')
     ),
-    body := '{"limit":25}'::jsonb,
-    timeout_milliseconds := 10000
+    body := '{"limit":6}'::jsonb,
+    timeout_milliseconds := 60000
   ) as request_id;
   $$
 );
