@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { internalContext } from "@/lib/automation/auth";
 import { sameOrigin } from "@/lib/security/request";
+import { sameOrigin } from "@/lib/security/request";
 
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!sameOrigin(request.headers)) return NextResponse.json({ error: "Request rejected." }, { status: 403 });
