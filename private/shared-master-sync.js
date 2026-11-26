@@ -459,7 +459,58 @@
     loadState();
 
     initFollowupCenter(follow);
-    initFollowupSettings(settings, panel);
+    initFollowupSettings(follow, follow.querySelector("#shared-followup-panel"));
+    initWorkspaceSettingsTabs(settings, panel, legacy);
+  }
+
+
+  // UI-only navigation. Move existing DOM nodes, never recreate forms or change save handlers.
+  function compactTabs(host, items, label, onSelect, selected) {
+    var nav = document.createElement("div"); nav.className = "seg compact-workspace-tabs"; nav.setAttribute("role", "group"); nav.setAttribute("aria-label", label);
+    var buttons = items.map(function (item) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "seg-btn"; b.textContent = item[1];
+      b.setAttribute("aria-controls", item[2].id); nav.appendChild(b);
+      b.onclick = function () { select(item[0]); }; return b;
+    });
+    function select(key) {
+      items.forEach(function (item, i) { var on = item[0] === key; item[2].hidden = !on; buttons[i].classList.toggle("on", on); buttons[i].setAttribute("aria-pressed", String(on)); });
+      if (onSelect) onSelect(key);
+    }
+    host.insertAdjacentElement("afterend", nav); select(selected || items[0][0]); return select;
+  }
+  function initWorkspaceSettingsTabs(settings, shared, legacy) {
+    if (settings.querySelector(".compact-workspace-tabs")) return;
+    var head = settings.querySelector("header.view-head"), model = settings.querySelector("#settings-models"), appearance = settings.querySelector('[aria-labelledby="h-appearance"]');
+    if (!head || !model || !appearance) return;
+    var legacyToggle = settings.querySelector("#sm-legacy");
+    function pane(id, nodes) { var p = document.createElement("div"); p.id = id; p.className = "compact-workspace-pane"; settings.appendChild(p); nodes.forEach(function(n){if(n)p.appendChild(n);}); return p; }
+    var data = pane("settings-data-pane", [shared, legacyToggle && legacyToggle.parentElement, legacy]);
+    var models = pane("settings-models-pane", [model]);
+    var empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "Connect or upload the shared master in Data source to configure models."; models.prepend(empty);
+    var observer = new MutationObserver(function(){empty.hidden = !model.hidden;}); observer.observe(model,{attributes:true,attributeFilter:["hidden"]}); empty.hidden = !model.hidden;
+    var app = pane("settings-appearance-pane", [appearance]);
+    var link = document.createElement("p"); link.className = "muted"; link.textContent = "Email templates, defaults and sending rules are now in Follow-up → Templates & rules."; app.appendChild(link);
+    var search = document.createElement("input"); search.type = "search"; search.className = "field compact-model-search"; search.placeholder = "Find a model…"; search.setAttribute("aria-label","Find a model");
+    model.querySelector(".panel-head").after(search);
+    var body = model.querySelector("#model-config-tbody");
+    function filter() { var q = search.value.trim().toLowerCase(); Array.prototype.forEach.call(body.rows,function(row){row.hidden = !!q && !row.cells[0].textContent.toLowerCase().includes(q);}); }
+    search.addEventListener("input",filter); new MutationObserver(filter).observe(body,{childList:true});
+    var requested = new URLSearchParams(location.search).get("section");
+    var select = compactTabs(head,[["data","Data source",data],["models","Models & display",models],["appearance","Appearance",app]],"Tracker settings sections",null,requested==="models"?"models":"data");
+    // Existing Settings entry remains available; deep link can open model controls directly.
+    window.addEventListener("hashchange",function(){if(location.hash==="#settings" && new URLSearchParams(location.search).get("section")==="models")select("models");});
+  }
+  function initTemplateWorkspaceTabs(sec) {
+    var head = sec.querySelector(".panel-head"), body = sec.querySelector("#fs-body"), cc = sec.querySelector("#fs-req"), sig = sec.querySelector("#fs-sig"), footer = sec.querySelector("#fs-foot"), picker = sec.querySelector("#fs-tsel"), save = sec.querySelector("#fs-save");
+    if(!head || !body || !cc || !sig || !footer || !picker || !save)return;
+    var pickerGrid=picker.closest(".fu-grid"), editor=body.closest(".fu-box"), rules=cc.closest(".fu-grid"), signature=sig.closest(".fu-grid"), format=footer.closest(".fu-box").parentElement, bar=save.closest(".fu-bar");
+    function pane(id,nodes){var p=document.createElement("div");p.id=id;p.className="compact-workspace-pane";sec.insertBefore(p,bar);nodes.forEach(function(n){p.appendChild(n);});return p;}
+    var preview=sec.querySelector("#fs-prev"); var previewBox=document.createElement("div");previewBox.className="fu-box compact-template-preview";var title=document.createElement("h3");title.textContent="Live preview · sample data";previewBox.appendChild(title);previewBox.appendChild(preview);
+    var split=document.createElement("div");split.className="compact-template-split";split.appendChild(editor);split.appendChild(previewBox);
+    body.style.minHeight="200px";
+    var edit=pane("fs-edit-pane",[pickerGrid,split]); var defaults=pane("fs-rules-pane",[rules]); var identity=pane("fs-identity-pane",[signature,format]);
+    compactTabs(head,[["edit","Edit template",edit],["rules","Recipients & files",defaults],["identity","Signature & layout",identity]],"Email template sections",null,"edit");
+    bar.classList.add("compact-save-bar");
   }
 
   // ---- Directory: saved on the server, so contacts follow the user to every browser ----
@@ -629,7 +680,7 @@
 
   function longDate(d) { return new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(d); }
   function fill(tpl, ctx) { return String(tpl || "").replace(/\{(supplier|code|count|projects|deadlines|partlist|models|modelshort|sender|sendername|greeting|date|updated|duedate)\}/g, function (m, k) { return ctx[k] == null ? "" : ctx[k]; }); }
-  // Footer per sender + e-mail font (Settings → E-mail templates). Same rules as lib/followup/center.ts (footerFor, cleanFont).
+  // Footer per sender + e-mail font (Follow-up → Templates & rules). Same rules as lib/followup/center.ts (footerFor, cleanFont).
   var FONT_FAMILIES = ["Calibri", "Arial", "Segoe UI", "Verdana", "Tahoma", "Aptos", "Times New Roman"];
   function ownFooter(cfg, who) { var o = (cfg && cfg.senderFooters) || {}, w = String(who || "").trim().toLowerCase(); var k = w ? Object.keys(o).filter(function (x) { return x.toLowerCase() === w; })[0] : null; return k && String(o[k]).trim() ? o[k] : ""; }
   function footerOf(cfg, who) { return ownFooter(cfg, who) || (cfg && cfg.signature != null ? cfg.signature : ""); }
@@ -670,7 +721,7 @@
     injectFollowCss();
     var head = follow.querySelector("header.view-head");
     var actions = head && head.querySelector(".view-actions");
-    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Who to chase</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Send e-mails</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button></div>';
+    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button></div>';
     var box = document.createElement("section");
     box.className = "panel"; box.id = "shared-followup-panel"; box.hidden = true;
     box.innerHTML = '<div id="fu-state" class="banner" role="status">Loading…</div>' +
@@ -724,6 +775,7 @@
       S.mode = m;
       ["follow-tabs", "follow-panel", "follow-sub"].forEach(function (id) { var el = follow.querySelector("#" + id); if (el) el.hidden = m !== "queues"; });
       box.hidden = m !== "email";
+      var templates = follow.querySelector("#followup-settings-panel"); if (templates) templates.hidden = m !== "templates";
       if (m === "auto" && !auto) auto = initAutoPanel(follow, box);
       if (auto) { follow.querySelector("#shared-auto-panel").hidden = m !== "auto"; if (m === "auto") auto.open(); }
       Array.prototype.forEach.call(follow.querySelectorAll("[data-fmode]"), function (b) { var on = b.getAttribute("data-fmode") === m; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
@@ -774,7 +826,7 @@
         updated: new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(now) + ", " + now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + " WIB",
         duedate: longDate(new Date(now.getTime() + 7 * 86400000)), models: summaryModelsText(), modelshort: summaryModelLabels().join(", ") };
     }
-    // Power Automate sends have no Outlook signature: add the configured sign-off once (Settings → E-mail templates).
+    // Power Automate sends have no Outlook signature: add the configured sign-off once (Follow-up → Templates & rules).
     // A sender's own footer (Settings → Footer per sender) wins over the shared signature, same rule as lib/followup/center.ts footerFor.
     function signed(body, ctx) {
       var sig = String(footerOf(mailCfg, ctx.sender)).trim();
@@ -819,7 +871,7 @@
       $("fu-models").innerHTML = keys.map(function (k) { return '<button type="button" class="fu-chip" data-m="' + esc(k) + '" aria-pressed="' + (S.models.indexOf(k) >= 0) + '">' + esc(M.label(k)) + "</button>"; }).join("") || '<span class="muted small">No models yet.</span>';
       $("fu-models-hint").textContent = S.models.length ? "Only the selected models are included." : "All models are included. Tap a model to limit the e-mail to it.";
       var rq = (cfg.requiredCc || []);
-      $("fu-req").innerHTML = rq.length ? '<span class="muted small">Always on CC:</span> ' + rq.map(function (e) { return '<span class="fu-chip lock" title="Mandatory — change in Settings → E-mail templates">🔒 ' + esc(e) + "</span>"; }).join("") : '<span class="muted small">No mandatory CC set (Settings → E-mail templates).</span>';
+      $("fu-req").innerHTML = rq.length ? '<span class="muted small">Always on CC:</span> ' + rq.map(function (e) { return '<span class="fu-chip lock" title="Mandatory — change in Follow-up → Templates & rules">🔒 ' + esc(e) + "</span>"; }).join("") : '<span class="muted small">No mandatory CC set (Follow-up → Templates & rules).</span>';
       var recap = S.kind === "recap";
       Array.prototype.forEach.call($("fu-mode").querySelectorAll("button"), function (b) { var m = b.getAttribute("data-send"); b.setAttribute("aria-pressed", String(m === S.send)); if (m === "live") b.title = mailInfo.configured ? "" : "Power Automate is not set up yet. Use Outlook drafts."; });
       $("fu-testto-wrap").hidden = S.send !== "test"; $("fu-force").closest("label").hidden = !S.live; $("fu-ping").closest(".fu-bar").hidden = S.send === "draft";
@@ -832,12 +884,12 @@
       $("fu-send").className = "btn btn-primary" + (S.live ? " fu-live" : "");
       var who = $("fu-sender").value, full = (cfg.senderNames || {})[who] || who;
       var own = ownFooter(cfg, who);
-      $("fu-signs").textContent = String(footerOf(cfg, who)).trim() ? (own ? "Own footer of " + who : "Signed “" + (full || "—") + "”") + " · " + fontLabel(cfg) : "No sign-off (Settings → E-mail templates)";
+      $("fu-signs").textContent = String(footerOf(cfg, who)).trim() ? (own ? "Own footer of " + who : "Signed “" + (full || "—") + "”") + " · " + fontLabel(cfg) : "No sign-off (Follow-up → Templates & rules)";
       $("fu-adv-sum").textContent = "· " + ($("fu-limit").value === "0" ? "all selected" : "first " + $("fu-limit").value) + " per click · " + ($("fu-pause").value === "0" ? "no pause" : $("fu-pause").value + " s pause") + ($("fu-stop").checked ? " · stops on failure" : "");
       var onlyEl = $("fu-only");
       if (S.only) { onlyEl.hidden = false; onlyEl.innerHTML = '<span class="fu-chip" aria-pressed="true">' + esc(S.only) + ' ✕</span>'; } else onlyEl.hidden = true;
       var su = mailInfo.setup || {}, tick = function (ok, t) { return (ok ? "✔ " : "✖ ") + t; };
-      $("fu-state").textContent = (mailInfo.configured ? "" : "Power Automate is not ready: " + [tick(su.url, "flow URL (POWER_AUTOMATE_EMAIL_URL)"), tick(su.secret, "shared secret (POWER_AUTOMATE_SECRET)")].join(" · ") + ". Add them in Vercel → Settings → Environment Variables and redeploy (step-by-step: docs/PANDUAN_SETUP_LENGKAP_ID.md, section 6c). Until then, use “📨 Outlook drafts” below: it works for everyone from their own mailbox, with the attachments. ") + (cfg.__missingTable ? "⚠ The settings table is not created yet — built-in templates are used and changes cannot be saved. See Settings → E-mail templates. " : "") +
+      $("fu-state").textContent = (mailInfo.configured ? "" : "Power Automate is not ready: " + [tick(su.url, "flow URL (POWER_AUTOMATE_EMAIL_URL)"), tick(su.secret, "shared secret (POWER_AUTOMATE_SECRET)")].join(" · ") + ". Add them in Vercel → Settings → Environment Variables and redeploy (step-by-step: docs/PANDUAN_SETUP_LENGKAP_ID.md, section 6c). Until then, use “📨 Outlook drafts” below: it works for everyone from their own mailbox, with the attachments. ") + (cfg.__missingTable ? "⚠ The settings table is not created yet — built-in templates are used and changes cannot be saved. See Follow-up → Templates & rules. " : "") +
         (mailInfo.canSend ? "" : "Your role (" + (mailInfo.role || "viewer") + ") cannot send through Power Automate, but you can create 📨 Outlook drafts from your own mailbox. ");
       $("fu-state").hidden = !$("fu-state").textContent;
       groups = buildGroups();
@@ -1096,7 +1148,7 @@
     setMode("queues");
   }
 
-  // ---- Settings → E-mail templates ----
+  // ---- Follow-up → Templates & rules ----
   // ---- Standard files (file library): uploaded once, attached exactly as uploaded. Used by the composer and automations. ----
   var LIB = { files: [], canEdit: false, canPublish: false, loaded: false, error: "", maxBytes: 3145728, exec: null };
   var libViews = [];
@@ -1404,7 +1456,7 @@
   function initFollowupSettings(settings, after) {
     injectFollowCss();
     var sec = document.createElement("section");
-    sec.className = "panel"; sec.id = "followup-settings-panel";
+    sec.className = "panel"; sec.id = "followup-settings-panel"; sec.hidden = true;
     sec.innerHTML = '<div class="panel-head"><div><h2>E-mail templates and rules</h2><p class="panel-sub">Templates for the three e-mail types, the mandatory CC and the defaults. Saved on the server for everyone. Automatic sending and standard files are in <b>Follow-up → Automatic</b>.</p></div></div>' +
       '<div id="fs-msg" class="banner" role="status">Loading…</div><div id="fs-sql" hidden></div>' +
       '<div class="fu-grid"><label class="field"><span>Template</span><select id="fs-tsel"></select></label>' +
@@ -1425,6 +1477,7 @@
       '<div class="fs-preview" id="fs-prev" aria-label="Preview of the selected template with the footer of the chosen sender"></div></div></div>' +
       '<div class="fu-bar"><button type="button" class="btn btn-primary btn-sm" id="fs-save">Save</button><button type="button" class="btn btn-ghost btn-sm" id="fs-reset">Restore built-in templates</button><span class="muted small" id="fs-ver"></span></div>';
     after.insertAdjacentElement("afterend", sec);
+    initTemplateWorkspaceTabs(sec);
     var $ = function (id) { return sec.querySelector("#" + id); };
     var cfg = null, version = 0, cur = 0, builtin = null;
     function say(t, bad) { var m = $("fs-msg"); m.textContent = t; m.style.color = bad ? "var(--bad)" : ""; }
@@ -1451,7 +1504,7 @@
     async function load() {
       try {
         var g = await api("/api/imds-master/settings?key=followup_config");
-        if (!g || !g.value || !Array.isArray(g.value.templates)) throw new Error("The e-mail templates could not be loaded from the server. Reload the page; if this stays, apply the tracker settings migration (Settings → E-mail templates).");
+        if (!g || !g.value || !Array.isArray(g.value.templates)) throw new Error("The e-mail templates could not be loaded from the server. Reload the page; if this stays, apply the tracker settings migration (Follow-up → Templates & rules).");
         cfg = g.value; version = g.version; mailCfg = Object.assign({}, cfg, { __missingTable: !!g.tableMissing, __version: g.version });
         if (!builtin) builtin = JSON.parse(JSON.stringify(cfg));
         cur = Math.max(0, cfg.templates.findIndex(function (t) { return t.id === cfg.defaults.followup; }));
