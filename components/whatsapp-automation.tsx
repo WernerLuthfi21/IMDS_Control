@@ -159,6 +159,7 @@ export function WhatsAppAutomation() {
           body: JSON.stringify({ campaignId: json.campaign.id, limit: 10 }),
         });
         const dispatchJson = await dispatchResponse.json();
+        if (!dispatchResponse.ok) throw new Error(dispatchJson.error || "Campaign queued, but first dispatch failed. The scheduled worker may still process it.");
         setNotice("Campaign queued for " + json.recipientCount + " eligible contacts. First batch accepted by Meta: " + (dispatchJson.accepted || 0) + "; failed: " + (dispatchJson.failed || 0) + ". The scheduled worker continues the queue.");
       } else {
         setNotice("Campaign created for " + json.recipientCount + " eligible contacts. It will not send until an admin or preparer approves it.");
