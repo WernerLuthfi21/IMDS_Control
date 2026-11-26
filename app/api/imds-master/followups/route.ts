@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
   if (scopeError) return NextResponse.json({ error: scopeError + " Nothing was sent." }, { status: 422 });
   if (!draft && !test && !recap) {
     const directory = await supabase.from("imds_tracker_settings").select("value").eq("key","directory").maybeSingle();
-    const byName = await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).ilike("supplier_name",supplierName.replace(/[%_\\]/g,"\\  const dateTag = new Date().toISOString().slice(0, 10);")).limit(1000);
+    const byName = await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).eq("supplier_name",supplierName).limit(1000);
     const byCode = supplierCode ? await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).eq("supplier_code",supplierCode).limit(1000) : {data:[],error:null};
     if(directory.error||byName.error||byCode.error)return NextResponse.json({error:"Recipient directory unavailable. Nothing was sent."},{status:503});
     const allowed=allowedSupplierEmails({dir:(directory.data?.value||{}) as Directory,company:supplierName,code:supplierCode,masterEmails:parts.map(p=>p.main_pic_email||""),contacts:[...(byName.data||[]),...(byCode.data||[])],fallbackMid:config.fallbackMid});
