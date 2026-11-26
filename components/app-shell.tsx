@@ -82,7 +82,10 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
   if (["/login", "/forgot-password", "/reset-password"].includes(pathname)) return <div className="auth-shell">{themeButton}{children}<ConfirmHost/></div>;
   if (pathname === "/workspace") return <div className="workspace-selector-shell">{themeButton}{children}<ConfirmHost/></div>;
   return <div className="app-frame" data-tracker-shell={tracker ? "" : undefined}><ConfirmHost/>
-    <a className="skip-link" href="#main-content">Skip to content</a>
+    <a className="skip-link" href="#main-content" onClick={tracker ? (event) => {
+      event.preventDefault();
+      document.getElementById("main-content")?.focus();
+    } : undefined}>Skip to content</a>
     {mobileOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)}/>}
     <aside id="app-sidebar" className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`} onKeyDown={(e) => { if (e.key === "Escape" && mobileOpen) setMobileOpen(false); }}>
       <div className="brand-lockup"><div className="brand-mark">IM</div><div><div className="brand-title">IMDS / G-CATS</div><div className="brand-subtitle">{tracker ? "IMDS Tracker" : "IMDS CONTROL CENTER"}</div></div><button className="icon-button mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close"><X size={17}/></button></div>

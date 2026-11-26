@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["exceljs"],
   poweredByHeader: false,
-  outputFileTracingIncludes: { "/imds-tracker": ["./private/imds-tracker.html"] },
+  outputFileTracingIncludes: { "/imds-tracker": ["./private/imds-tracker.html", "./private/shared-master-sync.js"] },
   experimental: { serverActions: { bodySizeLimit: "20mb" } },
   async headers() {
     return [

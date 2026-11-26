@@ -46,3 +46,20 @@ test("unconfigured server cannot render protected migration workspace",async({pa
  await expect(page.getByText("Tracker migration is unavailable until authentication is configured.")).toBeVisible();
  await expect(page.getByRole("region",{name:"Tracker migration foundation"})).toHaveCount(0);
 });
+test("first paint uses the legacy preference before React hydration", async ({ page }) => {
+ await page.emulateMedia({ colorScheme: "light" });
+ await page.addInitScript(() => localStorage.setItem("imds-theme", "dark"));
+ await page.route("**/_next/static/**/*.js*", route => route.abort());
+ await page.goto("/tracker-migration/fixture#settings");
+ await expect(page.locator("html")).toHaveAttribute("data-tracker-theme", "dark");
+ await expect(page.locator("[data-tracker-shell]")).toHaveCSS("color", "rgb(238, 233, 247)");
+});
+test("skip to content keeps the current Tracker view", async ({ page }) => {
+ await page.goto("/tracker-migration/fixture#settings");
+ await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+ await page.keyboard.press("Tab");
+ await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+ await page.keyboard.press("Enter");
+ await expect(page.locator("#main-content")).toBeFocused();
+ await expect(page).toHaveURL(/#settings$/);
+});
