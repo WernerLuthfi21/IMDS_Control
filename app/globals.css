@@ -1853,3 +1853,13 @@ html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-green{--tn:#8FD1A6;--tb
 html[data-theme="dark"] :is(.mt .jc,.mt-deck,.jc-wrap).t-indigo{--tn:#AEB4F5;--tb:#24264A}
 html[data-theme="dark"] .mt .jc .jx-error{background:var(--red-bg);color:var(--red);border-color:var(--red)}
 .js-nums>div:not(.d):not(.w) dd{color:var(--ink)}
+
+
+/* Workspace navigation: same interaction language in Settings and Pre-check. */
+.st-panel[hidden]{display:none!important}
+.st-compact{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.st-compact>.st-nav{position:static;display:flex;flex-wrap:wrap;gap:5px;padding:5px;border-radius:12px}
+.st-compact>.st-nav>button{flex:1 1 150px;min-width:0;padding:9px 11px}
+.st-compact>.st-panel{min-width:0}
+.st-nav>button,.pt-tabs>button{min-height:44px}
+@media(max-width:900px){.st-compact>.st-nav{grid-auto-flow:initial;overflow:visible}.st-compact>.st-nav>button{flex:1 1 140px}}
