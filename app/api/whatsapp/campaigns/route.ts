@@ -137,6 +137,7 @@ export async function POST(request: NextRequest) {
     }
   }
   if (insertError) {
+    await ctx.supabase.from("whatsapp_messages").update({ status: "CANCELLED", error_message: "Campaign preparation failed before sending." }).eq("campaign_id", campaign.id);
     await ctx.supabase.from("whatsapp_campaigns").update({ status: "FAILED" }).eq("id", campaign.id);
     await ctx.supabase.from("audit_events").insert({
       actor_id: ctx.user.id, action: "WHATSAPP_CAMPAIGN_CREATE_FAILED",
