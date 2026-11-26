@@ -24,6 +24,7 @@ Live: <https://imds-gcats-control.vercel.app> (Vercel) · data: Supabase project
 - **Supplier Pre-check / Self-check**: the supplier checks a file before Toyota does; the app predicts which G-CATS
   checks will fire (WARP, ELV, prohibited substance, mass).
 - **Supplier Follow-up**: one e-mail contract for Judgement and Tracker, sent through Power Automate.
+- **WhatsApp Automation** (`/whatsapp`): multi-sender WhatsApp Cloud API campaigns, supplier opt-in contacts, automatic queue and semi-automatic approval.
 - **Judgement Rules**: every implemented flow drawn as a flow chart, plus Error Types and sources.
 - **Substance References**: CAS → GADSL 2026 V1 / TSZ Appendix 3–6.
 - **IMDS Tracker** (`/imds-tracker`): models, parts, MD System status, supplier follow-up.
@@ -75,6 +76,7 @@ only builds production from the project owner's commits. Details: `docs/PANDUAN_
 | [`docs/SOURCE_REGISTER.md`](docs/SOURCE_REGISTER.md) | Which source documents are used, their classification and conflicts |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Classification policy, roles, access requests, Supabase Auth settings |
 | [`docs/POWER_AUTOMATE_ALL_FLOWS.md`](docs/POWER_AUTOMATE_ALL_FLOWS.md) | Every Power Automate flow, payload and test order |
+| [`docs/WHATSAPP_SETUP_ID.md`](docs/WHATSAPP_SETUP_ID.md) | WhatsApp Cloud API, sender setup, webhook and queue worker |
 | [`docs/POWER_AUTOMATE_STANDARD_ID.md`](docs/POWER_AUTOMATE_STANDARD_ID.md) | The same flows without a Premium licence (Indonesian) |
 | [`docs/SHAREPOINT_SETUP.md`](docs/SHAREPOINT_SETUP.md) | Read-only SharePoint fetch: what exists, what is missing |
 | [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) | Design tokens, colours, type, components |
