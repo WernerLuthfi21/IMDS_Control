@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { refreshWhatsAppCampaignStatus } from "@/lib/whatsapp/queue";
 
 type StatusItem = {
   id?: string;
@@ -67,21 +68,39 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "Webhook database is not configured." }, { status: 503 });
+  const changedCampaigns = new Set<string>();
+  const rank: Record<string, number> = { SENT: 1, DELIVERED: 2, READ: 3, FAILED: 4 };
 
   for (const update of updates) {
     const at = update.timestamp && /^\d+$/.test(update.timestamp)
       ? new Date(Number(update.timestamp) * 1000).toISOString()
       : new Date().toISOString();
+    const { data: existing } = await supabase
+      .from("whatsapp_messages")
+      .select("campaign_id,status,last_status_at")
+      .eq("provider_message_id", update.id)
+      .maybeSingle();
+    if (!existing) continue;
+
+    // Webhook deliveries may be retried or arrive out of order; never move a message backward.
+    if (existing.last_status_at && new Date(existing.last_status_at).getTime() > new Date(at).getTime()) continue;
+    const nextStatus = update.status.toUpperCase();
+    if ((rank[existing.status] || 0) > (rank[nextStatus] || 0)) continue;
+
     const patch: Record<string, unknown> = {
+      status: nextStatus,
       provider_status: update.status,
       last_status_at: at,
     };
-    if (update.status === "sent") patch.status = "SENT";
-    if (update.status === "delivered") { patch.status = "DELIVERED"; patch.delivered_at = at; }
-    if (update.status === "read") { patch.status = "READ"; patch.read_at = at; }
-    if (update.status === "failed") { patch.status = "FAILED"; patch.error_message = update.error || "Meta reported message delivery failure."; }
-    await supabase.from("whatsapp_messages").update(patch).eq("provider_message_id", update.id);
+    if (update.status === "delivered") patch.delivered_at = at;
+    if (update.status === "read") patch.read_at = at;
+    if (update.status === "failed") patch.error_message = update.error || "Meta reported message delivery failure.";
+    const { error } = await supabase.from("whatsapp_messages").update(patch).eq("provider_message_id", update.id);
+    if (!error) changedCampaigns.add(existing.campaign_id);
   }
 
+  for (const campaignId of changedCampaigns) {
+    await refreshWhatsAppCampaignStatus(supabase, campaignId);
+  }
   return NextResponse.json({ received: true, statusUpdates: updates.length });
 }
