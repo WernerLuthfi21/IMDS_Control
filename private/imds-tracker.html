@@ -789,6 +789,15 @@ main{padding:27px 29px 32px}
 #view-followup .view-actions .seg{flex-wrap:wrap}
 @media(max-width:760px){.compact-template-split{grid-template-columns:minmax(0,1fr)}.compact-workspace-tabs{width:100%}.compact-workspace-tabs .seg-btn{flex:1 1 auto}}
 
+/* Tracker-native manual communication layout. Solid data surfaces within the violet shell. */
+.tracker-wa-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s-4);margin-top:var(--s-4)}
+.tracker-wa-grid .fu-box{min-width:0;display:flex;flex-direction:column;gap:var(--s-3);background:var(--surface)}
+.tracker-wa-grid textarea{min-height:132px;font-family:var(--f-ui)}
+.tracker-wa-list{display:flex;flex-direction:column;gap:var(--s-2);max-height:260px;overflow:auto}
+.tracker-wa-list button{text-align:left;justify-content:flex-start}
+.tracker-wa-list button[aria-pressed="true"]{border-color:var(--focus);color:var(--brand-text)}
+#tw-preview{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--f-ui);padding:var(--s-3);background:var(--surface-2);border-radius:var(--r-2);max-height:240px;overflow:auto}
+@media(max-width:760px){.tracker-wa-grid{grid-template-columns:minmax(0,1fr)}}
 /* Tracker-only compact operational surfaces; existing violet tokens and semantic states retained. */
 .compact-workspace-tabs .seg-btn:focus-visible,.view-actions .seg-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .compact-workspace-tabs .seg-btn{min-height:40px}

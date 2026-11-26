@@ -10,3 +10,6 @@ Baseline 217781ed73da99e993b46223700fbc9d290361f1. Tracker-only changes. No data
 
 ## Remaining gates
 Repository public visibility needs owner review; do not put real data in fixtures. Durable claims/outbox, delivery state migration, directory merge UI, authenticated E2E, server-generated reports, native WA directory/consent and React migration remain open. No production sending or migration from this PR. Rollback: revert this commit. Existing Judgement paths and shared Power Automate contract untouched.
+
+## Integrated communication workspace
+Native Tracker WhatsApp tab with explicit country normalization, direct PIC selection only from a successfully loaded directory, per-message consent attestation and re-review, masked session queue, copy/open/manual reported state. No provider calls, persistent consent or receipts. New fixture E2E covers consent reset, local number rejection without country, queue and manual confirmation. Added keyboard navigation and safe handling of missing settings or oversized master snapshots. Full migration and DB-backed automation remain release-gated.

@@ -29,7 +29,8 @@ const COLS = "id,company_name,vendor_code,project,part_no,part_name,imds_status,
 const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 async function setting<T>(db: Db, key: string): Promise<T | null> {
-  const { data } = await db.from("imds_tracker_settings").select("value").eq("key", key).maybeSingle();
+  const { data, error } = await db.from("imds_tracker_settings").select("value").eq("key", key).maybeSingle();
+  if (error) throw new Error(`Tracker setting ${key} unavailable; automation stopped.`);
   return (data?.value as T) ?? null;
 }
 async function allMasterRows(db: Db): Promise<MasterRow[]> {
@@ -38,9 +39,9 @@ async function allMasterRows(db: Db): Promise<MasterRow[]> {
     const { data, error } = await db.from("imds_master_parts").select(COLS).order("id").range(from, from + 999);
     if (error) throw new Error(error.message);
     out.push(...((data || []) as unknown as MasterRow[]));
-    if (!data || data.length < 1000) break;
+    if (!data || data.length < 1000) return out;
   }
-  return out;
+  throw new Error("Master exceeds safe automation snapshot limit; no messages planned.");
 }
 
 export type Context = { cfg: FollowupConfig; dir: Directory; due: DueDates; lib: Library; rows: MasterRow[] };

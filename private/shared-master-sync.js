@@ -467,6 +467,12 @@
       b.setAttribute("aria-controls", item[2].id); nav.appendChild(b);
       b.onclick = function () { select(item[0]); }; return b;
     });
+    nav.addEventListener("keydown", function(e) {
+      var i = buttons.indexOf(e.target), n = buttons.length;
+      if (i < 0 || !["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;
+      e.preventDefault(); var next = e.key === "Home" ? 0 : e.key === "End" ? n-1 : (i + (e.key === "ArrowRight" ? 1 : n-1)) % n;
+      select(items[next][0]); buttons[next].focus();
+    });
     function select(key) {
       items.forEach(function (item, i) { var on = item[0] === key; item[2].hidden = !on; buttons[i].classList.toggle("on", on); buttons[i].setAttribute("aria-pressed", String(on)); });
       if (onSelect) onSelect(key);
@@ -509,7 +515,7 @@
   }
 
   // ---- Directory: saved on the server, so contacts follow the user to every browser ----
-  var dirSync = { version: 0, timer: null, busy: false, again: false, applying: false, blocked: false };
+  var dirSync = { version: 0, timer: null, busy: false, again: false, applying: false, blocked: false, ready: false };
   function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
   function dirPayload() { return { v: 1, entries: DIR.entries, buyers: DIR.buyers, aliases: DIR.aliases, meta: DIR.meta }; }
@@ -566,8 +572,9 @@
     try {
       var g = await api("/api/imds-master/settings?key=directory");
       var localCount = Object.keys(DIR.entries || {}).length, dirty = lsGet("imds-dir-dirty") === "1";
-      if (!g.exists) { dirSync.version = 0; if (localCount) await pushDirectory(false); else dirStatus("Directory is empty. Import contacts once and they are remembered."); return; }
+      if (!g.exists) { dirSync.ready = true; dirSync.version = 0; if (localCount) await pushDirectory(false); else dirStatus("Directory is empty. Import contacts once and they are remembered."); return; }
       dirSync.version = g.version;
+      dirSync.ready = true;
       var server = g.value || {};
       if (dirty && known !== g.version) {
         dirSync.blocked = true;
@@ -720,11 +727,90 @@
       function () { toast("Outlook could not be opened from here. Copy the message from the preview instead.", "err"); });
   }
 
+  // Tracker-native manual communication. No provider credentials, background calls or automatic sends.
+  function normalizeTrackerPhone(value, country) {
+    var n = String(value || "").trim().replace(/[\s().-]/g, "");
+    if (country === "ID" && /^0\d+$/.test(n)) n = "+62" + n.slice(1);
+    return /^\+[1-9]\d{7,14}$/.test(n) ? n.slice(1) : "";
+  }
+  function initTrackerWhatsApp(follow) {
+    var panel = document.createElement("section");
+    panel.id = "tracker-wa-panel"; panel.className = "panel"; panel.hidden = true;
+    panel.innerHTML = '<div class="panel-head"><div><h2>WhatsApp drafts</h2><p class="muted">Review each contact and message. Nothing is sent by this workspace.</p></div></div>' +
+      '<div class="banner">Manual channel · no provider charge · no delivery receipts. Community membership does not establish consent.</div>' +
+      '<div class="tracker-wa-grid"><div class="fu-box"><h3>Recipient &amp; message</h3>' +
+      '<label class="field"><span>Supplier directory (optional)</span><select id="tw-supplier"><option value="">Enter manually</option></select></label>' +
+      '<label class="field"><span>IMDS PIC</span><select id="tw-contact"><option value="">Choose a contact</option></select></label>' +
+      '<label class="field"><span>Country / number format</span><select id="tw-country"><option value="">International (+ country code)</option><option value="ID">Indonesia (08 or +62)</option></select></label>' +
+      '<label class="field"><span>Phone number</span><input id="tw-phone" type="tel" autocomplete="off" placeholder="+ country code"></label>' +
+      '<label class="field"><span>Message type</span><select id="tw-template"><option value="request">Initial request</option><option value="reminder">Outstanding reminder</option><option value="promise">Promise confirmation</option><option value="missed">Missed promise</option></select></label>' +
+      '<label class="field"><span>Message preview</span><textarea id="tw-body" rows="5" maxlength="1500"></textarea></label>' +
+      '<label class="inline-check"><input id="tw-consent" type="checkbox"> I verified the recipient, their WhatsApp consent and external-sharing permission for this exact message.</label>' +
+      '<div class="fu-bar"><button type="button" class="btn btn-primary" id="tw-add" disabled>Add to review queue</button><button type="button" class="btn btn-secondary" id="tw-reset">Reset draft</button></div>' +
+      '</div><div class="fu-box"><h3>Review queue <span id="tw-count" class="muted">0</span></h3><p class="muted small">Session only. Opening WhatsApp does not send a message. Recheck consent and content before opening each draft.</p>' +
+      '<div id="tw-list" class="tracker-wa-list"></div><div id="tw-detail" hidden><p id="tw-target"></p><pre id="tw-preview"></pre>' +
+      '<label class="inline-check"><input type="checkbox" id="tw-confirm"> Rechecked recipient and current consent</label>' +
+      '<div class="fu-bar"><button type="button" class="btn btn-primary" id="tw-open" disabled>Open WhatsApp</button><button type="button" class="btn btn-secondary" id="tw-copy" disabled>Copy message</button><button type="button" class="btn btn-secondary" id="tw-reported" disabled>Mark manually sent</button><button type="button" class="btn btn-ghost" id="tw-remove">Remove</button></div></div>' +
+      '<p id="tw-status" class="small" role="status" aria-live="polite"></p></div></div>';
+    follow.appendChild(panel);
+    var $ = function(id) { return panel.querySelector("#tw-" + id); };
+    var drafts = [], selected = -1, entries = {};
+    var templates = {
+      request:"Dear supplier, this is the IMDS team. Please review our request and confirm your expected submission date. Thank you.",
+      reminder:"Dear supplier, this is the IMDS team. Please review the outstanding IMDS items and confirm your next action. Thank you.",
+      promise:"Dear supplier, this is the IMDS team. Please confirm your expected IMDS submission date. Thank you.",
+      missed:"Dear supplier, this is the IMDS team. Please provide an updated expected submission date for the outstanding IMDS items. Thank you."
+    };
+    function status(message) { $("status").textContent = message; }
+    function option(value,label) { var o = document.createElement("option"); o.value=value; o.textContent=label; return o; }
+    function refresh() {
+      var current = $("supplier").value;
+      entries = typeof dirSync !== "undefined" && dirSync.ready && !dirSync.blocked && typeof DIR !== "undefined" ? DIR.entries || {} : {};
+      $("supplier").replaceChildren(option("", "Enter manually"));
+      Object.keys(entries).sort(function(a,b){return String(entries[a].name||a).localeCompare(String(entries[b].name||b));}).forEach(function(key){
+        var e=entries[key]; $("supplier").appendChild(option(key, String(e.name||key)+(e.code?" · "+e.code:"")));
+      });
+      if (Object.prototype.hasOwnProperty.call(entries,current)) $("supplier").value=current;
+      else if (current) { $("contact").replaceChildren(option("","Choose a contact")); $("phone").value=""; invalidate(); }
+    }
+    function invalidate() { $("consent").checked=false; validate(); }
+    function validate() { $("add").disabled=!(normalizeTrackerPhone($("phone").value,$("country").value)&&$("body").value.trim()&&$("consent").checked); }
+    function reset() { $("phone").value=""; $("supplier").value=""; $("contact").replaceChildren(option("","Choose a contact")); $("body").value=templates[$("template").value]; invalidate(); }
+    function draw() {
+      $("count").textContent=String(drafts.length); $("list").replaceChildren();
+      drafts.forEach(function(q,i){var b=document.createElement("button");b.type="button";b.className="btn btn-secondary";b.textContent="+"+q.phone.slice(0,2)+" ••• "+q.phone.slice(-4)+" · "+q.state;b.setAttribute("aria-pressed",String(i===selected));b.onclick=function(){selected=i;draw();};$("list").appendChild(b);});
+      var q=drafts[selected]; $("detail").hidden=!q; $("confirm").checked=false;
+      if(q){$("target").textContent="Recipient: +"+q.phone+" · "+q.state;$("preview").textContent=q.body;}
+      syncActions();
+    }
+    function syncActions(){var q=drafts[selected], ok=!!q&&$("confirm").checked&&q.state!=="User-reported sent";$("open").disabled=!ok;$("copy").disabled=!ok;$("reported").disabled=!ok||q.state!=="Opened";}
+    $("supplier").onchange=function(){
+      $("contact").replaceChildren(option("","Choose a contact"));$("phone").value="";
+      var e=entries[this.value]; if(e&&e.f) ["pic1","pic2","pic3"].forEach(function(p){if(e.f[p+"_phone"])$("contact").appendChild(option(p,String(e.f[p+"_name"]||p)));});invalidate();
+    };
+    $("contact").onchange=function(){var e=entries[$("supplier").value];$("phone").value=e&&e.f&&this.value?String(e.f[this.value+"_phone"]||""):"";invalidate();};
+    $("template").onchange=function(){$("body").value=templates[this.value];invalidate();};
+    ["phone","country","body"].forEach(function(id){$(id).addEventListener("input",invalidate);$(id).addEventListener("change",invalidate);});
+    $("consent").onchange=validate;
+    $("reset").onclick=reset;
+    $("add").onclick=function(){
+      validate();if(this.disabled)return;var n=normalizeTrackerPhone($("phone").value,$("country").value);
+      if(drafts.some(function(q){return q.phone===n;})){status("This number already has a draft in this session.");return;}
+      drafts.push({phone:n,body:$("body").value.trim(),state:"Draft"});selected=drafts.length-1;reset();draw();status("Draft prepared. Nothing was sent.");
+    };
+    $("confirm").onchange=syncActions;
+    $("open").onclick=function(){var q=drafts[selected];if(!q||this.disabled)return;var a=document.createElement("a");a.href="https://wa.me/"+q.phone+"?text="+encodeURIComponent(q.body);a.target="_blank";a.rel="noopener noreferrer";a.click();q.state="Opened";draw();status("WhatsApp link opened. Sending and delivery are not verified.");};
+    $("copy").onclick=async function(){var q=drafts[selected];if(!q||this.disabled)return;try{await navigator.clipboard.writeText(q.body);status("Message copied. Nothing was sent.");}catch(e){status("Clipboard unavailable. Select and copy the preview manually.");}};
+    $("reported").onclick=function(){var q=drafts[selected];if(!q||this.disabled)return;q.state="User-reported sent";draw();status("Recorded in this session only. No delivery confirmation.");};
+    $("remove").onclick=function(){if(selected<0)return;drafts.splice(selected,1);selected=Math.min(selected,drafts.length-1);draw();status("Draft removed.");};
+    reset();draw();return {panel:panel,refresh:refresh};
+  }
+
   function initFollowupCenter(follow) {
     injectFollowCss();
     var head = follow.querySelector("header.view-head");
     var actions = head && head.querySelector(".view-actions");
-    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button><a class="btn btn-ghost btn-sm" href="/follow-up?channel=whatsapp">WhatsApp drafts ↗</a></div>';
+    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button><button type="button" class="seg-btn" data-fmode="whatsapp" aria-pressed="false">WhatsApp drafts</button></div>';
     var box = document.createElement("section");
     box.className = "panel"; box.id = "shared-followup-panel"; box.hidden = true;
     box.innerHTML = '<div id="fu-state" class="banner" role="status">Loading…</div>' +
@@ -771,7 +857,7 @@
     var recipientTable = box.querySelector("#fu-body").closest(".table-wrap");
     recipientTable.classList.add("compact-recipient-table");
     var $ = function (id) { return box.querySelector("#" + id); };
-    var auto = null;
+    var auto = null, whatsapp = initTrackerWhatsApp(follow);
     var S = { lib: [], kind: "followup", scope: "open", models: [], only: "", selected: {}, edits: {}, results: {}, sending: false, mode: "queues", ready: false, open: "" };
     var team = function () { return typeof SENDERS === "object" ? SENDERS : {}; };
     var saved = {}; try { saved = JSON.parse(lsGet(MAIL_KEY) || "{}"); } catch (e) { saved = {}; }
@@ -786,6 +872,8 @@
       S.mode = m;
       ["follow-tabs", "follow-panel", "follow-sub"].forEach(function (id) { var el = follow.querySelector("#" + id); if (el) el.hidden = m !== "queues"; });
       box.hidden = m !== "email";
+      whatsapp.panel.hidden = m !== "whatsapp";
+      if (m === "whatsapp") whatsapp.refresh();
       var templates = follow.querySelector("#followup-settings-panel"); if (templates) templates.hidden = m !== "templates";
       if (m === "auto" && !auto) auto = initAutoPanel(follow, box);
       if (auto) { follow.querySelector("#shared-auto-panel").hidden = m !== "auto"; if (m === "auto") auto.open(); }
@@ -1066,7 +1154,7 @@
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     async function sendOne(g) {
-      if (S.send === "live" && (!window.__IMDS_SHARED_MASTER_READY__ || Date.now() - Date.parse(window.__IMDS_SHARED_MASTER_LAST_SYNC__ || "") > 120000)) throw new Error("Shared master is not current. Refresh the source before sending.");
+      if (S.send === "live" && (!window.__IMDS_SHARED_MASTER_READY__ || !Number.isFinite(Date.parse(window.__IMDS_SHARED_MASTER_LAST_SYNC__ || "")) || Date.now() - Date.parse(window.__IMDS_SHARED_MASTER_LAST_SYNC__ || "") > 120000)) throw new Error("Shared master is not current. Refresh the source before sending.");
       var ed = S.edits[g.key] || {};
       var payload = { kind: S.kind, supplierCode: g.code, supplierName: g.name, to: g.to, cc: g.cc, subject: ed.subject != null ? ed.subject : g.subject, messageBody: ed.body != null ? ed.body : g.body,
         sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: S.send === "test" || undefined, testTo: S.send === "test" ? ($("fu-testto").value || "").trim() : undefined, mode: S.send === "draft" ? "draft" : "send", partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
