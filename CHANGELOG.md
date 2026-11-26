@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-26
+
+### WhatsApp Automation: multi-sender Cloud API, campaigns and approval queue
+- New /whatsapp module with sender selection, approved Meta templates, campaign history and supplier WhatsApp contact consent management.
+- Adds additive WhatsApp columns to supplier_contacts and new whatsapp_campaigns / whatsapp_messages tables; existing email, auth and sync_outbox are unchanged.
+- Adds automatic queue and semi-automatic admin/preparer approval mode, retry for eligible failures, Meta delivery webhook and scheduled worker.
+- Sender tokens and webhook/cron secrets stay server-side. Campaign creation only includes active contacts with a valid E.164 phone and recorded opt-in.
+- Added WhatsApp unit tests and Indonesian setup guide. This feature is behind a separate branch/PR and is not production-enabled until the migration, Meta sender credentials, webhook and cron worker are configured.
+
+
 ## 2026-11-25
 
 ### Tracker: add part numbers by pasting, change a part number, search finds part numbers
