@@ -5,6 +5,8 @@
 // Draft / Send now in the Tracker (signed-in user). Also builds the reminder e-mail to the TMMIN PIC before a run.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { postToFlow } from "@/lib/automation/flow";
+import { flowOutcome } from "@/lib/imds-master/communication-state";
+import { exactSupplierDirectory } from "@/lib/imds-master/recipient-scope";
 import { DEFAULT_CONFIG, mergeCc, sanitizeConfig, type FollowupConfig, type Template } from "./center";
 import { resolveContacts, type Directory } from "./directory";
 import { buildSupplierEmailPayload, parseSenders, pickSender, type Attachment } from "./payload";
@@ -19,7 +21,7 @@ type Db = SupabaseClient;
 export type MasterRow = XlsxPart & { id: string; vendor_code?: string | null; main_pic_email?: string | null; supplier_promise_date?: string | null };
 export type PlannedEmail = {
   supplier: string; code: string; parts: number; to: string[]; cc: string[]; toFrom: string; subject: string; body?: string;
-  attachments: string[]; skip?: string; status?: "SENT" | "HANDED_OFF" | "FAILED" | "SKIPPED"; error?: string;
+  attachments: string[]; skip?: string; status?: "SENT" | "HANDED_OFF" | "FAILED" | "SKIPPED" | "UNKNOWN"; error?: string;
   /** Extra information shown in the preview and the reminder (e.g. when the executive summary PDF was made). */
   info?: string;
 };
@@ -29,7 +31,8 @@ const COLS = "id,company_name,vendor_code,project,part_no,part_name,imds_status,
 const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 async function setting<T>(db: Db, key: string): Promise<T | null> {
-  const { data } = await db.from("imds_tracker_settings").select("value").eq("key", key).maybeSingle();
+  const { data, error } = await db.from("imds_tracker_settings").select("value").eq("key", key).maybeSingle();
+  if (error) throw new Error(`Tracker setting ${key} unavailable; automation stopped.`);
   return (data?.value as T) ?? null;
 }
 async function allMasterRows(db: Db): Promise<MasterRow[]> {
@@ -38,9 +41,9 @@ async function allMasterRows(db: Db): Promise<MasterRow[]> {
     const { data, error } = await db.from("imds_master_parts").select(COLS).order("id").range(from, from + 999);
     if (error) throw new Error(error.message);
     out.push(...((data || []) as unknown as MasterRow[]));
-    if (!data || data.length < 1000) break;
+    if (!data || data.length < 1000) return out;
   }
-  return out;
+  throw new Error("Master exceeds safe automation snapshot limit; no messages planned.");
 }
 
 export type Context = { cfg: FollowupConfig; dir: Directory; due: DueDates; lib: Library; rows: MasterRow[] };
@@ -110,7 +113,7 @@ export async function buildEmails(ctx: Context, a: Automation, o: BuildOptions) 
     return { out, senderShort, senderEmail, total: groups.length };
   }
   for (const g of groups.slice(0, a.maxSuppliers)) {
-    const c = resolveContacts(dir, g.name, { vendorCode: g.code, masterEmail: g.email, fallbackMid: a.fallbackMid && cfg.fallbackMid });
+    const c = resolveContacts(exactSupplierDirectory(dir,g.name,g.code), g.name, { vendorCode: g.code, masterEmail: g.email, fallbackMid: a.fallbackMid && cfg.fallbackMid });
     const roleCc = [...c.ccAlways, ...(a.cc.mid ? c.mid : []), ...(a.cc.top ? c.top : []), ...(a.cc.dir ? c.dir : []), ...(a.cc.buyer && c.buyer ? c.buyer.emails : [])];
     const cc = mergeCc({ to: c.to, cc: [...team, ...roleCc], required: cfg.requiredCc, senderEmail });
     const mail = renderSupplierEmail({ template, config: cfg, kind: a.kind, supplier: g.name, code: g.code, parts: g.parts, due, sender: senderShort, now: o.now });
@@ -125,7 +128,8 @@ export async function buildEmails(ctx: Context, a: Automation, o: BuildOptions) 
       return att;
     };
     const plan: PlannedEmail = { supplier: g.name, code: g.code, parts: g.parts.length, to: c.to, cc, toFrom: c.toFrom, subject: mail.subject, body: mail.body, attachments: names };
-    if (!c.to.length) plan.skip = "No e-mail address (no IMDS PIC, no middle management, nothing in the master).";
+    if (new Set(g.rows.map(r=>String(r.vendor_code||"").trim().toUpperCase()).filter(Boolean)).size>1) plan.skip = "Supplier name has multiple vendor codes; review identity before sending.";
+    else if (!c.to.length) plan.skip = "No e-mail address (no IMDS PIC, no middle management, nothing in the master).";
     out.push({ plan, files, group: g, partIds: g.rows.map((r) => r.id) });
   }
   return { out, senderShort, senderEmail, total: groups.length };
@@ -137,9 +141,10 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
   const started = Date.now(), budget = o.budgetMs ?? 240_000;
   const ctx = ctxIn || await loadContext(db), slot = o.slot || wibSlot(o.now).key;
   const built = await buildEmails(ctx, a, { now: o.now });
-  const { data: logs } = await db.from("imds_tracker_followup_logs").select("supplier_name,sent_at").eq("status", "SENT").gte("sent_at", new Date(o.now.getTime() - 14 * 86400000).toISOString()).order("sent_at", { ascending: false }).limit(3000);
+  const { data: logs, error: historyError } = await db.from("imds_tracker_followup_logs").select("supplier_code,supplier_name,sent_at").eq("status", "SENT").gte("sent_at", new Date(o.now.getTime() - 14 * 86400000).toISOString()).order("sent_at", { ascending: false }).limit(3000);
+  if (historyError) throw new Error("Follow-up history unavailable; run stopped before sending.");
   const lastSent: Record<string, string> = {};
-  for (const l of (logs || []) as { supplier_name: string; sent_at: string }[]) if (l.supplier_name && !lastSent[l.supplier_name]) lastSent[l.supplier_name] = l.sent_at;
+  for (const l of (logs || []) as { supplier_code: string | null; supplier_name: string; sent_at: string }[]) { const key = l.supplier_code ? `code:${l.supplier_code}` : `name:${l.supplier_name}`; if (!lastSent[key]) lastSent[key] = l.sent_at; }
   const gap = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
   const sender = pickSender(parseSenders(process.env.FOLLOWUP_SENDERS), built.senderEmail);
   const url = process.env.POWER_AUTOMATE_EMAIL_URL?.trim(), secret = process.env.POWER_AUTOMATE_SECRET?.trim() || null;
@@ -148,24 +153,28 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
   if (!o.dryRun && !canSend) result.note = "Power Automate is not configured (POWER_AUTOMATE_EMAIL_URL + POWER_AUTOMATE_SECRET). Nothing was sent.";
   if (a.kind !== "recap" && built.total > a.maxSuppliers) result.note = [result.note, `${built.total - a.maxSuppliers} more supplier(s) are over the per-run limit (${a.maxSuppliers}).`].filter(Boolean).join(" ");
 
+  let uncertainPersist = false;
   for (const raw of built.out) {
     const item = { ...raw, body: raw.plan.body || "" };
     const plan = item.plan, logName = a.kind === "recap" ? "ALL SUPPLIERS (RECAP)" : plan.supplier;
     if (!o.withBodies) delete plan.body;
-    if (!plan.skip && a.kind !== "recap" && recentlySent(lastSent[logName], o.now, gap)) plan.skip = `Already e-mailed within ${gap} h.`;
+    if (!plan.skip && a.kind !== "recap" && (recentlySent(lastSent[`code:${plan.code}`], o.now, gap) || recentlySent(lastSent[`name:${logName}`], o.now, gap))) plan.skip = `Already e-mailed within ${gap} h.`;
     result.planned.push(plan);
     if (plan.skip) { plan.status = "SKIPPED"; result.skipped++; continue; }
     if (o.dryRun || !canSend) continue;
-    if (Date.now() - started > budget) { plan.status = "SKIPPED"; plan.skip = "Time limit of this run reached; it is included in the next run."; result.skipped++; continue; }
+    if (uncertainPersist) { plan.status="SKIPPED"; plan.skip="Earlier provider outcome could not be recorded; review before sending."; result.skipped++; continue; }
+    if (Date.now() - started > Math.max(0,budget-25_000)) { plan.status = "SKIPPED"; plan.skip = "Time limit reached; not sent. Review and reschedule explicitly."; result.skipped++; continue; }
     const one = item;
     let attachments: Attachment[] = [];
     try { attachments = await item.files(); }
     catch (e) { plan.status = "FAILED"; plan.error = "Attachments could not be built: " + (e instanceof Error ? e.message : String(e)); result.failed++; continue; }
+    if (Date.now()-started>Math.max(0,budget-25_000)) { plan.status="SKIPPED"; plan.skip="Time limit reached after preparing attachments; not sent."; result.skipped++; continue; }
     const body = item.body;
-    const { data: log } = await db.from("imds_tracker_followup_logs").insert({
+    const { data: log, error: logError } = await db.from("imds_tracker_followup_logs").insert({
       supplier_code: plan.code || null, supplier_name: logName, recipient_email: plan.to.join(";"), cc_emails: plan.cc, subject: plan.subject, message_body: body,
       part_count: plan.parts, attachment_name: attachments.map((x) => x.name).join(", ") || null, status: "PREPARED", sent_by: o.actorId
     }).select("id").single();
+    if (logError || !log?.id) { plan.status = "FAILED"; plan.error = "Could not persist the email attempt; nothing was sent."; result.failed++; continue; }
     let payload;
     try {
       payload = buildSupplierEmailPayload({ source: "tracker", followupId: log?.id, logId: log?.id, supplierCode: plan.code, supplierName: logName, to: plan.to, cc: plan.cc, sender, subject: plan.subject, body, attachments, font: ctx.cfg.font,
@@ -176,12 +185,14 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
       continue;
     }
     const d = await postToFlow(url as string, secret, payload, o.fetchImpl);
-    if (log?.id) await db.from("imds_tracker_followup_logs").update({
+    const outcome = flowOutcome(d);
+    const { error: persistError } = await db.from("imds_tracker_followup_logs").update({
       status: d.ok ? "SENT" : "FAILED", sent_at: d.ok ? new Date().toISOString() : null,
       error_message: d.error || `Automation "${a.name}"${d.handedOff ? ": accepted by the flow (HTTP 202); check the flow run history for the actual send." : "."}`,
-      provider_response: { httpStatus: d.status, ok: d.ok, handedOff: Boolean(d.handedOff), automation: a.id, slot }
+      provider_response: { httpStatus: d.status, ok: d.ok, handedOff: Boolean(d.handedOff), outcome, automation: a.id, slot }
     }).eq("id", log.id);
-    if (d.ok) { plan.status = d.handedOff ? "HANDED_OFF" : "SENT"; result.sent++; } else { plan.status = "FAILED"; plan.error = d.error; result.failed++; }
+    if (persistError) { plan.status = "UNKNOWN"; plan.error = "Provider outcome could not be recorded; reconcile before retry."; result.failed++; uncertainPersist=true; continue; }
+    if (d.ok) { plan.status = d.handedOff ? "HANDED_OFF" : "SENT"; result.sent++; } else { plan.status = outcome === "UNKNOWN" ? "UNKNOWN" : "FAILED"; plan.error = outcome === "UNKNOWN" ? "Provider outcome uncertain; reconcile before retry." : "Provider rejected the request."; result.failed++; }
   }
   return result;
 }

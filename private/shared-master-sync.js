@@ -204,6 +204,8 @@
       if (lastEtag && hasData) headers["If-None-Match"] = lastEtag;
       var response = await fetch("/api/imds-master/tracker-data", { method: "GET", cache: "no-store", credentials: "same-origin", headers: headers });
       if (response.status === 304) {
+        window.__IMDS_SHARED_MASTER_READY__ = hasData;
+        window.__IMDS_SHARED_MASTER_LAST_SYNC__ = new Date().toISOString();
         if (!silent) loadStatus("ok", "Up to date · " + new Date().toLocaleTimeString());
         return "same";
       }
@@ -212,19 +214,22 @@
       if (!response.ok) throw new Error(payload && payload.error ? payload.error : "Shared master could not be loaded.");
       if (!Array.isArray(payload.rows)) throw new Error("Shared master response is invalid.");
       if (!payload.rows.length) {
+        window.__IMDS_SHARED_MASTER_READY__ = false;
+        lastEtag = null;
         if (typeof setConnectionState === "function") setConnectionState("NOT_CONNECTED");
         if (shown) loadStatus("err", "The shared master is empty. Upload the IMDS Remaining master in Settings.");
         return "empty";
       }
       var dataset = applyPayload(payload);
       lastEtag = response.headers.get("ETag") || null;
-      if (lastEtag) cachePut({ etag: lastEtag, payload: payload, savedAt: Date.now() });
+      // Do not persist supplier master or contacts in shared browser storage.
       if (dataset && (shown || !silent)) loadStatus("ok", "Live · " + dataset.validation.total.toLocaleString() + " parts");
       return "ok";
     } catch (error) {
       console.error("IMDS Tracker shared-master refresh failed.", error);
       var message = error && error.message ? error.message : "Shared master refresh failed.";
-      if (!silent || !hasData) loadStatus("err", hasData ? "Could not refresh: " + message : message, function () { refreshSharedMaster(false); });
+      window.__IMDS_SHARED_MASTER_READY__ = false;
+      loadStatus("err", hasData ? "Could not refresh: " + message : message, function () { refreshSharedMaster(false); });
       if (!window.__IMDS_SHARED_MASTER_READY__ && typeof setConnectionState === "function") setConnectionState("SOURCE_ERROR");
       return "error";
     } finally {
@@ -232,20 +237,11 @@
     }
   }
 
-  // Show the last copy instantly, then verify against the database in the background.
+  // Always obtain the current authenticated server snapshot; never hydrate a previous user's cache.
   async function startFast() {
     loadStatus("busy", "Loading from database…");
-    try {
-      var cached = await cacheGet();
-      if (cached && cached.payload && Array.isArray(cached.payload.rows) && cached.payload.rows.length) {
-        applyPayload(cached.payload);
-        lastEtag = cached.etag || null;
-        loadStatus("busy", "Showing saved data · checking for updates…");
-      }
-    } catch (e) { /* fall through to the network */ }
-    var result = await refreshSharedMaster(hasData);
-    if (result === "same") loadStatus("ok", "Live · up to date");
-    else if (result === "error" && hasData) loadStatus("err", "Could not reach the database; showing the last saved data.", function () { refreshSharedMaster(false); });
+    try { var db = await cacheOpen(); if (db) { var tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").delete(CACHE_KEY); } } catch (e) { /* legacy cache cleanup is best effort */ }
+    await refreshSharedMaster(false);
   }
 
   // ---- Tracker-native panels: Settings → shared master import; Follow-up → sequential supplier e-mail ----
@@ -473,6 +469,12 @@
       b.setAttribute("aria-controls", item[2].id); nav.appendChild(b);
       b.onclick = function () { select(item[0]); }; return b;
     });
+    nav.addEventListener("keydown", function(e) {
+      var i = buttons.indexOf(e.target), n = buttons.length;
+      if (i < 0 || !["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;
+      e.preventDefault(); var next = e.key === "Home" ? 0 : e.key === "End" ? n-1 : (i + (e.key === "ArrowRight" ? 1 : n-1)) % n;
+      select(items[next][0]); buttons[next].focus();
+    });
     function select(key) {
       items.forEach(function (item, i) { var on = item[0] === key; item[2].hidden = !on; buttons[i].classList.toggle("on", on); buttons[i].setAttribute("aria-pressed", String(on)); });
       if (onSelect) onSelect(key);
@@ -491,6 +493,7 @@
     var observer = new MutationObserver(function(){empty.hidden = !model.hidden;}); observer.observe(model,{attributes:true,attributeFilter:["hidden"]}); empty.hidden = !model.hidden;
     var app = pane("settings-appearance-pane", [appearance]);
     var link = document.createElement("p"); link.className = "muted"; link.textContent = "Email templates, defaults and sending rules are now in Follow-up → Templates & rules."; app.appendChild(link);
+    var pilot = document.createElement("a"); pilot.className = "btn btn-secondary"; pilot.href = "/tracker-workbench"; pilot.textContent = "Open React workbench (read-only preview)"; app.appendChild(pilot);
     var search = document.createElement("input"); search.type = "search"; search.className = "field compact-model-search"; search.placeholder = "Find a model…"; search.setAttribute("aria-label","Find a model");
     model.querySelector(".panel-head").after(search);
     var body = model.querySelector("#model-config-tbody");
@@ -515,7 +518,7 @@
   }
 
   // ---- Directory: saved on the server, so contacts follow the user to every browser ----
-  var dirSync = { version: 0, timer: null, busy: false, again: false, applying: false, blocked: false };
+  var dirSync = { version: 0, timer: null, busy: false, again: false, applying: false, blocked: false, ready: false };
   function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
   function dirPayload() { return { v: 1, entries: DIR.entries, buyers: DIR.buyers, aliases: DIR.aliases, meta: DIR.meta }; }
@@ -525,22 +528,29 @@
     if (n) { n.textContent = text; n.style.color = bad ? "var(--bad)" : ""; }
   }
   function schedulePush() {
-    if (dirSync.blocked) return;
+    if (dirSync.blocked || !dirSync.ready) return;
     window.clearTimeout(dirSync.timer);
     dirStatus("Unsaved changes…");
     dirSync.timer = window.setTimeout(function () { pushDirectory(false); }, 1500);
   }
   async function pushDirectory(retried) {
+    if (dirSync.blocked || !dirSync.ready) return;
     if (dirSync.busy) { dirSync.again = true; return; }
     dirSync.busy = true; dirStatus("Saving to database…");
+    var snapshot = JSON.stringify(dirPayload());
     try {
-      var r = await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "directory", value: dirPayload(), baseVersion: dirSync.version }) });
-      dirSync.version = r.version; lsSet("imds-dir-srv-version", String(r.version)); lsSet("imds-dir-dirty", "0");
-      dirStatus("Directory saved in the database");
+      var r = await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "directory", value: JSON.parse(snapshot), baseVersion: dirSync.version }) });
+      dirSync.version = r.version; lsSet("imds-dir-srv-version", String(r.version));
+      var changed = JSON.stringify(dirPayload()) !== snapshot;
+      lsSet("imds-dir-dirty", changed ? "1" : "0");
+      if (changed) { dirSync.again = true; dirStatus("Newer local edits are waiting to save…"); }
+      else dirStatus("Directory saved in the database");
     } catch (e) {
       if (e.payload && e.payload.conflict && !retried) {
-        try { var g = await api("/api/imds-master/settings?key=directory"); dirSync.version = g.version; } catch (e2) { /* reported below */ }
-        dirSync.busy = false; return pushDirectory(true);
+        dirSync.blocked = true;
+        lsSet("imds-dir-dirty", "1");
+        dirStatus("Conflict: another user saved a newer directory. Your local edits are retained. Download a backup before reloading; ask an administrator to reconcile changes.", true);
+        return;
       }
       if (/role is required/i.test(String(e.message))) { dirSync.blocked = true; dirStatus("Read-only: your role cannot save contacts to the database.", true); }
       else dirStatus("Not saved to the database: " + e.message + " (kept in this browser)", true);
@@ -569,19 +579,17 @@
     try {
       var g = await api("/api/imds-master/settings?key=directory");
       var localCount = Object.keys(DIR.entries || {}).length, dirty = lsGet("imds-dir-dirty") === "1";
-      if (!g.exists) { dirSync.version = 0; if (localCount) await pushDirectory(false); else dirStatus("Directory is empty. Import contacts once and they are remembered."); return; }
-      dirSync.version = g.version;
-      var server = g.value || {};
-      if (localCount && (dirty || !known)) {
-        // This browser has contacts the server may not: add what is missing, never overwrite the server's entries.
-        var added = 0;
-        server.entries = server.entries || {}; server.buyers = server.buyers || {};
-        Object.keys(DIR.entries).forEach(function (k) { if (!server.entries[k]) { server.entries[k] = DIR.entries[k]; added++; } });
-        Object.keys(DIR.buyers || {}).forEach(function (k) { if (!server.buyers[k]) server.buyers[k] = DIR.buyers[k]; });
-        server.aliases = Object.assign({}, DIR.aliases || {}, server.aliases || {}); server.meta = Object.assign({}, DIR.meta || {}, server.meta || {});
-        applyDirectory(server);
-        if (added || dirty) { lsSet("imds-dir-dirty", "1"); await pushDirectory(false); return; }
-      } else if (g.version !== known || !localCount) applyDirectory(server);
+      if (g.tableMissing) throw new Error("Directory storage is not configured.");
+      dirSync.version = g.version || 0;
+      dirSync.ready = true;
+      if ((dirty && known !== dirSync.version) || (!known && localCount)) {
+        dirSync.blocked = true;
+        dirStatus("Unverified local directory edits: export a backup and reconcile with the server before saving. Nothing was overwritten.", true);
+        return;
+      }
+      if (dirty && known === dirSync.version) { await pushDirectory(false); return; }
+      if (!g.exists) { applyDirectory({}); dirStatus("Directory is empty. Import contacts once to start."); return; }
+      applyDirectory(g.value || {});
       lsSet("imds-dir-srv-version", String(g.version));
       dirStatus("Directory loaded from the database · " + Object.keys(DIR.entries).length.toLocaleString() + " suppliers");
     } catch (e) { dirStatus("Directory database unavailable: " + e.message + " (using this browser's copy)", true); }
@@ -718,11 +726,90 @@
       function () { toast("Outlook could not be opened from here. Copy the message from the preview instead.", "err"); });
   }
 
+  // Tracker-native manual communication. No provider credentials, background calls or automatic sends.
+  function normalizeTrackerPhone(value, country) {
+    var n = String(value || "").trim().replace(/[\s().-]/g, "");
+    if (country === "ID" && /^0\d+$/.test(n)) n = "+62" + n.slice(1);
+    return /^\+[1-9]\d{7,14}$/.test(n) ? n.slice(1) : "";
+  }
+  function initTrackerWhatsApp(follow) {
+    var panel = document.createElement("section");
+    panel.id = "tracker-wa-panel"; panel.className = "panel"; panel.hidden = true;
+    panel.innerHTML = '<div class="panel-head"><div><h2>WhatsApp drafts</h2><p class="muted">Review each contact and message. Nothing is sent by this workspace.</p></div></div>' +
+      '<div class="banner">Manual channel · no provider charge · no delivery receipts. Community membership does not establish consent.</div>' +
+      '<div class="tracker-wa-grid"><div class="fu-box"><h3>Recipient &amp; message</h3>' +
+      '<label class="field"><span>Supplier directory (optional)</span><select id="tw-supplier"><option value="">Enter manually</option></select></label>' +
+      '<label class="field"><span>IMDS PIC</span><select id="tw-contact"><option value="">Choose a contact</option></select></label>' +
+      '<label class="field"><span>Country / number format</span><select id="tw-country"><option value="">International (+ country code)</option><option value="ID">Indonesia (08 or +62)</option></select></label>' +
+      '<label class="field"><span>Phone number</span><input id="tw-phone" type="tel" autocomplete="off" placeholder="+ country code"></label>' +
+      '<label class="field"><span>Message type</span><select id="tw-template"><option value="request">Initial request</option><option value="reminder">Outstanding reminder</option><option value="promise">Promise confirmation</option><option value="missed">Missed promise</option></select></label>' +
+      '<label class="field"><span>Message preview</span><textarea id="tw-body" rows="5" maxlength="1500"></textarea></label>' +
+      '<label class="inline-check"><input id="tw-consent" type="checkbox"> I verified the recipient, their WhatsApp consent and external-sharing permission for this exact message.</label>' +
+      '<div class="fu-bar"><button type="button" class="btn btn-primary" id="tw-add" disabled>Add to review queue</button><button type="button" class="btn btn-secondary" id="tw-reset">Reset draft</button></div>' +
+      '</div><div class="fu-box"><h3>Review queue <span id="tw-count" class="muted">0</span></h3><p class="muted small">Session only. Opening WhatsApp does not send a message. Recheck consent and content before opening each draft.</p>' +
+      '<div id="tw-list" class="tracker-wa-list"></div><div id="tw-detail" hidden><p id="tw-target"></p><pre id="tw-preview"></pre>' +
+      '<label class="inline-check"><input type="checkbox" id="tw-confirm"> Rechecked recipient and current consent</label>' +
+      '<div class="fu-bar"><button type="button" class="btn btn-primary" id="tw-open" disabled>Open WhatsApp</button><button type="button" class="btn btn-secondary" id="tw-copy" disabled>Copy message</button><button type="button" class="btn btn-secondary" id="tw-reported" disabled>Mark manually sent</button><button type="button" class="btn btn-ghost" id="tw-remove">Remove</button></div></div>' +
+      '<p id="tw-status" class="small" role="status" aria-live="polite"></p></div></div>';
+    follow.appendChild(panel);
+    var $ = function(id) { return panel.querySelector("#tw-" + id); };
+    var drafts = [], selected = -1, entries = {};
+    var templates = {
+      request:"Dear supplier, this is the IMDS team. Please review our request and confirm your expected submission date. Thank you.",
+      reminder:"Dear supplier, this is the IMDS team. Please review the outstanding IMDS items and confirm your next action. Thank you.",
+      promise:"Dear supplier, this is the IMDS team. Please confirm your expected IMDS submission date. Thank you.",
+      missed:"Dear supplier, this is the IMDS team. Please provide an updated expected submission date for the outstanding IMDS items. Thank you."
+    };
+    function status(message) { $("status").textContent = message; }
+    function option(value,label) { var o = document.createElement("option"); o.value=value; o.textContent=label; return o; }
+    function refresh() {
+      var current = $("supplier").value;
+      entries = typeof dirSync !== "undefined" && dirSync.ready && !dirSync.blocked && typeof DIR !== "undefined" ? DIR.entries || {} : {};
+      $("supplier").replaceChildren(option("", "Enter manually"));
+      Object.keys(entries).sort(function(a,b){return String(entries[a].name||a).localeCompare(String(entries[b].name||b));}).forEach(function(key){
+        var e=entries[key]; $("supplier").appendChild(option(key, String(e.name||key)+(e.code?" · "+e.code:"")));
+      });
+      if (Object.prototype.hasOwnProperty.call(entries,current)) $("supplier").value=current;
+      else if (current) { $("contact").replaceChildren(option("","Choose a contact")); $("phone").value=""; invalidate(); }
+    }
+    function invalidate() { $("consent").checked=false; validate(); }
+    function validate() { $("add").disabled=!(normalizeTrackerPhone($("phone").value,$("country").value)&&$("body").value.trim()&&$("consent").checked); }
+    function reset() { $("phone").value=""; $("supplier").value=""; $("contact").replaceChildren(option("","Choose a contact")); $("body").value=templates[$("template").value]; invalidate(); }
+    function draw() {
+      $("count").textContent=String(drafts.length); $("list").replaceChildren();
+      drafts.forEach(function(q,i){var b=document.createElement("button");b.type="button";b.className="btn btn-secondary";b.textContent="+"+q.phone.slice(0,2)+" ••• "+q.phone.slice(-4)+" · "+q.state;b.setAttribute("aria-pressed",String(i===selected));b.onclick=function(){selected=i;draw();};$("list").appendChild(b);});
+      var q=drafts[selected]; $("detail").hidden=!q; $("confirm").checked=false;
+      if(q){$("target").textContent="Recipient: +"+q.phone+" · "+q.state;$("preview").textContent=q.body;}
+      syncActions();
+    }
+    function syncActions(){var q=drafts[selected], ok=!!q&&$("confirm").checked&&q.state!=="User-reported sent";$("open").disabled=!ok;$("copy").disabled=!ok;$("reported").disabled=!ok||q.state!=="Opened";}
+    $("supplier").onchange=function(){
+      $("contact").replaceChildren(option("","Choose a contact"));$("phone").value="";
+      var e=entries[this.value]; if(e&&e.f) ["pic1","pic2","pic3"].forEach(function(p){if(e.f[p+"_phone"])$("contact").appendChild(option(p,String(e.f[p+"_name"]||p)));});invalidate();
+    };
+    $("contact").onchange=function(){var e=entries[$("supplier").value];$("phone").value=e&&e.f&&this.value?String(e.f[this.value+"_phone"]||""):"";invalidate();};
+    $("template").onchange=function(){$("body").value=templates[this.value];invalidate();};
+    ["phone","country","body"].forEach(function(id){$(id).addEventListener("input",invalidate);$(id).addEventListener("change",invalidate);});
+    $("consent").onchange=validate;
+    $("reset").onclick=reset;
+    $("add").onclick=function(){
+      validate();if(this.disabled)return;var n=normalizeTrackerPhone($("phone").value,$("country").value);
+      if(drafts.some(function(q){return q.phone===n;})){status("This number already has a draft in this session.");return;}
+      drafts.push({phone:n,body:$("body").value.trim(),state:"Draft"});selected=drafts.length-1;reset();draw();status("Draft prepared. Nothing was sent.");
+    };
+    $("confirm").onchange=syncActions;
+    $("open").onclick=function(){var q=drafts[selected];if(!q||this.disabled)return;var a=document.createElement("a");a.href="https://wa.me/"+q.phone+"?text="+encodeURIComponent(q.body);a.target="_blank";a.rel="noopener noreferrer";a.click();q.state="Opened";draw();status("WhatsApp link opened. Sending and delivery are not verified.");};
+    $("copy").onclick=async function(){var q=drafts[selected];if(!q||this.disabled)return;try{await navigator.clipboard.writeText(q.body);status("Message copied. Nothing was sent.");}catch(e){status("Clipboard unavailable. Select and copy the preview manually.");}};
+    $("reported").onclick=function(){var q=drafts[selected];if(!q||this.disabled)return;q.state="User-reported sent";draw();status("Recorded in this session only. No delivery confirmation.");};
+    $("remove").onclick=function(){if(selected<0)return;drafts.splice(selected,1);selected=Math.min(selected,drafts.length-1);draw();status("Draft removed.");};
+    reset();draw();return {panel:panel,refresh:refresh};
+  }
+
   function initFollowupCenter(follow) {
     injectFollowCss();
     var head = follow.querySelector("header.view-head");
     var actions = head && head.querySelector(".view-actions");
-    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button><a class="btn btn-ghost btn-sm" href="/follow-up?channel=whatsapp">WhatsApp drafts ↗</a></div>';
+    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button><button type="button" class="seg-btn" data-fmode="whatsapp" aria-pressed="false">WhatsApp drafts</button></div>';
     var box = document.createElement("section");
     box.className = "panel"; box.id = "shared-followup-panel"; box.hidden = true;
     box.innerHTML = '<div id="fu-state" class="banner" role="status">Loading…</div>' +
@@ -769,7 +856,7 @@
     var recipientTable = box.querySelector("#fu-body").closest(".table-wrap");
     recipientTable.classList.add("compact-recipient-table");
     var $ = function (id) { return box.querySelector("#" + id); };
-    var auto = null;
+    var auto = null, whatsapp = initTrackerWhatsApp(follow);
     var S = { lib: [], kind: "followup", scope: "open", models: [], only: "", selected: {}, edits: {}, results: {}, sending: false, mode: "queues", ready: false, open: "" };
     var team = function () { return typeof SENDERS === "object" ? SENDERS : {}; };
     var saved = {}; try { saved = JSON.parse(lsGet(MAIL_KEY) || "{}"); } catch (e) { saved = {}; }
@@ -784,6 +871,8 @@
       S.mode = m;
       ["follow-tabs", "follow-panel", "follow-sub"].forEach(function (id) { var el = follow.querySelector("#" + id); if (el) el.hidden = m !== "queues"; });
       box.hidden = m !== "email";
+      whatsapp.panel.hidden = m !== "whatsapp";
+      if (m === "whatsapp") whatsapp.refresh();
       var templates = follow.querySelector("#followup-settings-panel"); if (templates) templates.hidden = m !== "templates";
       if (m === "auto" && !auto) auto = initAutoPanel(follow, box);
       if (auto) { follow.querySelector("#shared-auto-panel").hidden = m !== "auto"; if (m === "auto") auto.open(); }
@@ -1064,6 +1153,7 @@
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     async function sendOne(g) {
+      if (S.send === "live" && (!window.__IMDS_SHARED_MASTER_READY__ || !Number.isFinite(Date.parse(window.__IMDS_SHARED_MASTER_LAST_SYNC__ || "")) || Date.now() - Date.parse(window.__IMDS_SHARED_MASTER_LAST_SYNC__ || "") > 120000)) throw new Error("Shared master is not current. Refresh the source before sending.");
       var ed = S.edits[g.key] || {};
       var payload = { kind: S.kind, supplierCode: g.code, supplierName: g.name, to: g.to, cc: g.cc, subject: ed.subject != null ? ed.subject : g.subject, messageBody: ed.body != null ? ed.body : g.body,
         sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: S.send === "test" || undefined, testTo: S.send === "test" ? ($("fu-testto").value || "").trim() : undefined, mode: S.send === "draft" ? "draft" : "send", partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
@@ -1403,7 +1493,7 @@
     }
     var sel = 0;
     function chip(p) {
-      return p.skip ? '<span class="au-st held">Skipped</span>' : p.status === "FAILED" ? '<span class="au-st err">Failed</span>' : p.status === "HANDED_OFF" ? '<span class="au-st ok">Handed off</span>' : p.status === "SENT" ? '<span class="au-st ok">Sent</span>' : '<span class="au-st go">Will send</span>';
+      return p.skip ? '<span class="au-st held">Skipped</span>' : p.status === "UNKNOWN" ? '<span class="au-st err">Unknown — reconcile</span>' : p.status === "FAILED" ? '<span class="au-st err">Failed</span>' : p.status === "HANDED_OFF" ? '<span class="au-st ok">Handed off</span>' : p.status === "SENT" ? '<span class="au-st ok">Sent</span>' : '<span class="au-st go">Will send</span>';
     }
     function showPlan(r, title) {
       plan = r; var rows = r.planned || [], box = $("au-prev"); box.hidden = false;
@@ -1435,7 +1525,7 @@
         '<span>Files</span><b class="au-files-l">' + (p.attachments.length ? p.attachments.map(function (n) { return '<span class="au-file">📎 ' + esc(n) + "</span>"; }).join("") : "none") + "</b></div>" +
         (p.info ? '<p class="small muted" style="margin:0 0 8px">' + esc(p.info) + "</p>" : "") +
         (p.skip ? '<p class="fu-res held" style="margin:0 0 8px">Not sent: ' + esc(p.skip) + "</p>" : "") +
-        (p.status === "FAILED" ? '<p class="fu-res err" style="margin:0 0 8px">' + esc(p.error || "Failed") + "</p>" : "") +
+        ((p.status === "FAILED" || p.status === "UNKNOWN") ? '<p class="fu-res err" style="margin:0 0 8px">' + esc(p.error || "Failed") + "</p>" : "") +
         (p.body ? '<div class="fs-preview au-body">' + previewHtml(p.body) + "</div>" : "") +
         (p.body && !p.skip ? '<div class="fu-bar" style="margin:10px 0 0"><button type="button" class="btn btn-secondary btn-sm" data-draft="' + esc(p.supplier) + '">Download as Outlook draft (with the real files)</button><span class="muted small" id="au-draft-msg"></span></div>' : "");
     }

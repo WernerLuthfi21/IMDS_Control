@@ -168,3 +168,27 @@ test("tracker compact settings and template editor preserve original controls an
   await page.getByRole("button",{name:"Recipients & files"}).click();
   await expect(page.locator("#fs-req")).toHaveValue("test@example.com");
 });
+
+
+test("Tracker native WhatsApp draft requires consent and explicit country, with no provider request", async ({page}) => {
+  const src=readFileSync("private/shared-master-sync.js","utf8");
+  const start=src.indexOf("  function normalizeTrackerPhone("), end=src.indexOf("  function initFollowupCenter(",start);
+  expect(start).toBeGreaterThan(-1); expect(end).toBeGreaterThan(start);
+  await page.setContent('<main id="fixture"></main>');
+  await page.addScriptTag({content:src.slice(start,end)+'\nvar wa=initTrackerWhatsApp(document.getElementById("fixture"));wa.panel.hidden=false;'});
+  await page.locator("#tw-phone").fill("081234567890");
+  await page.locator("#tw-consent").check();
+  await expect(page.locator("#tw-add")).toBeDisabled();
+  await page.locator("#tw-country").selectOption("ID");
+  await expect(page.locator("#tw-consent")).not.toBeChecked();
+  await page.locator("#tw-consent").check();
+  await page.locator("#tw-add").click();
+  await expect(page.locator("#tw-count")).toHaveText("1");
+  await expect(page.locator("#tw-open")).toBeDisabled();
+  await expect(page.locator("#tw-reported")).toBeDisabled();
+  await page.locator("#tw-confirm").check();
+  await expect(page.locator("#tw-open")).toBeEnabled();
+  await expect(page.locator("#tw-reported")).toBeDisabled();
+  await page.locator("#tw-remove").click();
+  await expect(page.locator("#tw-count")).toHaveText("0");
+});

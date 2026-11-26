@@ -66,6 +66,7 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
   function searchSubmit(e: React.FormEvent) { e.preventDefault(); const q = query.trim(); if (q) router.push(`/judgement?q=${encodeURIComponent(q)}`); }
   const themeButton = <button type="button" className="theme-toggle shell-theme" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Light mode" : "Dark mode"}>{theme === "dark" ? <Sun size={16}/> : <Moon size={16}/>}</button>;
   if (["/login", "/forgot-password", "/reset-password"].includes(pathname)) return <div className="auth-shell">{themeButton}{children}<ConfirmHost/></div>;
+  if (pathname === "/tracker-workbench") return <>{children}</>;
   if (pathname === "/workspace") return <div className="workspace-selector-shell">{themeButton}{children}<ConfirmHost/></div>;
   return <div className="app-frame"><ConfirmHost/>
     <a className="skip-link" href="#main-content">Skip to content</a>

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/security/request";
+import { flowOutcome } from "@/lib/imds-master/communication-state";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
@@ -6,6 +8,10 @@ import { postToFlow } from "@/lib/automation/flow";
 import { emailsOf } from "@/lib/followup/recipients";
 import { buildSupplierEmailPayload, toHtml, parseSenders, pickSender, MAX_ATTACHMENT_BYTES, type Attachment } from "@/lib/followup/payload";
 import { gapHoursFromEnv, recentlySent } from "@/lib/followup/guard";
+import { verifyTrackerPartScope } from "@/lib/imds-master/part-scope";
+import { allowedSupplierEmails, verifyRecipients } from "@/lib/imds-master/recipient-scope";
+import type { Directory } from "@/lib/followup/directory";
+import { TEAM } from "@/lib/followup/render";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
 import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, signOff, type Kind } from "@/lib/followup/center";
@@ -18,7 +24,8 @@ export const maxDuration = 60;
 type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>;
 
 async function loadConfig(supabase: Db) {
-  const { data } = await supabase.from("imds_tracker_settings").select("value").eq("key", "followup_config").maybeSingle();
+  const { data, error } = await supabase.from("imds_tracker_settings").select("value").eq("key", "followup_config").maybeSingle();
+  if (error) throw new Error("Follow-up settings unavailable.");
   return sanitizeConfig(data?.value ?? DEFAULT_CONFIG);
 }
 
@@ -65,6 +72,7 @@ type SendBody = {
 const RECAP_NAME = "ALL SUPPLIERS (RECAP)";
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request.headers)) return NextResponse.json({ error: "Request origin rejected." }, { status: 403 });
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -82,6 +90,7 @@ export async function POST(request: NextRequest) {
   const test = body.test === true;
   const draft = body.mode === "draft";
   const senders = parseSenders(process.env.FOLLOWUP_SENDERS);
+  if ((body.to != null && !Array.isArray(body.to)) || (body.cc != null && !Array.isArray(body.cc)) || (body.partIds != null && !Array.isArray(body.partIds))) return NextResponse.json({ error: "Invalid recipient or part selection." }, { status: 400 });
   let to = emailsOf((body.to || []).join(";")).slice(0, recap ? 400 : 20);
   if (test) {
     // A test may only reach the person who is testing (or their own organisation), never a supplier.
@@ -99,7 +108,8 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
-  const config = await loadConfig(supabase);
+  let config;
+  try { config = await loadConfig(supabase); } catch { return NextResponse.json({ error: "Follow-up settings unavailable. Nothing was sent." }, { status: 503 }); }
   const sender = pickSender(senders, body.sender);   // not on the allow-list => the flow's own mailbox sends
   // The page already adds the sign-off; this only covers an older cached page. Never added twice.
   const messageBody = signOff(rawBody, config, sender?.name);
@@ -107,7 +117,8 @@ export async function POST(request: NextRequest) {
 
   const gapHours = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
   if (!draft && !test && !body.force && gapHours > 0) {
-    const { data: last } = await supabase.from("imds_tracker_followup_logs").select("sent_at").eq("supplier_name", supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
+    const { data: last, error: historyError } = await supabase.from("imds_tracker_followup_logs").select("sent_at").eq("supplier_name", supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
+    if (historyError) return NextResponse.json({ error: "Follow-up history unavailable. Nothing was sent." }, { status: 503 });
     if (recentlySent(last?.[0]?.sent_at, new Date(), gapHours)) {
       return NextResponse.json({ error: `${supplierName} was already e-mailed within the last ${gapHours} hours. Nothing was sent.`, skipped: "RECENTLY_SENT" }, { status: 409 });
     }
@@ -119,23 +130,35 @@ export async function POST(request: NextRequest) {
   }
 
   // Attachments describe exactly the parts listed in the e-mail: the browser sends their ids, the server reads them from the shared master.
-  const ids = [...new Set((body.partIds || []).map(String))].slice(0, 6000);
-  const parts: (XlsxPart & { vendor_code?: string | null })[] = [];
+  const ids = [...new Set((body.partIds || []).map(String))];
+  if (ids.length > 6000) return NextResponse.json({ error: "Part selection exceeds the safe limit. Narrow the scope." }, { status: 413 });
+  const parts: (XlsxPart & { vendor_code?: string | null; main_pic_email?: string | null })[] = [];
   for (let i = 0; i < ids.length; i += 150) {
     const { data, error } = await supabase.from("imds_master_parts")
-      .select("company_name,vendor_code,project,part_no,part_name,imds_status,imds_id_version,md_id_version,md_status_update_date,submission_plan,supplier_promise_date,comment")
+      .select("company_name,vendor_code,main_pic_email,project,part_no,part_name,imds_status,imds_id_version,md_id_version,md_status_update_date,submission_plan,supplier_promise_date,comment")
       .in("id", ids.slice(i, i + 150));
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    parts.push(...((data || []) as (XlsxPart & { vendor_code?: string | null; supplier_promise_date?: string | null })[]).map((p) => ({ ...p, submission_plan: (p as { supplier_promise_date?: string | null }).supplier_promise_date || p.submission_plan })));
+    parts.push(...((data || []) as (XlsxPart & { vendor_code?: string | null; main_pic_email?: string | null; supplier_promise_date?: string | null })[]).map((p) => ({ ...p, submission_plan: (p as { supplier_promise_date?: string | null }).supplier_promise_date || p.submission_plan })));
   }
   const supplierCode = recap ? "" : String(body.supplierCode || parts[0]?.vendor_code || "");
+  const scopeError = verifyTrackerPartScope({ idsCount: ids.length, parts, supplierName, supplierCode, recap, requireParts: !draft && !test && !recap });
+  if (scopeError) return NextResponse.json({ error: scopeError + " Nothing was sent." }, { status: 422 });
+  if (!draft && !test && !recap) {
+    const directory = await supabase.from("imds_tracker_settings").select("value").eq("key","directory").maybeSingle();
+    const byName = await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).eq("supplier_name",supplierName).limit(1000);
+    const byCode = supplierCode ? await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).eq("supplier_code",supplierCode).limit(1000) : {data:[],error:null};
+    if(directory.error||byName.error||byCode.error)return NextResponse.json({error:"Recipient directory unavailable. Nothing was sent."},{status:503});
+    const allowed=allowedSupplierEmails({dir:(directory.data?.value||{}) as Directory,company:supplierName,code:supplierCode,masterEmails:parts.map(p=>p.main_pic_email||""),contacts:[...(byName.data||[]),...(byCode.data||[])],fallbackMid:config.fallbackMid});
+    const violation=verifyRecipients(to,cc,allowed,[...Object.values(TEAM),...senders.map(s=>s.email),auth.email||""],config.requiredCc);
+    if(violation)return NextResponse.json({error:violation+" Nothing was sent."},{status:422});
+  }
   const dateTag = new Date().toISOString().slice(0, 10);
   const stem = recap ? `IMDS_Outstanding_ALL_${dateTag}` : `IMDS_Outstanding_${supplierCode || "SUPPLIER"}_${dateTag}`;
   const attachments: Attachment[] = [];
   const wantPdf = body.attachments?.pdf ?? config.attachments.pdf, wantXlsx = body.attachments?.xlsx ?? config.attachments.xlsx;
   // Prefer the PDF the Tracker itself draws (same layout as the "Supplier PDF" button). The server-built text
   // PDF is only a fallback for callers that do not send one.
-  const browserPdf = !recap && wantPdf && body.supplierPdf?.base64 ? Buffer.from(String(body.supplierPdf.base64), "base64") : null;
+  const browserPdf = (draft || test) && !recap && wantPdf && body.supplierPdf?.base64 ? Buffer.from(String(body.supplierPdf.base64), "base64") : null;
   if (browserPdf) {
     if (browserPdf.length < 100 || browserPdf.subarray(0, 4).toString("latin1") !== "%PDF") return NextResponse.json({ error: "The supplier PDF from the Tracker is not a valid PDF. Nothing was sent." }, { status: 422 });
     if (browserPdf.length > MAX_ATTACHMENT_BYTES) return NextResponse.json({ error: "The supplier PDF is larger than 10 MB. Nothing was sent." }, { status: 413 });
@@ -187,13 +210,15 @@ export async function POST(request: NextRequest) {
   }
   const delivery = await postToFlow(emailUrl as string, flowSecret, payload);
   const status = delivery.ok ? "SENT" : "FAILED";
-  await supabase.from("imds_tracker_followup_logs").update({
-    status, sent_at: delivery.ok ? new Date().toISOString() : null, error_message: delivery.error || (delivery.handedOff ? "Accepted by the flow (HTTP 202); check the flow run history for the actual send." : null), provider_response: { httpStatus: delivery.status, ok: delivery.ok, handedOff: Boolean(delivery.handedOff) }
+  const outcome = flowOutcome(delivery);
+  const { error: persistError } = await supabase.from("imds_tracker_followup_logs").update({
+    status, sent_at: delivery.ok ? new Date().toISOString() : null, error_message: delivery.error || (delivery.handedOff ? "Accepted by the flow (HTTP 202); check the flow run history for the actual send." : null), provider_response: { httpStatus: delivery.status, ok: delivery.ok, handedOff: Boolean(delivery.handedOff), outcome }
   }).eq("id", log.id);
+  if (persistError) return NextResponse.json({ error: "Provider outcome could not be recorded. Do not resend until reconciled.", logId: log.id, outcome: "UNKNOWN" }, { status: 503 });
   await supabase.from("audit_events").insert({
     actor_id: auth.userId, action: delivery.ok ? "IMDS_TRACKER_SUPPLIER_EMAIL_SENT" : "IMDS_TRACKER_SUPPLIER_EMAIL_FAILED", entity_type: "imds_tracker_followup", entity_id: log.id,
     metadata: { kind, test, supplierCode, recipientCount: to.length, ccCount: cc.length, parts: ids.length, attachments: attachments.map((a) => a.name), status }
   });
-  if (!delivery.ok) return NextResponse.json({ error: delivery.error || "Power Automate did not accept this e-mail.", logId: log.id }, { status: 502 });
+  if (!delivery.ok) return NextResponse.json({ error: outcome === "UNKNOWN" ? "Provider outcome uncertain. Check the flow run history before retrying." : "Power Automate did not accept this e-mail.", logId: log.id, outcome }, { status: 502 });
   return NextResponse.json({ sent: true, handedOff: Boolean(delivery.handedOff), logId: log.id, supplier: supplierName, to, cc, partCount: ids.length, attachments: attachments.map((a) => a.name), test, sentFrom: sender?.email || "the flow's own mailbox" });
 }

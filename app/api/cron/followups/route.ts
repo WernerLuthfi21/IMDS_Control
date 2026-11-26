@@ -29,10 +29,12 @@ export async function GET(request: NextRequest) {
   const db = createAdminClient();
   if (!db) return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY is not set; automations cannot read the master." }, { status: 503 });
   const now = new Date(), slot = wibSlot(now).key, done: unknown[] = [];
+  const started = Date.now(), totalBudget = 240_000;
   let ctx;
   try { ctx = await loadContext(db); } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 }); }
   for (const a of ctx.cfg.automations) {
     try {
+      if (Date.now() - started > totalBudget - 30_000) { done.push({ automation:a.id, skipped:"Global scheduler time budget exhausted; review before rescheduling." }); continue; }
       const runAt = noticeFor(a, now);
       if (runAt && await claim(db, `notice:${a.id}@${wibSlot(runAt).key}`)) {
         const preview = await runAutomation(db, a, { now: runAt, dryRun: true, actorId: null, slot: wibSlot(runAt).key }, ctx);
@@ -40,8 +42,9 @@ export async function GET(request: NextRequest) {
         await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_NOTICE", entity_type: "imds_tracker_schedule", metadata: { automation: a.id, name: a.name, runSlot: wibSlot(runAt).key, to: n.to, ok: n.ok, error: n.error || null, emails: preview.planned.filter((p) => !p.skip).length } });
         done.push({ automation: a.id, notice: n.ok });
       }
+      if (isDue(a, now) && Date.now()-started > totalBudget-30_000) { done.push({automation:a.id,skipped:"Global scheduler time budget exhausted; review before rescheduling."}); continue; }
       if (isDue(a, now) && await claim(db, `${a.id}@${slot}`)) {
-        const r = await runAutomation(db, a, { now, dryRun: false, actorId: null, budgetMs: 240_000 }, ctx);
+        const r = await runAutomation(db, a, { now, dryRun: false, actorId: null, budgetMs: Math.max(0,totalBudget-(Date.now()-started)) }, ctx);
         await db.from("audit_events").insert({ actor_id: null, action: "IMDS_FOLLOWUP_SCHEDULE_RUN", entity_type: "imds_tracker_schedule", metadata: summarize(a, r, false) });
         done.push({ automation: a.id, sent: r.sent, failed: r.failed, skipped: r.skipped });
       }

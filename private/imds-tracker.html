@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="meta-theme" content="#F7F5FA">
 <title>IMDS Tracker</title>
+<script>try{var tp=localStorage.getItem('imds-theme')||'system';document.documentElement.dataset.theme=tp==='dark'||(tp!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Questrial&display=swap" rel="stylesheet">
@@ -789,6 +790,24 @@ main{padding:27px 29px 32px}
 #view-followup .view-actions .seg{flex-wrap:wrap}
 @media(max-width:760px){.compact-template-split{grid-template-columns:minmax(0,1fr)}.compact-workspace-tabs{width:100%}.compact-workspace-tabs .seg-btn{flex:1 1 auto}}
 
+/* Tracker-native manual communication layout. Solid data surfaces within the violet shell. */
+.tracker-wa-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s-4);margin-top:var(--s-4)}
+.tracker-wa-grid .fu-box{min-width:0;display:flex;flex-direction:column;gap:var(--s-3);background:var(--surface)}
+.tracker-wa-grid textarea{min-height:132px;font-family:var(--f-ui)}
+.tracker-wa-list{display:flex;flex-direction:column;gap:var(--s-2);max-height:260px;overflow:auto}
+.tracker-wa-list button{text-align:left;justify-content:flex-start}
+.tracker-wa-list button[aria-pressed="true"]{border-color:var(--focus);color:var(--brand-text)}
+#tw-preview{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--f-ui);padding:var(--s-3);background:var(--surface-2);border-radius:var(--r-2);max-height:240px;overflow:auto}
+@media(max-width:760px){.tracker-wa-grid{grid-template-columns:minmax(0,1fr)}}
+/* Tracker-only compact operational surfaces; existing violet tokens and semantic states retained. */
+.compact-workspace-tabs .seg-btn:focus-visible,.view-actions .seg-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.compact-workspace-tabs .seg-btn{min-height:40px}
+#view-settings .panel,#view-followup .panel{min-width:0}
+#view-followup .fu-box,#view-settings .box{min-width:0}
+#view-followup textarea{font-family:var(--f-ui);line-height:1.45}
+#view-followup .compact-template-split textarea{min-height:200px!important;font-family:var(--f-ui)!important}
+@media(prefers-reduced-motion:reduce){#imds-bar::before{animation:none!important}}
+@media(max-width:760px){.compact-template-split{grid-template-columns:minmax(0,1fr)}.compact-save-bar{position:static}}
 </style>
 </head>
 <body>
@@ -1005,7 +1024,7 @@ main{padding:27px 29px 32px}
       </section>
       <section class="panel" aria-labelledby="h-appearance">
         <div class="panel-head"><h2 id="h-appearance">Appearance &amp; shortcuts</h2></div>
-        <div class="row-actions"><span class="seg-label">Theme</span><div class="seg"><button type="button" class="seg-btn" data-action="theme" data-mode="light" aria-pressed="false">Light</button><button type="button" class="seg-btn" data-action="theme" data-mode="dark" aria-pressed="false">Dark</button></div></div>
+        <div class="row-actions"><span class="seg-label">Theme</span><div class="seg"><button type="button" class="seg-btn" data-action="theme" data-mode="system" aria-pressed="false">System</button><button type="button" class="seg-btn" data-action="theme" data-mode="light" aria-pressed="false">Light</button><button type="button" class="seg-btn" data-action="theme" data-mode="dark" aria-pressed="false">Dark</button></div></div>
         <p class="muted"><kbd>/</kbd> focus search · <kbd>Esc</kbd> close dialog or panel · <kbd>Tab</kbd> move focus</p>
       </section>
     </section>
@@ -2580,8 +2599,8 @@ function renderSettings(){
       <td><span class="tag ${src==="legacy"?"legacy":""}">${src==="legacy"?"Legacy default — verify":src==="config"?"Custom":"None"}</span></td>
       ${modelControlCells(k)}
       <td><button type="button" class="btn btn-ghost btn-sm" data-action="model-reset" data-model="${escAttr(k)}">Reset</button></td></tr>`}).join("");
-  const theme=document.documentElement.getAttribute("data-theme");
-  $$("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===theme;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+  const theme=store.get(KEYS.theme)||"system";
+  $("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===theme;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
   const ac=$("#chk-auto-refresh");if(ac)ac.checked=!!autoRefreshTimer;
   const od=$("#btn-open-dashboard");if(od)od.disabled=!has;
 }
@@ -2601,12 +2620,13 @@ function resetModelMeta(key){const meta=loadModelMeta();delete meta[key];saveMod
 
 /* ---------------- Theme ---------------- */
 function applyTheme(mode){
-  mode=mode==="dark"?"dark":"light";
+  const preference=mode==="dark"||mode==="light"?mode:"system";
+  mode=preference==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):preference;
   document.documentElement.setAttribute("data-theme",mode);
   const mt=$("#meta-theme");if(mt)mt.setAttribute("content",mode==="dark"?"#14101C":"#F7F5FA");
   const ic=$("#theme-icon"),lb=$("#theme-label");if(ic)ic.textContent=mode==="dark"?"☀":"☾";if(lb)lb.textContent=mode==="dark"?"Light":"Dark";
-  store.set(KEYS.theme,mode);
-  $$("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+  store.set(KEYS.theme,preference);
+  $("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===preference;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
 }
 
 /* ---------------- Modals (stack-aware, focus-restoring) ---------------- */
@@ -3791,7 +3811,8 @@ function bindStatic(){
 
 /* ---- startup ---- */
 (function boot(){
-  applyTheme(store.get(KEYS.theme)==="dark"?"dark":"light");
+  applyTheme(store.get(KEYS.theme)||"system");
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if((store.get(KEYS.theme)||"system")==="system")applyTheme("system")});
   loadPromises();loadDir();
   const lg=$("#brand-logo");if(lg)lg.src=LOGO_DATA;
   bindStatic();initCubes();initGraphUI();
