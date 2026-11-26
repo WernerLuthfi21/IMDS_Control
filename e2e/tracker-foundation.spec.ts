@@ -11,6 +11,7 @@ for(const theme of ["light","dark"] as const){
   await expect(shell).toHaveCSS("color",theme==="dark"?"rgb(238, 233, 247)":"rgb(33, 26, 43)");
   await expect(page.locator(".trk-mascot .cube")).toHaveCount(3);
   await expect(page.getByRole("navigation",{name:"Main"}).getByRole("link")).toHaveCount(9);
+  await page.getByRole("navigation",{name:"Main"}).getByRole("link",{name:"Settings"}).click();
   await page.getByRole("tab",{name:/Templates/}).click();
   await page.getByLabel("Message preview").fill("Keep this draft");
   await page.getByLabel("Tracker appearance").selectOption(theme==="dark"?"light":"dark");

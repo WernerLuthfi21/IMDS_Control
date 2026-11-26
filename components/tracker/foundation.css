@@ -51,7 +51,7 @@ html[data-tracker-theme] [data-tracker-shell] .sidebar :is(.brand-mark,.avatar){
 html[data-tracker-theme] [data-tracker-shell] .sidebar :is(.back-menu,.user-row){background:var(--side-hover);border-color:var(--side-border)}
 html[data-tracker-theme] [data-tracker-shell] .sidebar :is(.nav-item:hover,.back-menu:hover,.icon-button:hover){background:var(--side-hover);color:var(--side-ink)}
 html[data-tracker-theme] [data-tracker-shell] .sidebar .nav-active,html[data-tracker-theme] [data-tracker-shell] .sidebar .nav-active:hover{background:var(--side-active);color:var(--side-active-ink);box-shadow:inset 3px 0 0 var(--violet)}
-html[data-tracker-theme] [data-tracker-shell] .sidebar .nav-active svg{color:var(--side-active-ink)}
+html[data-tracker-theme] [data-tracker-shell] .sidebar .nav-active :is(svg, span){color:var(--side-active-ink)}
 html[data-tracker-theme] [data-tracker-shell] .sidebar .nav-active-indicator{background:var(--violet)}
 html[data-tracker-theme] [data-tracker-shell] :is(.topbar,.app-footer){background:var(--glass-strong)!important;border-color:var(--line)!important;color:var(--muted);backdrop-filter:blur(var(--blur))}
 html[data-tracker-theme] [data-tracker-shell] :is(h1,h2,h3,.breadcrumb strong){color:var(--ink)}
@@ -71,6 +71,7 @@ html[data-tracker-theme] [data-tracker-shell] .st-panel[hidden]{display:none!imp
 html[data-tracker-theme] [data-tracker-shell] :is(.cp-scrim,.mobile-scrim){background:var(--scrim)}
 html[data-tracker-theme] [data-tracker-shell] .cfm::backdrop{background:var(--scrim)}
 html[data-tracker-theme] [data-tracker-shell] :is(.cfm-body,.cfm-type,.cp-foot,.cp-item small){color:var(--muted)}
+html[data-tracker-theme] [data-tracker-shell] .skip-link{background:var(--violet-solid);color:var(--on-violet)}
 html[data-tracker-theme] [data-tracker-shell] :focus-visible{outline:2px solid var(--focus)!important;outline-offset:2px}
 html[data-tracker-theme] [data-tracker-shell] button:disabled{opacity:.6;cursor:not-allowed}
 .trk-command,.trk-theme-control{display:flex;align-items:center;gap:8px;min-height:36px;padding:4px 10px;border:1px solid var(--line-strong);border-radius:var(--r-2);background:var(--surface);color:var(--brand-text);font:inherit;min-width:0}

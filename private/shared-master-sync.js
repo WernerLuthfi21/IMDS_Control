@@ -160,9 +160,38 @@
   var deepLinked = false;
   function deepLinkOnce() {
     if (deepLinked) return; deepLinked = true;
-    var q = ""; try { q = new URLSearchParams(window.location.search).get("supplier") || ""; } catch (e) { q = ""; }
-    q = q.trim().toUpperCase(); if (!q) return;
-    var hit = (D.records || []).filter(function (r) { return String(r.vendorCode || "").trim().toUpperCase() === q || String(r.company || "").trim().toUpperCase() === q; })[0];
+    var params = new URLSearchParams(window.location.search);
+    var q = (params.get("supplier") || "").trim().toUpperCase();
+    if (params.get("from") === "tracker-migration") {
+      // Preview handoff only. Filters and composer intent reuse the existing
+      // UI handlers; a URL cannot download, send or commit anything.
+      var model = params.get("model"), status = params.get("status"), urgency = params.get("urgency");
+      setFilter({
+        model: model && D.registry.has(model) && M.isVisible(model) ? model : "ALL",
+        status: ["complete", "process", "missing", "rejected"].includes(status) ? status : "ALL",
+        supplier: "ALL",
+        urgency: ["pastdue", "due14", "ontime"].includes(urgency) ? urgency : "ALL",
+        q: params.get("query") || ""
+      });
+      var action = params.get("action");
+      if (action === "recap-email") { window.__imdsEmailRecap(); return; }
+      if (action === "executive-report") {
+        go("reports");
+        window.setTimeout(function () { document.querySelector("#view-reports [data-action='pdf-summary']")?.focus(); }, 120);
+        return;
+      }
+      if (q && action !== "supplier" && action !== "reminder") {
+        var supplier = D.records.find(function (row) { return row.company.toUpperCase() === q; });
+        if (supplier) setFilter({supplier:supplier.company});
+        return;
+      }
+    }
+    if (!q) return;
+    var hit = (D.records || []).find(function (r) { return String(r.vendorCode || "").trim().toUpperCase() === q || String(r.company || "").trim().toUpperCase() === q; });
+    if (hit && params.get("from") === "tracker-migration" && params.get("action") === "reminder") {
+      window.__imdsEmailFor(hit.company, "followup");
+      return;
+    }
     if (!hit) { try { toast("Supplier " + q + " is not in the Tracker data.", "info"); } catch (e) { /* toast unavailable */ } return; }
     try { go("suppliers"); window.setTimeout(function () { openSupplier(hit.company); }, 120); } catch (e) { /* view not ready; the user can open it from Suppliers */ }
   }

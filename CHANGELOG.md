@@ -2,6 +2,10 @@
 
 ## 2026-11-26
 
+### Tracker React migration preview
+- Overview and Model Tracker use AppShell and the shared master feed. The violet theme supports Light, Dark and System with the existing three-cube mascot.
+- Preserves the legacy aggregation rules and browser recap format. Supplier editing, source connections, reports and communication continue through the original workflows at the existing Tracker route.
+
 ### Workspace navigation and compact follow-up
 - Tracker Settings: Data source, Models & display, Appearance; searchable model table with sticky headers and direct shortcut from System Settings.
 - Tracker Follow-up: email templates and rules now grouped by editor/preview, recipients/files, and signature/layout; existing save handler and controls retained. Optional CC/attachments fold away; recipient table stays bounded.
