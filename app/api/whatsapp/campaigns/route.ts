@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   const supplierCode = String(body?.supplierCode || "").trim();
 
   if (!name || name.length > 120 || !senderKey || !/^[a-z0-9_]+$/i.test(templateName) ||
-      !/^[a-z]{2}_[A-Z]{2}$/.test(templateLanguage) || !["automatic", "semi_automatic"].includes(String(mode))) {
+      !/^([a-z]{2,3})(_[A-Z]{2})?$/.test(templateLanguage) || !["automatic", "semi_automatic"].includes(String(mode))) {
     return NextResponse.json({ error: "Campaign name, sender, approved template, language and sending mode are required." }, { status: 422 });
   }
   if (bodyParameters.length > 10 || bodyParameters.some((parameter) => parameter.length > 512)) {
