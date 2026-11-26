@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { JetBrains_Mono, Questrial } from "next/font/google";
 import "./globals.css";
+import { TRACKER_THEME_INIT } from "@/lib/tracker/theme";
 import { AppShell } from "@/components/app-shell";
 import { getAuthContext } from "@/lib/auth/session";
 
@@ -29,5 +30,5 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   }
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const themeScript = `try{var t=localStorage.getItem("imds-theme");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
-  return <html lang="en" suppressHydrationWarning className={`${questrial.variable} ${mono.variable}`}><head><script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} /></head><body><AppShell role={role} email={auth.email}>{children}</AppShell></body></html>;
+  return <html lang="en" suppressHydrationWarning className={`${questrial.variable} ${mono.variable}`}><head><script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript + ";"+ TRACKER_THEME_INIT }} /></head><body><AppShell role={role} email={auth.email}>{children}</AppShell></body></html>;
 }

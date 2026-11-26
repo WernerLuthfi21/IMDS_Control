@@ -1,0 +1,6 @@
+# Stage 8 — Tracker migration foundation
+Baseline: main 217781e; PR #91 27f9904 is a reference, not merged or cherry-picked. This slice adds a temporary /tracker-migration page using the actual AppShell, original Tracker palette/spacing/glass and original three cube geometry. No data or operational actions are implemented in this route. The canonical legacy Tracker remains untouched. The existing default AppShell and Judgement theme preference are retained. The Tracker-specific preference starts in System, and uses its own storage key. No old localStorage values are rewritten.
+ 
+The dev-only /tracker-migration/fixture is enabled only by TRACKER_TEST_FIXTURE=1 with NODE_ENV=development and no Supabase configuration; it contains synthetic local controls, no session impersonation and no provider/database calls. It is not an authenticated test. CI screenshots from this fixture are not baseline authenticated screenshots.
+ 
+Stage 9 must migrate actual view contents and preserve all old functions, query/hash compatibility and source-state behavior. No route cutover, provider activation, permission changes, schema changes or real sends. Rollback: abandon/revert this branch; /imds-tracker and all API paths remain unchanged. Review public-repository classification before any protected fixture or data is introduced.

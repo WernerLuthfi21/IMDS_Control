@@ -10,7 +10,7 @@ export type PaletteItem = { id: string; label: string; hint?: string; group: str
  * register, switch theme. A real dialog: focus moves into it, ↑ ↓ move, Enter runs, Esc closes and
  * focus returns to where it was.
  */
-export function CommandPalette({ items, onTheme }: { items: Array<Omit<PaletteItem, "run"> & { href?: string }>; onTheme: () => void }) {
+export function CommandPalette({ items, onTheme, navigationOnly = false }: { items: Array<Omit<PaletteItem, "run"> & { href?: string }>; onTheme: () => void; navigationOnly?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -34,15 +34,15 @@ export function CommandPalette({ items, onTheme }: { items: Array<Omit<PaletteIt
 
   const close = () => { setOpen(false); setQ(""); setAt(0); };
   const all: PaletteItem[] = useMemo(() => [
-    ...items.map((i) => ({ ...i, run: () => { if (i.href) router.push(i.href); } })),
+    ...items.map((i) => ({ ...i, run: () => { if (i.href) { if (navigationOnly && i.href.startsWith(window.location.pathname+"#")) window.location.hash=i.href.slice(i.href.indexOf("#")); else router.push(i.href); } } })),
     { id: "theme", label: "Switch light / dark theme", group: "Actions", keywords: "dark light mode", run: onTheme }
-  ], [items, router, onTheme]);
+  ], [items, router, onTheme, navigationOnly]);
   const term = q.trim().toLowerCase();
   const list = useMemo(() => {
     const hit = all.filter((i) => !term || (i.label + " " + (i.keywords || "") + " " + i.group).toLowerCase().includes(term));
-    if (term) hit.push({ id: "search", label: `Search “${q.trim()}” in the Judgement register`, hint: "part no. · supplier · CAS · substance", group: "Search", run: () => router.push(`/judgement?q=${encodeURIComponent(q.trim())}`) });
+    if (term && !navigationOnly) hit.push({ id: "search", label: `Search “${q.trim()}” in the Judgement register`, hint: "part no. · supplier · CAS · substance", group: "Search", run: () => router.push(`/judgement?q=${encodeURIComponent(q.trim())}`) });
     return hit;
-  }, [all, term, q, router]);
+  }, [all, term, q, router, navigationOnly]);
   const pos = Math.min(at, Math.max(0, list.length - 1));
   if (!open) return null;
 
@@ -51,7 +51,7 @@ export function CommandPalette({ items, onTheme }: { items: Array<Omit<PaletteIt
   return <div className="cp-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
     <div className="cp" role="dialog" aria-modal="true" aria-label="Command palette">
       <div className="cp-input"><Search size={16} aria-hidden="true"/>
-        <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setAt(0); }} placeholder="Jump to a module, or type a part no. / CAS…"
+        <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setAt(0); }} placeholder={navigationOnly ? "Find a Tracker workspace…" : "Jump to a module, or type a part no. / CAS…"}
           role="combobox" aria-expanded="true" aria-controls="cp-list" aria-activedescendant={list[pos] ? "cp-" + list[pos].id : undefined}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") { e.preventDefault(); setAt((pos + 1) % Math.max(1, list.length)); }
