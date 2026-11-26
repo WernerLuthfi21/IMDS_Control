@@ -17,6 +17,7 @@
 | Daily G-CATS Update (import, preview, commit, SharePoint fetch) | `/daily-update` | `components/import-workbook.tsx`, `app/api/imports/*` |
 | Supplier Pre-check / Self-check | `/supplier-precheck` | `components/supplier-selfcheck.tsx`, `app/api/self-check/*`, `app/api/prechecks/*` |
 | Supplier Follow-up and Power Automate panel | `/follow-up` | `lib/followup/*`, `app/api/automation/*` |
+| WhatsApp multi-sender campaign manager | `/whatsapp` | `lib/whatsapp/*`, `app/api/whatsapp/*`, `whatsapp_campaigns`, `whatsapp_messages` |
 | Substance References (CAS / GADSL / TSZ) | `/substances` | `lib/reference-data.ts`, `lib/cas.ts` |
 | Judgement Rules: flow charts + error types & sources | `/rules` | `components/flow-library.tsx`, `lib/judgement/flows.ts` |
 | Settings (account, judgement, tracker, team & access, system) | `/settings` | `components/settings-tabs.tsx` |
@@ -63,6 +64,7 @@ Command palette: Ctrl/⌘ K (modules, part / CAS / supplier search, theme).
 | `register/*`, `approvals/finalize`, `tasks`, `evidence/*` | Register edits and export, finalisation RPC, tasks, private evidence | internal roles |
 | `self-check/*`, `prechecks/*` | Supplier self-check and pre-check workflow | supplier (own code) / internal review |
 | `followups`, `automation/*`, `suppliers/contacts` | Follow-ups, Power Automate dispatch / status / test, PIC directory | internal roles |
+| `whatsapp/*`, `cron/whatsapp` | Multi-sender Cloud API campaigns, approved templates, explicit contact opt-in, queue dispatch and signed webhook receipts | admin/preparer for sends; internal roles for reads; cron secret for worker |
 | `imds-master/*` | Tracker data, MD System import, master import/export, Excel reverse sync, automations (status / preview / draft / test reminder / send now), standard files | internal roles; reverse sync by shared secret |
 | `cron/followups` | Weekly automatic follow-up (runs only on the saved WIB day/hour, once per slot) | Vercel Cron with `CRON_SECRET` |
 | `reference` | CAS → GADSL / TSZ lookup | authenticated |
