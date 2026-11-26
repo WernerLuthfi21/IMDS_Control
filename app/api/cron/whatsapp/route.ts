@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   if (!supabase) return NextResponse.json({ error: "Server-side Supabase service key is not configured." }, { status: 503 });
   const body = await request.json().catch(() => ({})) as { limit?: number };
   const result = await dispatchWhatsAppQueue(supabase, {
-    limit: Number.isFinite(body.limit) ? Number(body.limit) : 25,
+    limit: Number.isFinite(body.limit) ? Number(body.limit) : 6,
   });
   return NextResponse.json(result);
 }
