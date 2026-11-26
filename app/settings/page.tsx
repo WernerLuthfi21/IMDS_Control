@@ -22,6 +22,7 @@ export default async function SettingsPage(){
    <SettingLink tone="violet" href="/imds-tracker#settings" title="Tracker data source" action="Open">Connect the master workbook (local or OneDrive-synced) and auto-refresh. The workbook stays in your browser.</SettingLink>
    <SettingLink tone="violet" href="/imds-tracker?section=models#settings" title="Models and deadlines" action="Open">Model deadlines, dashboard PDFs and colours. Deadlines are never invented.</SettingLink>
    <SettingLink tone="violet" href="/imds-tracker#followup" title="Tracker follow-up centre" action="Open">Compose, schedule, and manage email templates and sending rules.</SettingLink>
+   <SettingLink tone="violet" href="/imds-tracker?section=templates#followup" title="Email templates and rules" action="Open">Edit messages, recipient defaults, signatures and preview in Follow-up.</SettingLink>
   </div>},
   ...(canEdit?[{id:"team",label:"Team & access",hint:isAdmin?"Requests, members, recipients":"Staff register",content:<SettingsTabs compact syncHash={false} label="Team management" tabs={[
  ...(isAdmin?[{id:"requests",label:"Access requests",hint:"Review approvals",content:<AccessQueue initial={pending} recent={recent}/>},{id:"recipients",label:"Approval recipients",hint:"Notification contacts",content:<RecipientsPanel initial={pics}/>}]:[]),
