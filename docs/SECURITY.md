@@ -125,3 +125,12 @@ Open findings (owner decision, Tracker is approved UI):
 - Tracker `innerHTML` writes (44) were reviewed: user and workbook values pass through `esc()` / `escAttr()`;
   the remaining interpolations are numbers, fixed labels and internal ids.
 
+
+## WhatsApp Cloud API (additive module)
+
+- Sender access tokens are stored only in server-side `WHATSAPP_SENDERS_JSON`; sender-list API responses expose only key, label and display number. Tokens must never be placed in browser variables or database rows.
+- Campaign creation and sending are restricted to admin/preparer. Campaign and message tables use RLS; supplier contacts retain the existing internal role policy.
+- Only active supplier contacts with a valid E.164 number and explicit `whatsapp_opt_in = true` are eligible. A consent opt-out excludes the contact from future campaigns and is timestamped.
+- Business-initiated sends use Meta-approved templates. The worker sends sequential batches and stores provider message IDs; a webhook updates delivery receipts only after validating `X-Hub-Signature-256` against the server-side Meta App Secret.
+- The cron worker requires a separate bearer secret and uses the existing server-only Supabase service role key. Keep the cron URL/secret in Supabase Vault; never commit secrets, recipient lists or consent evidence.
+- WhatsApp data and message content may still be protected corporate information. Confirm data-owner approval and applicable company policy before sending data to Meta.
