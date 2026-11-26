@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   const { data: previous } = await ctx.supabase
     .from("supplier_contacts")
-    .select("whatsapp_opt_in")
+    .select("whatsapp_opt_in,whatsapp_phone_e164")
     .eq("id", body.contactId)
     .maybeSingle();
   const now = new Date().toISOString();
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     whatsapp_opt_in: body.optIn,
     whatsapp_consent_source: body.optIn ? String(body.consentSource || "IMDS Control Center admin confirmation").slice(0, 120) : null,
   };
-  if (body.optIn && !previous?.whatsapp_opt_in) {
+  if (body.optIn && (!previous?.whatsapp_opt_in || previous.whatsapp_phone_e164 !== normalized)) {
     update.whatsapp_opt_in_at = now;
     update.whatsapp_opt_out_at = null;
   }
