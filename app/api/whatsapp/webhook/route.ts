@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "Webhook database is not configured." }, { status: 503 });
   const changedCampaigns = new Set<string>();
-  const rank: Record<string, number> = { SENT: 1, DELIVERED: 2, READ: 3, FAILED: 4 };
+  const rank: Record<string, number> = { SENT: 1, DELIVERED: 2, FAILED: 3, READ: 4 };
 
   for (const update of updates) {
     const at = update.timestamp && /^\d+$/.test(update.timestamp)
