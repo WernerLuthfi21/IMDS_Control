@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { postToFlow } from "@/lib/automation/flow";
 import { flowOutcome } from "@/lib/imds-master/communication-state";
+import { exactSupplierDirectory } from "@/lib/imds-master/recipient-scope";
 import { DEFAULT_CONFIG, mergeCc, sanitizeConfig, type FollowupConfig, type Template } from "./center";
 import { resolveContacts, type Directory } from "./directory";
 import { buildSupplierEmailPayload, parseSenders, pickSender, type Attachment } from "./payload";
@@ -112,7 +113,7 @@ export async function buildEmails(ctx: Context, a: Automation, o: BuildOptions) 
     return { out, senderShort, senderEmail, total: groups.length };
   }
   for (const g of groups.slice(0, a.maxSuppliers)) {
-    const c = resolveContacts(dir, g.name, { vendorCode: g.code, masterEmail: g.email, fallbackMid: a.fallbackMid && cfg.fallbackMid });
+    const c = resolveContacts(exactSupplierDirectory(dir,g.name,g.code), g.name, { vendorCode: g.code, masterEmail: g.email, fallbackMid: a.fallbackMid && cfg.fallbackMid });
     const roleCc = [...c.ccAlways, ...(a.cc.mid ? c.mid : []), ...(a.cc.top ? c.top : []), ...(a.cc.dir ? c.dir : []), ...(a.cc.buyer && c.buyer ? c.buyer.emails : [])];
     const cc = mergeCc({ to: c.to, cc: [...team, ...roleCc], required: cfg.requiredCc, senderEmail });
     const mail = renderSupplierEmail({ template, config: cfg, kind: a.kind, supplier: g.name, code: g.code, parts: g.parts, due, sender: senderShort, now: o.now });
@@ -127,7 +128,8 @@ export async function buildEmails(ctx: Context, a: Automation, o: BuildOptions) 
       return att;
     };
     const plan: PlannedEmail = { supplier: g.name, code: g.code, parts: g.parts.length, to: c.to, cc, toFrom: c.toFrom, subject: mail.subject, body: mail.body, attachments: names };
-    if (!c.to.length) plan.skip = "No e-mail address (no IMDS PIC, no middle management, nothing in the master).";
+    if (new Set(g.rows.map(r=>String(r.vendor_code||"").trim().toUpperCase()).filter(Boolean)).size>1) plan.skip = "Supplier name has multiple vendor codes; review identity before sending.";
+    else if (!c.to.length) plan.skip = "No e-mail address (no IMDS PIC, no middle management, nothing in the master).";
     out.push({ plan, files, group: g, partIds: g.rows.map((r) => r.id) });
   }
   return { out, senderShort, senderEmail, total: groups.length };

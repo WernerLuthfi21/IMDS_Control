@@ -25,3 +25,6 @@ Tracker-scoped same-origin guards for send and schedule endpoints; outcome class
 
 ## Report snapshot and runtime budget
 Read-only workbench internal CSV uses the exact shared scope filter and a snapshot content hash; changed source returns 409 rather than exporting different data. CSV formula injection guard and unit tests added. Scheduler uses a global time budget, checks again after attachment generation, and explicitly marks unsent work after an uncertain persistence result. No durable continuation yet. Legacy automation preview labels UNKNOWN rather than Will send.
+
+## Further integration
+Non-recap live email checks To and CC against exact supplier identity, master PIC, active supplier contacts and authorized internal/required CC. Scheduled single-supplier automation refuses a name spanning multiple vendor codes and no longer fuzzy-matches Directory entries. Recap remains on its existing contract and requires separate sharing-policy review. Tracker settings writes require same origin and explicit integer version. React migration preview adds real versioned model deadline editing and part-level detail; other existing mutations stay in legacy workspace. No production database mutation performed.

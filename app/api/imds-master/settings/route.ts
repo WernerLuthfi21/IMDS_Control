@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/security/request";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!sameOrigin(request.headers)) return NextResponse.json({error:"Request origin rejected."},{status:403});
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -50,7 +52,8 @@ export async function PUT(request: NextRequest) {
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
-  const base = Number(body.baseVersion || 0);
+  const base = body.baseVersion;
+  if (typeof base !== "number" || !Number.isSafeInteger(base) || base < 0) return NextResponse.json({error:"A valid base version is required."},{status:400});
   if (base === 0) {
     const { error } = await supabase.from("imds_tracker_settings").insert({ key: body.key, value, version: 1, updated_by: auth.userId });
     if (error) {

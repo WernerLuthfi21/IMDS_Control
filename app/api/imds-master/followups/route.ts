@@ -9,6 +9,9 @@ import { emailsOf } from "@/lib/followup/recipients";
 import { buildSupplierEmailPayload, toHtml, parseSenders, pickSender, MAX_ATTACHMENT_BYTES, type Attachment } from "@/lib/followup/payload";
 import { gapHoursFromEnv, recentlySent } from "@/lib/followup/guard";
 import { verifyTrackerPartScope } from "@/lib/imds-master/part-scope";
+import { allowedSupplierEmails, verifyRecipients } from "@/lib/imds-master/recipient-scope";
+import type { Directory } from "@/lib/followup/directory";
+import { TEAM } from "@/lib/followup/render";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
 import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, signOff, type Kind } from "@/lib/followup/center";
@@ -129,17 +132,26 @@ export async function POST(request: NextRequest) {
   // Attachments describe exactly the parts listed in the e-mail: the browser sends their ids, the server reads them from the shared master.
   const ids = [...new Set((body.partIds || []).map(String))];
   if (ids.length > 6000) return NextResponse.json({ error: "Part selection exceeds the safe limit. Narrow the scope." }, { status: 413 });
-  const parts: (XlsxPart & { vendor_code?: string | null })[] = [];
+  const parts: (XlsxPart & { vendor_code?: string | null; main_pic_email?: string | null })[] = [];
   for (let i = 0; i < ids.length; i += 150) {
     const { data, error } = await supabase.from("imds_master_parts")
-      .select("company_name,vendor_code,project,part_no,part_name,imds_status,imds_id_version,md_id_version,md_status_update_date,submission_plan,supplier_promise_date,comment")
+      .select("company_name,vendor_code,main_pic_email,project,part_no,part_name,imds_status,imds_id_version,md_id_version,md_status_update_date,submission_plan,supplier_promise_date,comment")
       .in("id", ids.slice(i, i + 150));
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    parts.push(...((data || []) as (XlsxPart & { vendor_code?: string | null; supplier_promise_date?: string | null })[]).map((p) => ({ ...p, submission_plan: (p as { supplier_promise_date?: string | null }).supplier_promise_date || p.submission_plan })));
+    parts.push(...((data || []) as (XlsxPart & { vendor_code?: string | null; main_pic_email?: string | null; supplier_promise_date?: string | null })[]).map((p) => ({ ...p, submission_plan: (p as { supplier_promise_date?: string | null }).supplier_promise_date || p.submission_plan })));
   }
   const supplierCode = recap ? "" : String(body.supplierCode || parts[0]?.vendor_code || "");
   const scopeError = verifyTrackerPartScope({ idsCount: ids.length, parts, supplierName, supplierCode, recap, requireParts: !draft && !test && !recap });
   if (scopeError) return NextResponse.json({ error: scopeError + " Nothing was sent." }, { status: 422 });
+  if (!draft && !test && !recap) {
+    const directory = await supabase.from("imds_tracker_settings").select("value").eq("key","directory").maybeSingle();
+    const byName = await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).ilike("supplier_name",supplierName.replace(/[%_\\]/g,"\\  const dateTag = new Date().toISOString().slice(0, 10);")).limit(1000);
+    const byCode = supplierCode ? await supabase.from("supplier_contacts").select("supplier_code,supplier_name,email,contact_role").eq("active",true).eq("supplier_code",supplierCode).limit(1000) : {data:[],error:null};
+    if(directory.error||byName.error||byCode.error)return NextResponse.json({error:"Recipient directory unavailable. Nothing was sent."},{status:503});
+    const allowed=allowedSupplierEmails({dir:(directory.data?.value||{}) as Directory,company:supplierName,code:supplierCode,masterEmails:parts.map(p=>p.main_pic_email||""),contacts:[...(byName.data||[]),...(byCode.data||[])],fallbackMid:config.fallbackMid});
+    const violation=verifyRecipients(to,cc,allowed,[...Object.values(TEAM),...senders.map(s=>s.email),auth.email||""],config.requiredCc);
+    if(violation)return NextResponse.json({error:violation+" Nothing was sent."},{status:422});
+  }
   const dateTag = new Date().toISOString().slice(0, 10);
   const stem = recap ? `IMDS_Outstanding_ALL_${dateTag}` : `IMDS_Outstanding_${supplierCode || "SUPPLIER"}_${dateTag}`;
   const attachments: Attachment[] = [];
