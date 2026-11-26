@@ -52,7 +52,9 @@ export function AppShell({ children, role, email }: { children: React.ReactNode;
     document.documentElement.dataset.theme = next;
     window.localStorage.setItem("imds-theme", next);
   }
-  const visibleNavigation = role === "supplier" ? navigation.filter((item) => item.href === "/supplier-precheck").map((item) => ({ ...item, label: "Self-check" })) : navigation;
+  const visibleNavigation = role === "supplier"
+    ? navigation.filter((item) => item.href === "/supplier-precheck").map((item) => ({ ...item, label: "Self-check" }))
+    : navigation.filter((item) => item.href !== "/whatsapp" || ["admin", "preparer", "reviewer"].includes(role));
   const active = visibleNavigation.find((item) => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href + "/"))) || visibleNavigation.find((item) => item.href === "/judgement") || visibleNavigation[0];
   const paletteItems = [
     ...visibleNavigation.map((n) => ({ id: n.href, label: n.label, group: "Go to", href: n.href, keywords: n.group })),
