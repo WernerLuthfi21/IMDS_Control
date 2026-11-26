@@ -54,3 +54,9 @@ Scope this in its own PR after owner approval. Establish phase zero with a synth
 6. Rollback trigger: broken role isolation, incorrect counts/files, failed writes, duplicate handoff or any parity regression. Disable the approved route switch, direct people to legacy, and verify both the role gate and the canonical legacy response. Keep new writes and audit history available for reconciliation. The pre-cutover rollback is to revert or discard the migration commits.
 
 Release status: **NO-GO for canonical cutover** while native 9B–9E workflows, protected role coverage, and full contract parity remain open.
+
+### Stage 9B continuation
+
+The protected preview now renders the Suppliers list, model/supplier/urgency and status filters, seven sort orders, progress bars, contact presence and a keyboard-accessible part detail dialog. Status chips select suppliers with matching parts and keep each supplier's full scoped counts. The Directory reads the versioned settings endpoint and compatible browser records. It renders the supplier list, contact groups, PUD buyers and Tracker match. Its download actions produce the v1 JSON backup and Directory XLSX sheet. The Excel writer loads on demand.
+
+Supplier mutations, clarification-file processing, supplier PDF, Directory import, restore and contact editing still open the canonical Tracker. Native write parity, source-file comparisons and the remaining Stage 9 batches remain open. Neither the production route nor the communication configuration changes in this checkpoint.

@@ -13,7 +13,7 @@ export function isTrackerMigrationPath(path: string) {
 }
 
 export function trackerViewFromHash(hash: string): TrackerView {
-  return trackerViews.find(view => "#" + view.id === hash)?.id ?? "overview";
+  return trackerViews.find(view => "#" + view.id === hash.split("?")[0])?.id ?? "overview";
 }
 export function useTrackerTheme(enabled: boolean) {
   const [preference, setMode] = useState<TrackerTheme>("system");

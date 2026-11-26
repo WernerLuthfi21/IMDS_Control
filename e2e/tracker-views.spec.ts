@@ -1,3 +1,4 @@
+import { Workbook } from "exceljs";
 import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext } from "@playwright/test";
 import { trackerFixture } from "../components/tracker/fixture-data";
@@ -92,3 +93,45 @@ test("legacy handoff applies the selected scope and opens the existing composer 
   await expect(page.locator("[data-fmode=email]")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#fu-kinds [data-kind=followup]")).toHaveAttribute("aria-pressed", "true");
 });
+
+for (const theme of ["light","dark"] as const) {
+  test(`Tracker 9B supplier and directory workflows in ${theme}`, async ({page,context},info) => {
+    await serveLegacyFixture(context);
+    await context.addInitScript(t=>{localStorage.setItem("imds-theme",t);localStorage.setItem("imds-tracker-theme",t);},theme);
+    await page.setViewportSize({width:1440,height:1000});
+    await page.goto("/imds-tracker#suppliers");
+    await expect(page.locator(".sup-link")).toHaveCount(3);
+    const names = await page.locator(".sup-link").allTextContents();
+    await page.screenshot({path:info.outputPath(`legacy-suppliers-${theme}.png`),fullPage:true});
+    await page.goto("/tracker-migration/fixture#suppliers");
+    const suppliers = page.getByRole("table",{name:"Supplier progress"});
+    await expect(suppliers.getByRole("button")).toHaveText(names);
+    await page.screenshot({path:info.outputPath(`react-suppliers-${theme}.png`),fullPage:true});
+    await page.getByRole("button",{name:/^Rejected/}).click();
+    await expect(suppliers.getByRole("button")).toHaveCount(1);
+    await suppliers.getByRole("button",{name:"Fixture Seals"}).click();
+    await expect(page.getByRole("dialog")).toContainText("FIX-201");
+    await page.keyboard.press("Escape");
+    await expect(suppliers.getByRole("button",{name:"Fixture Seals"})).toBeFocused();
+    await page.goto("/tracker-migration/fixture#directory");
+    await expect(page.getByRole("heading",{name:"Fixture Seals"})).toBeVisible();
+    await page.getByRole("button",{name:"PUD buyers",exact:true}).click();
+    await expect(page.getByRole("cell",{name:"Synthetic Buyer"})).toBeVisible();
+    await page.getByRole("button",{name:"Tracker match",exact:true}).click();
+    await expect(page.getByRole("row").filter({hasText:"Fixture Seals"})).toContainText("code");
+    await page.screenshot({path:info.outputPath(`react-directory-${theme}.png`),fullPage:true});
+    const backupPromise = page.waitForEvent("download");
+    await page.getByRole("button",{name:"Download backup"}).click();
+    const backup = await backupPromise;
+    const json = JSON.parse(readFileSync((await backup.path())!,"utf8"));
+    expect(json.entries["FIXTURE SEALS"].f.pic1_email).toBe("fixture@example.invalid");
+    expect(json.app).toBe("imds-tracker-directory");
+    const workbookPromise = page.waitForEvent("download");
+    await page.getByRole("button",{name:"Export Excel"}).click();
+    const workbook = new Workbook();
+    await workbook.xlsx.readFile((await (await workbookPromise).path())!);
+    expect(workbook.getWorksheet("Directory")?.getCell("C2").value).toBe("Synthetic Buyer");
+    await page.setViewportSize({width:390,height:844});
+    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+}

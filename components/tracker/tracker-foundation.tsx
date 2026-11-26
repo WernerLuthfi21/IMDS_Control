@@ -4,10 +4,12 @@ import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { SettingsTabs } from "@/components/settings-tabs";
 import { confirmAction } from "@/components/ui/confirm-dialog";
 import {
-  buildModelRegistry, buildTrackerDataset, emptyScope, partStatuses, scopeParts,
+  buildModelRegistry, buildTrackerDataset, emptyScope, generalStatuses, scopeParts,
   type GeneralStatus, type TrackerScope
 } from "@/lib/tracker/shared-master";
 import { trackerViews, trackerViewFromHash, type TrackerView } from "./foundation-state";
+import { TrackerSuppliers } from "./tracker-suppliers";
+import { TrackerDirectory } from "./tracker-directory";
 import { TrackerModels } from "./tracker-models";
 import { TrackerOverview } from "./tracker-overview";
 import { useTrackerStorage } from "./tracker-storage";
@@ -59,7 +61,13 @@ export function TrackerFoundation({ fixture }: Props) {
     const read = () => {
       // The skip target and nested controls do not select a primary view.
       if (location.hash === "#main-content") return;
-      const next = trackerViewFromHash(location.hash);
+      const [hash, search] = location.hash.split("?");
+      const next = trackerViewFromHash(hash);
+      if (next === "suppliers" && search) {
+        const params = new URLSearchParams(search);
+        const status = params.get("status") || "";
+        setScope({model:params.get("model") || "", supplier:params.get("supplier") || "", query:params.get("query") || "", urgency:params.get("urgency") || "", status:generalStatuses.includes(status as GeneralStatus) ? status as GeneralStatus : ""});
+      }
       setView(next);
       document.title = trackerViews.find(item => item.id === next)!.label + " · IMDS Tracker";
     };
@@ -93,10 +101,15 @@ export function TrackerFoundation({ fixture }: Props) {
   }
 
   function existing(target: TrackerView, extra?: Record<string, string>) {
+    if (target === "suppliers") {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries({ ...activeScope, ...extra })) if (value) params.set(key, value);
+      return "#" + target + (params.size ? "?" + params.toString() : "");
+    }
     return fixture ? "#" + target : legacyLink(target, activeScope, extra);
   }
   const supplierLink = (name: string) => existing("suppliers", { supplier: name, action: "supplier" });
-  const liveView = view === "overview" || view === "models";
+  const liveView = view === "overview" || view === "models" || view === "directory" || view === "suppliers";
   const isUnavailable = !master.snapshot || master.state === "restricted";
   const hasParts = dataset.active.length > 0;
 
@@ -125,7 +138,12 @@ export function TrackerFoundation({ fixture }: Props) {
       models={models} selected={activeScope.model} select={model => selectModel(model, false)}
       supplierList={existing("suppliers")} followUp={existing("followup")} settings={existing("settings")} supplierLink={supplierLink}
     />}
-    {readyToReadHash && liveView && (isUnavailable || !hasParts) && <section className="trk-panel">
+    {readyToReadHash && view === "directory" && <TrackerDirectory fixture={Boolean(fixture)} parts={dataset.active} manage={legacyLink("directory", activeScope)}/>}
+    {readyToReadHash && view === "suppliers" && !isUnavailable && <TrackerSuppliers
+      parts={dataset.active} models={models} contacts={master.snapshot!.contacts} scope={activeScope} changeScope={setScope}
+      details={name=>legacyLink("suppliers",activeScope,{supplier:name,action:"supplier"})}
+      reminder={name=>legacyLink("followup",activeScope,{supplier:name,action:"reminder"})}/>}
+    {readyToReadHash && liveView && view !== "directory" && (view !== "suppliers" || isUnavailable) && (isUnavailable || !hasParts) && <section className="trk-panel">
       <h1>{view === "overview" ? "IMDS Tracker" : current.label}</h1>
       {!isUnavailable && <><h2>No part list yet</h2><p>Upload the IMDS Remaining master in Settings.</p>
         {!fixture && <div><a className="btn btn-primary" href={existing("settings")}>Upload master</a></div>}</>}
@@ -133,7 +151,7 @@ export function TrackerFoundation({ fixture }: Props) {
     {readyToReadHash && !liveView && (fixture
       ? view === "settings" && <FixtureControls />
       : <section className="trk-panel"><p>This view is available in the existing Tracker.</p>
-        <div><a className="btn btn-primary" href={legacyLink(view, activeScope, view === "suppliers" ? { supplier: new URLSearchParams(location.search).get("supplier") ?? "" } : undefined)}>Open {current.label}</a></div></section>)}
+        <div><a className="btn btn-primary" href={legacyLink(view, activeScope)}>Open {current.label}</a></div></section>)}
     {notice && <p className="trk-recap-notice" role="status">{notice}</p>}
     {!fixture && readyToReadHash && liveView && <p><a className="trk-link" href={existing(view)}>Open existing {current.label}</a></p>}
   </section>;
