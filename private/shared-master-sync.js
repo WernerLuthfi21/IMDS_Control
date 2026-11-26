@@ -722,7 +722,7 @@
     injectFollowCss();
     var head = follow.querySelector("header.view-head");
     var actions = head && head.querySelector(".view-actions");
-    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button></div>';
+    if (actions) actions.innerHTML = '<div class="seg" role="group" aria-label="Follow-up view"><button type="button" class="seg-btn on" data-fmode="queues" aria-pressed="true">Needs follow-up</button><button type="button" class="seg-btn" data-fmode="email" aria-pressed="false">Compose email</button><button type="button" class="seg-btn" data-fmode="auto" aria-pressed="false">Automatic</button><button type="button" class="seg-btn" data-fmode="templates" aria-pressed="false">Templates &amp; rules</button><a class="btn btn-ghost btn-sm" href="/follow-up?channel=whatsapp">WhatsApp drafts ↗</a></div>';
     var box = document.createElement("section");
     box.className = "panel"; box.id = "shared-followup-panel"; box.hidden = true;
     box.innerHTML = '<div id="fu-state" class="banner" role="status">Loading…</div>' +
