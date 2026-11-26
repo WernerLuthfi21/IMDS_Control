@@ -74,7 +74,7 @@ export async function sendWhatsAppTemplate(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(8000),
     },
   );
   const result = await response.json().catch(() => ({})) as GraphResponse;
