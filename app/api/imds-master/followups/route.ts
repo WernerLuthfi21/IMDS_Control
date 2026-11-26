@@ -6,6 +6,7 @@ import { postToFlow } from "@/lib/automation/flow";
 import { emailsOf } from "@/lib/followup/recipients";
 import { buildSupplierEmailPayload, toHtml, parseSenders, pickSender, MAX_ATTACHMENT_BYTES, type Attachment } from "@/lib/followup/payload";
 import { gapHoursFromEnv, recentlySent } from "@/lib/followup/guard";
+import { verifyTrackerPartScope } from "@/lib/imds-master/part-scope";
 import { buildSupplierReportPdf } from "@/lib/imds-master/report-pdf";
 import { buildUnsubmittedXlsx, type XlsxPart } from "@/lib/imds-master/report-xlsx";
 import { DEFAULT_CONFIG, KINDS, mergeCc, sanitizeConfig, signOff, type Kind } from "@/lib/followup/center";
@@ -18,7 +19,8 @@ export const maxDuration = 60;
 type Db = NonNullable<Awaited<ReturnType<typeof createClient>>>;
 
 async function loadConfig(supabase: Db) {
-  const { data } = await supabase.from("imds_tracker_settings").select("value").eq("key", "followup_config").maybeSingle();
+  const { data, error } = await supabase.from("imds_tracker_settings").select("value").eq("key", "followup_config").maybeSingle();
+  if (error) throw new Error("Follow-up settings unavailable.");
   return sanitizeConfig(data?.value ?? DEFAULT_CONFIG);
 }
 
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
   const test = body.test === true;
   const draft = body.mode === "draft";
   const senders = parseSenders(process.env.FOLLOWUP_SENDERS);
+  if ((body.to != null && !Array.isArray(body.to)) || (body.cc != null && !Array.isArray(body.cc)) || (body.partIds != null && !Array.isArray(body.partIds))) return NextResponse.json({ error: "Invalid recipient or part selection." }, { status: 400 });
   let to = emailsOf((body.to || []).join(";")).slice(0, recap ? 400 : 20);
   if (test) {
     // A test may only reach the person who is testing (or their own organisation), never a supplier.
@@ -99,7 +102,8 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
-  const config = await loadConfig(supabase);
+  let config;
+  try { config = await loadConfig(supabase); } catch { return NextResponse.json({ error: "Follow-up settings unavailable. Nothing was sent." }, { status: 503 }); }
   const sender = pickSender(senders, body.sender);   // not on the allow-list => the flow's own mailbox sends
   // The page already adds the sign-off; this only covers an older cached page. Never added twice.
   const messageBody = signOff(rawBody, config, sender?.name);
@@ -107,7 +111,8 @@ export async function POST(request: NextRequest) {
 
   const gapHours = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
   if (!draft && !test && !body.force && gapHours > 0) {
-    const { data: last } = await supabase.from("imds_tracker_followup_logs").select("sent_at").eq("supplier_name", supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
+    const { data: last, error: historyError } = await supabase.from("imds_tracker_followup_logs").select("sent_at").eq("supplier_name", supplierName).eq("status", "SENT").order("sent_at", { ascending: false }).limit(1);
+    if (historyError) return NextResponse.json({ error: "Follow-up history unavailable. Nothing was sent." }, { status: 503 });
     if (recentlySent(last?.[0]?.sent_at, new Date(), gapHours)) {
       return NextResponse.json({ error: `${supplierName} was already e-mailed within the last ${gapHours} hours. Nothing was sent.`, skipped: "RECENTLY_SENT" }, { status: 409 });
     }
@@ -119,7 +124,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Attachments describe exactly the parts listed in the e-mail: the browser sends their ids, the server reads them from the shared master.
-  const ids = [...new Set((body.partIds || []).map(String))].slice(0, 6000);
+  const ids = [...new Set((body.partIds || []).map(String))];
+  if (ids.length > 6000) return NextResponse.json({ error: "Part selection exceeds the safe limit. Narrow the scope." }, { status: 413 });
   const parts: (XlsxPart & { vendor_code?: string | null })[] = [];
   for (let i = 0; i < ids.length; i += 150) {
     const { data, error } = await supabase.from("imds_master_parts")
@@ -129,13 +135,15 @@ export async function POST(request: NextRequest) {
     parts.push(...((data || []) as (XlsxPart & { vendor_code?: string | null; supplier_promise_date?: string | null })[]).map((p) => ({ ...p, submission_plan: (p as { supplier_promise_date?: string | null }).supplier_promise_date || p.submission_plan })));
   }
   const supplierCode = recap ? "" : String(body.supplierCode || parts[0]?.vendor_code || "");
+  const scopeError = verifyTrackerPartScope({ idsCount: ids.length, parts, supplierName, supplierCode, recap, requireParts: !draft && !test && !recap });
+  if (scopeError) return NextResponse.json({ error: scopeError + " Nothing was sent." }, { status: 422 });
   const dateTag = new Date().toISOString().slice(0, 10);
   const stem = recap ? `IMDS_Outstanding_ALL_${dateTag}` : `IMDS_Outstanding_${supplierCode || "SUPPLIER"}_${dateTag}`;
   const attachments: Attachment[] = [];
   const wantPdf = body.attachments?.pdf ?? config.attachments.pdf, wantXlsx = body.attachments?.xlsx ?? config.attachments.xlsx;
   // Prefer the PDF the Tracker itself draws (same layout as the "Supplier PDF" button). The server-built text
   // PDF is only a fallback for callers that do not send one.
-  const browserPdf = !recap && wantPdf && body.supplierPdf?.base64 ? Buffer.from(String(body.supplierPdf.base64), "base64") : null;
+  const browserPdf = (draft || test) && !recap && wantPdf && body.supplierPdf?.base64 ? Buffer.from(String(body.supplierPdf.base64), "base64") : null;
   if (browserPdf) {
     if (browserPdf.length < 100 || browserPdf.subarray(0, 4).toString("latin1") !== "%PDF") return NextResponse.json({ error: "The supplier PDF from the Tracker is not a valid PDF. Nothing was sent." }, { status: 422 });
     if (browserPdf.length > MAX_ATTACHMENT_BYTES) return NextResponse.json({ error: "The supplier PDF is larger than 10 MB. Nothing was sent." }, { status: 413 });

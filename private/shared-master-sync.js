@@ -204,6 +204,7 @@
       if (lastEtag && hasData) headers["If-None-Match"] = lastEtag;
       var response = await fetch("/api/imds-master/tracker-data", { method: "GET", cache: "no-store", credentials: "same-origin", headers: headers });
       if (response.status === 304) {
+        window.__IMDS_SHARED_MASTER_READY__ = hasData;
         window.__IMDS_SHARED_MASTER_LAST_SYNC__ = new Date().toISOString();
         if (!silent) loadStatus("ok", "Up to date · " + new Date().toLocaleTimeString());
         return "same";
@@ -214,6 +215,7 @@
       if (!Array.isArray(payload.rows)) throw new Error("Shared master response is invalid.");
       if (!payload.rows.length) {
         window.__IMDS_SHARED_MASTER_READY__ = false;
+        lastEtag = null;
         if (typeof setConnectionState === "function") setConnectionState("NOT_CONNECTED");
         if (shown) loadStatus("err", "The shared master is empty. Upload the IMDS Remaining master in Settings.");
         return "empty";
@@ -525,19 +527,23 @@
     if (n) { n.textContent = text; n.style.color = bad ? "var(--bad)" : ""; }
   }
   function schedulePush() {
-    if (dirSync.blocked) return;
+    if (dirSync.blocked || !dirSync.ready) return;
     window.clearTimeout(dirSync.timer);
     dirStatus("Unsaved changes…");
     dirSync.timer = window.setTimeout(function () { pushDirectory(false); }, 1500);
   }
   async function pushDirectory(retried) {
-    if (dirSync.blocked) return;
+    if (dirSync.blocked || !dirSync.ready) return;
     if (dirSync.busy) { dirSync.again = true; return; }
     dirSync.busy = true; dirStatus("Saving to database…");
+    var snapshot = JSON.stringify(dirPayload());
     try {
-      var r = await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "directory", value: dirPayload(), baseVersion: dirSync.version }) });
-      dirSync.version = r.version; lsSet("imds-dir-srv-version", String(r.version)); lsSet("imds-dir-dirty", "0");
-      dirStatus("Directory saved in the database");
+      var r = await api("/api/imds-master/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "directory", value: JSON.parse(snapshot), baseVersion: dirSync.version }) });
+      dirSync.version = r.version; lsSet("imds-dir-srv-version", String(r.version));
+      var changed = JSON.stringify(dirPayload()) !== snapshot;
+      lsSet("imds-dir-dirty", changed ? "1" : "0");
+      if (changed) { dirSync.again = true; dirStatus("Newer local edits are waiting to save…"); }
+      else dirStatus("Directory saved in the database");
     } catch (e) {
       if (e.payload && e.payload.conflict && !retried) {
         dirSync.blocked = true;
@@ -572,25 +578,17 @@
     try {
       var g = await api("/api/imds-master/settings?key=directory");
       var localCount = Object.keys(DIR.entries || {}).length, dirty = lsGet("imds-dir-dirty") === "1";
-      if (!g.exists) { dirSync.ready = true; dirSync.version = 0; if (localCount) await pushDirectory(false); else dirStatus("Directory is empty. Import contacts once and they are remembered."); return; }
-      dirSync.version = g.version;
+      if (g.tableMissing) throw new Error("Directory storage is not configured.");
+      dirSync.version = g.version || 0;
       dirSync.ready = true;
-      var server = g.value || {};
-      if (dirty && known !== g.version) {
+      if ((dirty && known !== dirSync.version) || (!known && localCount)) {
         dirSync.blocked = true;
-        dirStatus("Conflict: local edits and server directory have different versions. Export a backup and reconcile before saving.", true);
+        dirStatus("Unverified local directory edits: export a backup and reconcile with the server before saving. Nothing was overwritten.", true);
         return;
       }
-      if (localCount && (dirty || !known)) {
-        // This browser has contacts the server may not: add what is missing, never overwrite the server's entries.
-        var added = 0;
-        server.entries = server.entries || {}; server.buyers = server.buyers || {};
-        Object.keys(DIR.entries).forEach(function (k) { if (!server.entries[k]) { server.entries[k] = DIR.entries[k]; added++; } });
-        Object.keys(DIR.buyers || {}).forEach(function (k) { if (!server.buyers[k]) server.buyers[k] = DIR.buyers[k]; });
-        server.aliases = Object.assign({}, DIR.aliases || {}, server.aliases || {}); server.meta = Object.assign({}, DIR.meta || {}, server.meta || {});
-        applyDirectory(server);
-        if (added || dirty) { lsSet("imds-dir-dirty", "1"); await pushDirectory(false); return; }
-      } else if (g.version !== known || !localCount) applyDirectory(server);
+      if (dirty && known === dirSync.version) { await pushDirectory(false); return; }
+      if (!g.exists) { applyDirectory({}); dirStatus("Directory is empty. Import contacts once to start."); return; }
+      applyDirectory(g.value || {});
       lsSet("imds-dir-srv-version", String(g.version));
       dirStatus("Directory loaded from the database · " + Object.keys(DIR.entries).length.toLocaleString() + " suppliers");
     } catch (e) { dirStatus("Directory database unavailable: " + e.message + " (using this browser's copy)", true); }

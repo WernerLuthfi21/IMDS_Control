@@ -18,13 +18,13 @@ export async function GET(request: Request) {
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
   // Cheap version check first: if nothing changed since the browser's copy, answer 304 and skip the heavy read.
-  const [{ count, error: countError }, { data: newest }, { count: contactCount }, { data: newestContact }] = await Promise.all([
+  const [{ count, error: countError }, { data: newest, error: newestError }, { count: contactCount, error: contactCountError }, { data: newestContact, error: newestContactError }] = await Promise.all([
     supabase.from("imds_master_parts").select("id", { count: "exact", head: true }),
     supabase.from("imds_master_parts").select("updated_at").order("updated_at", { ascending: false }).limit(1),
     supabase.from("supplier_contacts").select("id", { count: "exact", head: true }).eq("active", true),
     supabase.from("supplier_contacts").select("updated_at").order("updated_at", { ascending: false }).limit(1)
   ]);
-  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
+  if (countError || newestError || contactCountError || newestContactError) return NextResponse.json({ error: "Shared master or contact metadata unavailable." }, { status: 503 });
   const etag = `W/"${count ?? 0}-${newest?.[0]?.updated_at ?? "none"}-${contactCount ?? 0}-${newestContact?.[0]?.updated_at ?? "none"}"`;
   if (request.headers.get("if-none-match") === etag) {
     return new NextResponse(null, { status: 304, headers: { ETag: etag, "Cache-Control": "private, no-cache" } });
@@ -43,10 +43,12 @@ export async function GET(request: Request) {
   if (failed?.error) return NextResponse.json({ error: failed.error.message }, { status: 500 });
   const parts = results.flatMap((r) => (r.data || []) as unknown as Record<string, unknown>[]);
 
-  const { data: contactRows } = await supabase.from("supplier_contacts")
+  const { data: contactRows, error: contactError } = await supabase.from("supplier_contacts")
     .select("supplier_code,supplier_name,email,contact_role,active")
     .eq("active", true)
     .limit(5000);
+  if (contactError) return NextResponse.json({ error: "Supplier contacts unavailable." }, { status: 503 });
+  if ((contactCount ?? 0) > 5000 || parts.length !== (count ?? 0)) return NextResponse.json({ error: "Shared data is incomplete; refresh or contact an administrator." }, { status: 503 });
 
   const contacts = new Map<string, { company: string; pic: string; cc: string[]; spv: string[]; note: string }>();
   const ensure = (company: string) => {
