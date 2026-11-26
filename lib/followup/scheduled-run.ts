@@ -137,9 +137,10 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
   const started = Date.now(), budget = o.budgetMs ?? 240_000;
   const ctx = ctxIn || await loadContext(db), slot = o.slot || wibSlot(o.now).key;
   const built = await buildEmails(ctx, a, { now: o.now });
-  const { data: logs } = await db.from("imds_tracker_followup_logs").select("supplier_name,sent_at").eq("status", "SENT").gte("sent_at", new Date(o.now.getTime() - 14 * 86400000).toISOString()).order("sent_at", { ascending: false }).limit(3000);
+  const { data: logs, error: historyError } = await db.from("imds_tracker_followup_logs").select("supplier_code,supplier_name,sent_at").eq("status", "SENT").gte("sent_at", new Date(o.now.getTime() - 14 * 86400000).toISOString()).order("sent_at", { ascending: false }).limit(3000);
+  if (historyError) throw new Error("Follow-up history unavailable; run stopped before sending.");
   const lastSent: Record<string, string> = {};
-  for (const l of (logs || []) as { supplier_name: string; sent_at: string }[]) if (l.supplier_name && !lastSent[l.supplier_name]) lastSent[l.supplier_name] = l.sent_at;
+  for (const l of (logs || []) as { supplier_code: string | null; supplier_name: string; sent_at: string }[]) { const key = l.supplier_code ? `code:${l.supplier_code}` : `name:${l.supplier_name}`; if (!lastSent[key]) lastSent[key] = l.sent_at; }
   const gap = gapHoursFromEnv(process.env.FOLLOWUP_MIN_GAP_HOURS);
   const sender = pickSender(parseSenders(process.env.FOLLOWUP_SENDERS), built.senderEmail);
   const url = process.env.POWER_AUTOMATE_EMAIL_URL?.trim(), secret = process.env.POWER_AUTOMATE_SECRET?.trim() || null;
@@ -152,20 +153,21 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
     const item = { ...raw, body: raw.plan.body || "" };
     const plan = item.plan, logName = a.kind === "recap" ? "ALL SUPPLIERS (RECAP)" : plan.supplier;
     if (!o.withBodies) delete plan.body;
-    if (!plan.skip && a.kind !== "recap" && recentlySent(lastSent[logName], o.now, gap)) plan.skip = `Already e-mailed within ${gap} h.`;
+    if (!plan.skip && a.kind !== "recap" && (recentlySent(lastSent[`code:${plan.code}`], o.now, gap) || recentlySent(lastSent[`name:${logName}`], o.now, gap))) plan.skip = `Already e-mailed within ${gap} h.`;
     result.planned.push(plan);
     if (plan.skip) { plan.status = "SKIPPED"; result.skipped++; continue; }
     if (o.dryRun || !canSend) continue;
-    if (Date.now() - started > budget) { plan.status = "SKIPPED"; plan.skip = "Time limit of this run reached; it is included in the next run."; result.skipped++; continue; }
+    if (Date.now() - started > budget) { plan.status = "SKIPPED"; plan.skip = "Time limit reached; not sent. Review and reschedule explicitly."; result.skipped++; continue; }
     const one = item;
     let attachments: Attachment[] = [];
     try { attachments = await item.files(); }
     catch (e) { plan.status = "FAILED"; plan.error = "Attachments could not be built: " + (e instanceof Error ? e.message : String(e)); result.failed++; continue; }
     const body = item.body;
-    const { data: log } = await db.from("imds_tracker_followup_logs").insert({
+    const { data: log, error: logError } = await db.from("imds_tracker_followup_logs").insert({
       supplier_code: plan.code || null, supplier_name: logName, recipient_email: plan.to.join(";"), cc_emails: plan.cc, subject: plan.subject, message_body: body,
       part_count: plan.parts, attachment_name: attachments.map((x) => x.name).join(", ") || null, status: "PREPARED", sent_by: o.actorId
     }).select("id").single();
+    if (logError || !log?.id) { plan.status = "FAILED"; plan.error = "Could not persist the email attempt; nothing was sent."; result.failed++; continue; }
     let payload;
     try {
       payload = buildSupplierEmailPayload({ source: "tracker", followupId: log?.id, logId: log?.id, supplierCode: plan.code, supplierName: logName, to: plan.to, cc: plan.cc, sender, subject: plan.subject, body, attachments, font: ctx.cfg.font,

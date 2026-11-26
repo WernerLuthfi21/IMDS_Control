@@ -789,6 +789,15 @@ main{padding:27px 29px 32px}
 #view-followup .view-actions .seg{flex-wrap:wrap}
 @media(max-width:760px){.compact-template-split{grid-template-columns:minmax(0,1fr)}.compact-workspace-tabs{width:100%}.compact-workspace-tabs .seg-btn{flex:1 1 auto}}
 
+/* Tracker-only compact operational surfaces; existing violet tokens and semantic states retained. */
+.compact-workspace-tabs .seg-btn:focus-visible,.view-actions .seg-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.compact-workspace-tabs .seg-btn{min-height:40px}
+#view-settings .panel,#view-followup .panel{min-width:0}
+#view-followup .fu-box,#view-settings .box{min-width:0}
+#view-followup textarea{font-family:var(--f-ui);line-height:1.45}
+#view-followup .compact-template-split textarea{min-height:200px!important;font-family:var(--f-ui)!important}
+@media(prefers-reduced-motion:reduce){#imds-bar::before{animation:none!important}}
+@media(max-width:760px){.compact-template-split{grid-template-columns:minmax(0,1fr)}.compact-save-bar{position:static}}
 </style>
 </head>
 <body>

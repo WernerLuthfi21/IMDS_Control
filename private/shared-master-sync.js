@@ -204,6 +204,7 @@
       if (lastEtag && hasData) headers["If-None-Match"] = lastEtag;
       var response = await fetch("/api/imds-master/tracker-data", { method: "GET", cache: "no-store", credentials: "same-origin", headers: headers });
       if (response.status === 304) {
+        window.__IMDS_SHARED_MASTER_LAST_SYNC__ = new Date().toISOString();
         if (!silent) loadStatus("ok", "Up to date · " + new Date().toLocaleTimeString());
         return "same";
       }
@@ -212,19 +213,21 @@
       if (!response.ok) throw new Error(payload && payload.error ? payload.error : "Shared master could not be loaded.");
       if (!Array.isArray(payload.rows)) throw new Error("Shared master response is invalid.");
       if (!payload.rows.length) {
+        window.__IMDS_SHARED_MASTER_READY__ = false;
         if (typeof setConnectionState === "function") setConnectionState("NOT_CONNECTED");
         if (shown) loadStatus("err", "The shared master is empty. Upload the IMDS Remaining master in Settings.");
         return "empty";
       }
       var dataset = applyPayload(payload);
       lastEtag = response.headers.get("ETag") || null;
-      if (lastEtag) cachePut({ etag: lastEtag, payload: payload, savedAt: Date.now() });
+      // Do not persist supplier master or contacts in shared browser storage.
       if (dataset && (shown || !silent)) loadStatus("ok", "Live · " + dataset.validation.total.toLocaleString() + " parts");
       return "ok";
     } catch (error) {
       console.error("IMDS Tracker shared-master refresh failed.", error);
       var message = error && error.message ? error.message : "Shared master refresh failed.";
-      if (!silent || !hasData) loadStatus("err", hasData ? "Could not refresh: " + message : message, function () { refreshSharedMaster(false); });
+      window.__IMDS_SHARED_MASTER_READY__ = false;
+      loadStatus("err", hasData ? "Could not refresh: " + message : message, function () { refreshSharedMaster(false); });
       if (!window.__IMDS_SHARED_MASTER_READY__ && typeof setConnectionState === "function") setConnectionState("SOURCE_ERROR");
       return "error";
     } finally {
@@ -232,20 +235,11 @@
     }
   }
 
-  // Show the last copy instantly, then verify against the database in the background.
+  // Always obtain the current authenticated server snapshot; never hydrate a previous user's cache.
   async function startFast() {
     loadStatus("busy", "Loading from database…");
-    try {
-      var cached = await cacheGet();
-      if (cached && cached.payload && Array.isArray(cached.payload.rows) && cached.payload.rows.length) {
-        applyPayload(cached.payload);
-        lastEtag = cached.etag || null;
-        loadStatus("busy", "Showing saved data · checking for updates…");
-      }
-    } catch (e) { /* fall through to the network */ }
-    var result = await refreshSharedMaster(hasData);
-    if (result === "same") loadStatus("ok", "Live · up to date");
-    else if (result === "error" && hasData) loadStatus("err", "Could not reach the database; showing the last saved data.", function () { refreshSharedMaster(false); });
+    try { var db = await cacheOpen(); if (db) { var tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").delete(CACHE_KEY); } } catch (e) { /* legacy cache cleanup is best effort */ }
+    await refreshSharedMaster(false);
   }
 
   // ---- Tracker-native panels: Settings → shared master import; Follow-up → sequential supplier e-mail ----
@@ -531,6 +525,7 @@
     dirSync.timer = window.setTimeout(function () { pushDirectory(false); }, 1500);
   }
   async function pushDirectory(retried) {
+    if (dirSync.blocked) return;
     if (dirSync.busy) { dirSync.again = true; return; }
     dirSync.busy = true; dirStatus("Saving to database…");
     try {
@@ -539,8 +534,10 @@
       dirStatus("Directory saved in the database");
     } catch (e) {
       if (e.payload && e.payload.conflict && !retried) {
-        try { var g = await api("/api/imds-master/settings?key=directory"); dirSync.version = g.version; } catch (e2) { /* reported below */ }
-        dirSync.busy = false; return pushDirectory(true);
+        dirSync.blocked = true;
+        lsSet("imds-dir-dirty", "1");
+        dirStatus("Conflict: another user saved a newer directory. Your local edits are retained. Download a backup before reloading; ask an administrator to reconcile changes.", true);
+        return;
       }
       if (/role is required/i.test(String(e.message))) { dirSync.blocked = true; dirStatus("Read-only: your role cannot save contacts to the database.", true); }
       else dirStatus("Not saved to the database: " + e.message + " (kept in this browser)", true);
@@ -572,6 +569,11 @@
       if (!g.exists) { dirSync.version = 0; if (localCount) await pushDirectory(false); else dirStatus("Directory is empty. Import contacts once and they are remembered."); return; }
       dirSync.version = g.version;
       var server = g.value || {};
+      if (dirty && known !== g.version) {
+        dirSync.blocked = true;
+        dirStatus("Conflict: local edits and server directory have different versions. Export a backup and reconcile before saving.", true);
+        return;
+      }
       if (localCount && (dirty || !known)) {
         // This browser has contacts the server may not: add what is missing, never overwrite the server's entries.
         var added = 0;
@@ -1064,6 +1066,7 @@
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     async function sendOne(g) {
+      if (S.send === "live" && (!window.__IMDS_SHARED_MASTER_READY__ || Date.now() - Date.parse(window.__IMDS_SHARED_MASTER_LAST_SYNC__ || "") > 120000)) throw new Error("Shared master is not current. Refresh the source before sending.");
       var ed = S.edits[g.key] || {};
       var payload = { kind: S.kind, supplierCode: g.code, supplierName: g.name, to: g.to, cc: g.cc, subject: ed.subject != null ? ed.subject : g.subject, messageBody: ed.body != null ? ed.body : g.body,
         sender: team()[$("fu-sender").value] || undefined, force: S.live && $("fu-force").checked, test: S.send === "test" || undefined, testTo: S.send === "test" ? ($("fu-testto").value || "").trim() : undefined, mode: S.send === "draft" ? "draft" : "send", partIds: g.parts.map(function (r) { return r.masterId; }).filter(Boolean),
