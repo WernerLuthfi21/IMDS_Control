@@ -772,6 +772,21 @@ main{padding:27px 29px 32px}
 .ph-item:hover{border-color:var(--violet);background:var(--lilac)}.ph-item .mono{font-weight:700}
 .spop-tag{font-size:var(--text-xs);font-weight:700;padding:1px 7px;border-radius:99px;background:var(--warn-soft);color:var(--warn-ink)}
 @media (max-width:860px){.parts-tools{grid-template-columns:1fr}}
+
+/* Compact workspace navigation: retain the approved Tracker palette and controls. */
+.compact-workspace-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 12px;align-items:center;width:fit-content;max-width:100%}
+.compact-workspace-tabs .seg-btn{min-height:36px;white-space:normal}
+.compact-workspace-pane{min-width:0}
+.compact-model-search{display:block;width:min(100%,320px);margin:0 0 12px}
+#settings-models .table-wrap{max-height:min(65vh,560px);overflow:auto}
+#settings-models thead th{position:sticky;top:0;z-index:1;background:var(--surface)}
+.compact-template-split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start;gap:12px}
+.compact-template-split>*{min-width:0}
+.compact-template-preview .fs-preview{max-height:min(48vh,420px)}
+.compact-save-bar{position:sticky;bottom:8px;z-index:4;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-2);padding:8px 12px}
+#view-followup .view-actions .seg{flex-wrap:wrap}
+@media(max-width:760px){.compact-template-split{grid-template-columns:minmax(0,1fr)}.compact-workspace-tabs{width:100%}.compact-workspace-tabs .seg-btn{flex:1 1 auto}}
+
 </style>
 </head>
 <body>
