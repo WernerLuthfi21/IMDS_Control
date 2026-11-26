@@ -493,6 +493,7 @@
     var observer = new MutationObserver(function(){empty.hidden = !model.hidden;}); observer.observe(model,{attributes:true,attributeFilter:["hidden"]}); empty.hidden = !model.hidden;
     var app = pane("settings-appearance-pane", [appearance]);
     var link = document.createElement("p"); link.className = "muted"; link.textContent = "Email templates, defaults and sending rules are now in Follow-up → Templates & rules."; app.appendChild(link);
+    var pilot = document.createElement("a"); pilot.className = "btn btn-secondary"; pilot.href = "/tracker-workbench"; pilot.textContent = "Open React workbench (read-only preview)"; app.appendChild(pilot);
     var search = document.createElement("input"); search.type = "search"; search.className = "field compact-model-search"; search.placeholder = "Find a model…"; search.setAttribute("aria-label","Find a model");
     model.querySelector(".panel-head").after(search);
     var body = model.querySelector("#model-config-tbody");
