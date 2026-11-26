@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/security/request";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -46,6 +47,7 @@ export async function GET() {
  * Preview, draft and notice-test may use the automation on screen (not saved yet).
  */
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request.headers)) return NextResponse.json({ error: "Request origin rejected." }, { status: 403 });
   const auth = await getAuthContext();
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const body = await request.json().catch(() => null) as { action?: string; automation?: unknown; supplier?: string; id?: string } | null;

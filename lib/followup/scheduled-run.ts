@@ -5,6 +5,7 @@
 // Draft / Send now in the Tracker (signed-in user). Also builds the reminder e-mail to the TMMIN PIC before a run.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { postToFlow } from "@/lib/automation/flow";
+import { flowOutcome } from "@/lib/imds-master/communication-state";
 import { DEFAULT_CONFIG, mergeCc, sanitizeConfig, type FollowupConfig, type Template } from "./center";
 import { resolveContacts, type Directory } from "./directory";
 import { buildSupplierEmailPayload, parseSenders, pickSender, type Attachment } from "./payload";
@@ -19,7 +20,7 @@ type Db = SupabaseClient;
 export type MasterRow = XlsxPart & { id: string; vendor_code?: string | null; main_pic_email?: string | null; supplier_promise_date?: string | null };
 export type PlannedEmail = {
   supplier: string; code: string; parts: number; to: string[]; cc: string[]; toFrom: string; subject: string; body?: string;
-  attachments: string[]; skip?: string; status?: "SENT" | "HANDED_OFF" | "FAILED" | "SKIPPED"; error?: string;
+  attachments: string[]; skip?: string; status?: "SENT" | "HANDED_OFF" | "FAILED" | "SKIPPED" | "UNKNOWN"; error?: string;
   /** Extra information shown in the preview and the reminder (e.g. when the executive summary PDF was made). */
   info?: string;
 };
@@ -179,12 +180,14 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
       continue;
     }
     const d = await postToFlow(url as string, secret, payload, o.fetchImpl);
-    if (log?.id) await db.from("imds_tracker_followup_logs").update({
+    const outcome = flowOutcome(d);
+    const { error: persistError } = await db.from("imds_tracker_followup_logs").update({
       status: d.ok ? "SENT" : "FAILED", sent_at: d.ok ? new Date().toISOString() : null,
       error_message: d.error || `Automation "${a.name}"${d.handedOff ? ": accepted by the flow (HTTP 202); check the flow run history for the actual send." : "."}`,
-      provider_response: { httpStatus: d.status, ok: d.ok, handedOff: Boolean(d.handedOff), automation: a.id, slot }
+      provider_response: { httpStatus: d.status, ok: d.ok, handedOff: Boolean(d.handedOff), outcome, automation: a.id, slot }
     }).eq("id", log.id);
-    if (d.ok) { plan.status = d.handedOff ? "HANDED_OFF" : "SENT"; result.sent++; } else { plan.status = "FAILED"; plan.error = d.error; result.failed++; }
+    if (persistError) { plan.status = "UNKNOWN"; plan.error = "Provider outcome could not be recorded; reconcile before retry."; result.failed++; break; }
+    if (d.ok) { plan.status = d.handedOff ? "HANDED_OFF" : "SENT"; result.sent++; } else { plan.status = outcome === "UNKNOWN" ? "UNKNOWN" : "FAILED"; plan.error = outcome === "UNKNOWN" ? "Provider outcome uncertain; reconcile before retry." : "Provider rejected the request."; result.failed++; }
   }
   return result;
 }

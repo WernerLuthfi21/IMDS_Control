@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/security/request";
+import { flowOutcome } from "@/lib/imds-master/communication-state";
 import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { canAccessImdsTracker } from "@/lib/security/imds-tracker";
@@ -67,6 +69,7 @@ type SendBody = {
 const RECAP_NAME = "ALL SUPPLIERS (RECAP)";
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request.headers)) return NextResponse.json({ error: "Request origin rejected." }, { status: 403 });
   const auth = await getAuthContext();
   if (!auth.configured) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   if (!auth.userId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -195,13 +198,15 @@ export async function POST(request: NextRequest) {
   }
   const delivery = await postToFlow(emailUrl as string, flowSecret, payload);
   const status = delivery.ok ? "SENT" : "FAILED";
-  await supabase.from("imds_tracker_followup_logs").update({
-    status, sent_at: delivery.ok ? new Date().toISOString() : null, error_message: delivery.error || (delivery.handedOff ? "Accepted by the flow (HTTP 202); check the flow run history for the actual send." : null), provider_response: { httpStatus: delivery.status, ok: delivery.ok, handedOff: Boolean(delivery.handedOff) }
+  const outcome = flowOutcome(delivery);
+  const { error: persistError } = await supabase.from("imds_tracker_followup_logs").update({
+    status, sent_at: delivery.ok ? new Date().toISOString() : null, error_message: delivery.error || (delivery.handedOff ? "Accepted by the flow (HTTP 202); check the flow run history for the actual send." : null), provider_response: { httpStatus: delivery.status, ok: delivery.ok, handedOff: Boolean(delivery.handedOff), outcome }
   }).eq("id", log.id);
+  if (persistError) return NextResponse.json({ error: "Provider outcome could not be recorded. Do not resend until reconciled.", logId: log.id, outcome: "UNKNOWN" }, { status: 503 });
   await supabase.from("audit_events").insert({
     actor_id: auth.userId, action: delivery.ok ? "IMDS_TRACKER_SUPPLIER_EMAIL_SENT" : "IMDS_TRACKER_SUPPLIER_EMAIL_FAILED", entity_type: "imds_tracker_followup", entity_id: log.id,
     metadata: { kind, test, supplierCode, recipientCount: to.length, ccCount: cc.length, parts: ids.length, attachments: attachments.map((a) => a.name), status }
   });
-  if (!delivery.ok) return NextResponse.json({ error: delivery.error || "Power Automate did not accept this e-mail.", logId: log.id }, { status: 502 });
+  if (!delivery.ok) return NextResponse.json({ error: outcome === "UNKNOWN" ? "Provider outcome uncertain. Check the flow run history before retrying." : "Power Automate did not accept this e-mail.", logId: log.id, outcome }, { status: 502 });
   return NextResponse.json({ sent: true, handedOff: Boolean(delivery.handedOff), logId: log.id, supplier: supplierName, to, cc, partCount: ids.length, attachments: attachments.map((a) => a.name), test, sentFrom: sender?.email || "the flow's own mailbox" });
 }

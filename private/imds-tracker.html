@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="meta-theme" content="#F7F5FA">
 <title>IMDS Tracker</title>
+<script>try{var tp=localStorage.getItem('imds-theme')||'system';document.documentElement.dataset.theme=tp==='dark'||(tp!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Questrial&display=swap" rel="stylesheet">
@@ -1023,7 +1024,7 @@ main{padding:27px 29px 32px}
       </section>
       <section class="panel" aria-labelledby="h-appearance">
         <div class="panel-head"><h2 id="h-appearance">Appearance &amp; shortcuts</h2></div>
-        <div class="row-actions"><span class="seg-label">Theme</span><div class="seg"><button type="button" class="seg-btn" data-action="theme" data-mode="light" aria-pressed="false">Light</button><button type="button" class="seg-btn" data-action="theme" data-mode="dark" aria-pressed="false">Dark</button></div></div>
+        <div class="row-actions"><span class="seg-label">Theme</span><div class="seg"><button type="button" class="seg-btn" data-action="theme" data-mode="system" aria-pressed="false">System</button><button type="button" class="seg-btn" data-action="theme" data-mode="light" aria-pressed="false">Light</button><button type="button" class="seg-btn" data-action="theme" data-mode="dark" aria-pressed="false">Dark</button></div></div>
         <p class="muted"><kbd>/</kbd> focus search · <kbd>Esc</kbd> close dialog or panel · <kbd>Tab</kbd> move focus</p>
       </section>
     </section>
@@ -2598,8 +2599,8 @@ function renderSettings(){
       <td><span class="tag ${src==="legacy"?"legacy":""}">${src==="legacy"?"Legacy default — verify":src==="config"?"Custom":"None"}</span></td>
       ${modelControlCells(k)}
       <td><button type="button" class="btn btn-ghost btn-sm" data-action="model-reset" data-model="${escAttr(k)}">Reset</button></td></tr>`}).join("");
-  const theme=document.documentElement.getAttribute("data-theme");
-  $$("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===theme;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+  const theme=store.get(KEYS.theme)||"system";
+  $("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===theme;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
   const ac=$("#chk-auto-refresh");if(ac)ac.checked=!!autoRefreshTimer;
   const od=$("#btn-open-dashboard");if(od)od.disabled=!has;
 }
@@ -2619,12 +2620,13 @@ function resetModelMeta(key){const meta=loadModelMeta();delete meta[key];saveMod
 
 /* ---------------- Theme ---------------- */
 function applyTheme(mode){
-  mode=mode==="dark"?"dark":"light";
+  const preference=mode==="dark"||mode==="light"?mode:"system";
+  mode=preference==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):preference;
   document.documentElement.setAttribute("data-theme",mode);
   const mt=$("#meta-theme");if(mt)mt.setAttribute("content",mode==="dark"?"#14101C":"#F7F5FA");
   const ic=$("#theme-icon"),lb=$("#theme-label");if(ic)ic.textContent=mode==="dark"?"☀":"☾";if(lb)lb.textContent=mode==="dark"?"Light":"Dark";
-  store.set(KEYS.theme,mode);
-  $$("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+  store.set(KEYS.theme,preference);
+  $("[data-action='theme']").forEach(b=>{const on=b.dataset.mode===preference;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
 }
 
 /* ---------------- Modals (stack-aware, focus-restoring) ---------------- */
@@ -3809,7 +3811,8 @@ function bindStatic(){
 
 /* ---- startup ---- */
 (function boot(){
-  applyTheme(store.get(KEYS.theme)==="dark"?"dark":"light");
+  applyTheme(store.get(KEYS.theme)||"system");
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if((store.get(KEYS.theme)||"system")==="system")applyTheme("system")});
   loadPromises();loadDir();
   const lg=$("#brand-logo");if(lg)lg.src=LOGO_DATA;
   bindStatic();initCubes();initGraphUI();
