@@ -159,3 +159,6 @@ this database). The case History panel is the reference implementation.
 Purple gradients, glassmorphism, glow, emoji as icons, 3D orbs or cubes, light "paper" cards inside a dark theme, infinite idle animation, decorative 3D, fake or
 "example" data shown as real (fixtures in screenshots are labelled FIXTURE), inline hex colours in
 components (use tokens), new `!important` outside the token layer.
+
+### Compact workspace navigation
+Use one active section at a time; retain unsaved form input when switching tabs. Use meaningful task labels, not implementation names. Keep advanced controls in labelled disclosures and preserve the original save/send handlers. The Tracker retains its approved violet palette. Tracker Settings now groups source, model display/deadlines and appearance. Email templates and defaults belong in Tracker Follow-up → Templates & rules; the editor has a side-by-side preview and separate recipient and signature sections. Model tables use search and bounded scrolling; no data or model selections are modified merely by switching tabs. Free WhatsApp drafts are accessed from Supplier Follow-up and linked from Tracker Follow-up; actual sending remains human-controlled.
