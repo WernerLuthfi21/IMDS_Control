@@ -3,19 +3,12 @@ import { internalContext } from "@/lib/automation/auth";
 import { sameOrigin } from "@/lib/security/request";
 import { getWhatsAppSender } from "@/lib/whatsapp/config";
 import { fetchApprovedTemplates } from "@/lib/whatsapp/cloud-api";
+import { renderWhatsAppTemplateParameters } from "@/lib/whatsapp/parameters";
 
 type Contact = {
   id: string; supplier_code: string; supplier_name: string | null; contact_name: string | null;
   whatsapp_phone_e164: string | null; whatsapp_opt_in: boolean;
 };
-
-function renderParameter(template: string, contact: Contact): string {
-  return template
-    .replace(/\{\{\s*contact_name\s*\}\}/gi, contact.contact_name || "there")
-    .replace(/\{\{\s*supplier_name\s*\}\}/gi, contact.supplier_name || "")
-    .replace(/\{\{\s*supplier_code\s*\}\}/gi, contact.supplier_code || "")
-    .replace(/\{\{\s*phone\s*\}\}/gi, contact.whatsapp_phone_e164 || "");
-}
 
 export async function GET() {
   const ctx = await internalContext();
@@ -131,7 +124,7 @@ export async function POST(request: NextRequest) {
     sender_key: sender.key,
     template_name: templateName,
     template_language: templateLanguage,
-    template_parameters: bodyParameters.map((parameter) => renderParameter(parameter, contact)),
+    template_parameters: renderWhatsAppTemplateParameters(bodyParameters, contact),
     status: mode === "semi_automatic" ? "AWAITING_APPROVAL" : "PENDING",
   }));
 
