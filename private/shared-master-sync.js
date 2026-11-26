@@ -460,6 +460,7 @@
 
     initFollowupCenter(follow);
     initFollowupSettings(follow, follow.querySelector("#shared-followup-panel"));
+    if (location.hash === "#followup" && new URLSearchParams(location.search).get("section") === "templates") { var templateTab = follow.querySelector('[data-fmode="templates"]'); if (templateTab) templateTab.click(); }
     initWorkspaceSettingsTabs(settings, panel, legacy);
   }
 
@@ -759,6 +760,14 @@
       '<dialog class="fu-dlg" id="fu-dlg" aria-labelledby="fu-dlg-t"><h3 id="fu-dlg-t"></h3><div id="fu-dlg-body"></div><div class="fu-bar" style="justify-content:flex-end;margin-bottom:0"><button type="button" class="btn btn-secondary btn-sm" id="fu-dlg-no">Cancel</button><button type="button" class="btn btn-primary btn-sm" id="fu-dlg-yes"></button></div></dialog>';
     var anchor = follow.querySelector("#follow-sub") || follow.lastElementChild;
     anchor.insertAdjacentElement("afterend", box);
+    // Keep recipient selection and the delivery mode visible; put optional CC/files behind a disclosure.
+    var ccGrid = box.querySelector("#fu-cc-mid").closest(".fu-grid");
+    var ccHeading = ccGrid.previousElementSibling;
+    var ccDetails = document.createElement("details"); ccDetails.className = "fu-adv";
+    var ccSummary = document.createElement("summary"); ccSummary.textContent = "4 · CC and attachments (review optional settings)";
+    ccDetails.appendChild(ccSummary); ccHeading.before(ccDetails); ccDetails.appendChild(ccGrid); ccHeading.remove();
+    var recipientTable = box.querySelector("#fu-body").closest(".table-wrap");
+    recipientTable.classList.add("compact-recipient-table");
     var $ = function (id) { return box.querySelector("#" + id); };
     var auto = null;
     var S = { lib: [], kind: "followup", scope: "open", models: [], only: "", selected: {}, edits: {}, results: {}, sending: false, mode: "queues", ready: false, open: "" };
@@ -1145,7 +1154,7 @@
       window.setTimeout(function () { box.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
     };
     window.__imdsEmailRecap = function () { window.__imdsEmailFor("", "recap"); };
-    setMode("queues");
+    setMode(location.hash === "#followup" && new URLSearchParams(location.search).get("section") === "templates" ? "templates" : "queues");
   }
 
   // ---- Follow-up → Templates & rules ----
