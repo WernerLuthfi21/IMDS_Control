@@ -84,7 +84,7 @@ export function AutomationPanel() {
     <div className="simple-card-head"><div><h2>Power Automate</h2><p>Excel master updates and supplier e-mail</p></div>
       <button className="btn" type="button" onClick={() => void syncNow(false)}><RefreshCw size={13}/> Sync now</button></div>
 
-    <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0 }}>
+    <details style={{ marginBottom: 12 }}><summary>Connection status, tests &amp; recovery</summary><ul style={{ listStyle: "none", margin: "8px 0 10px", padding: 0 }}>
       <Step ok={!!status?.configured.excel} label="Excel master flow" detail={status?.configured.excel ? "Connected " + (TRANSPORT[status.transport?.excel || ""] || "") : "Set POWER_AUTOMATE_EXCEL_URL (or the FLOW_SMTP_* mailbox settings) in Vercel, then redeploy"}
         action={status?.configured.excel && <button className="btn btn-sm" type="button" disabled={testing === "excel"} onClick={() => void runTest("excel")}>{testing === "excel" ? "Testing…" : "Test"}</button>}/>
       {testNote.excel && <li role="status" style={{ fontSize: 12, marginLeft: 26, color: testNote.excel.ok ? "var(--green)" : "var(--red)" }}>{testNote.excel.text}</li>}
@@ -99,6 +99,7 @@ export function AutomationPanel() {
       {!!status.failed?.length && <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12 }}>{status.failed.map((f) => <li key={f.id}>{f.kind === "EXCEL_UPSERT" ? "Excel" : "E-mail"} · {f.attempts} tries · {f.error || "failed"}</li>)}</ul>}
       {!!status.failed?.length && <button className="btn btn-sm" type="button" style={{ marginTop: 6 }} onClick={() => void syncNow(true)}>Retry failed now</button>}
     </div>}
+    </details>
     {msg && <div className="callout callout-info" style={{ marginBottom: 10 }} role="status">{msg}</div>}
 
     <h3 style={{ margin: "12px 0 6px", fontSize: 14 }}>Send follow-up e-mails</h3>
@@ -121,10 +122,10 @@ export function AutomationPanel() {
     </tbody></table></div>
     {previewMsg && <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--line-strong)", borderRadius: 8, padding: 10, marginTop: 8 }}><strong>{previewMsg.subject}</strong>{"\n\n"}{previewMsg.body}</pre>}
 
-    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
+    <details style={{ marginTop: 10 }}><summary>Excel register export &amp; delivery notes</summary><div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
       <a className="btn btn-sm" href="/api/automation/export" download><Download size={13}/> Download register CSV (one-time Excel seed)</a>
       <span className="muted" style={{ fontSize: 12 }}>Paste it into the Excel table once; later saves update it automatically.</span>
     </div>
-    <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>“Handed off” means the flow or mailbox accepted the request. It is not proof that the supplier read it. Confirm in the flow’s Run history.</p>
+    <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>“Handed off” means the flow or mailbox accepted the request. It is not proof that the supplier read it. Confirm in the flow’s Run history.</p></details>
   </section>;
 }
