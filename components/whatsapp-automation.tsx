@@ -156,7 +156,7 @@ export function WhatsAppAutomation() {
         const dispatchResponse = await fetch("/api/whatsapp/dispatch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ campaignId: json.campaign.id, limit: 10 }),
+          body: JSON.stringify({ campaignId: json.campaign.id, limit: 6 }),
         });
         const dispatchJson = await dispatchResponse.json();
         if (!dispatchResponse.ok) throw new Error(dispatchJson.error || "Campaign queued, but first dispatch failed. The scheduled worker may still process it.");
@@ -183,7 +183,7 @@ export function WhatsAppAutomation() {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action === "dispatch" ? { campaignId: id, limit: 20 } : {}),
+        body: JSON.stringify(action === "dispatch" ? { campaignId: id, limit: 6 } : {}),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Campaign action failed.");
