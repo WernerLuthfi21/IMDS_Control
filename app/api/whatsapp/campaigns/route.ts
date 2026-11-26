@@ -95,9 +95,11 @@ export async function POST(request: NextRequest) {
   const { data: rawContacts, error: contactsError } = await contactsQuery;
   if (contactsError) return NextResponse.json({ error: contactsError.message }, { status: 500 });
 
-  const contacts = ((rawContacts || []) as Contact[]).filter((contact) =>
+  const eligible = ((rawContacts || []) as Contact[]).filter((contact) =>
     /^\+[1-9]\d{7,14}$/.test(String(contact.whatsapp_phone_e164 || "")) && contact.whatsapp_opt_in,
   );
+  // One outbound WhatsApp per phone per campaign, even when a shared phone appears on multiple supplier PIC rows.
+  const contacts = [...new Map(eligible.map((contact) => [contact.whatsapp_phone_e164!, contact])).values()];
   if (!contacts.length) {
     return NextResponse.json({ error: "No active supplier contacts have both a valid WhatsApp number and recorded opt-in." }, { status: 422 });
   }
