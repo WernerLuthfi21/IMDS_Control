@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { refreshWhatsAppCampaignStatus } from "@/lib/whatsapp/queue";
+import { isWhatsAppOptOutText, normalizeWhatsAppE164 } from "@/lib/whatsapp/inbound";
 
 type StatusItem = {
   id?: string;
@@ -9,8 +10,9 @@ type StatusItem = {
   timestamp?: string;
   errors?: Array<{ code?: number; title?: string; message?: string }>;
 };
+type IncomingItem = { from?: string; type?: string; text?: { body?: string } };
 type WebhookBody = {
-  entry?: Array<{ changes?: Array<{ value?: { statuses?: StatusItem[] } }> }>;
+  entry?: Array<{ changes?: Array<{ value?: { statuses?: StatusItem[]; messages?: IncomingItem[] } }> }>;
 };
 
 function verifySignature(raw: string, signature: string | null): boolean {
@@ -49,8 +51,15 @@ export async function POST(request: NextRequest) {
   }
 
   const updates: Array<{ id: string; status: string; timestamp?: string; error?: string }> = [];
+  const optOutPhones = new Set<string>();
   for (const entry of body.entry || []) {
     for (const change of entry.changes || []) {
+      for (const message of change.value?.messages || []) {
+        if (message.from && message.type === "text" && isWhatsAppOptOutText(message.text?.body || "")) {
+          const phone = normalizeWhatsAppE164(message.from);
+          if (phone) optOutPhones.add(phone);
+        }
+      }
       for (const item of change.value?.statuses || []) {
         if (!item.id || !item.status) continue;
         const status = item.status.toLowerCase();
@@ -69,6 +78,25 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "Webhook database is not configured." }, { status: 503 });
   const changedCampaigns = new Set<string>();
+  for (const phone of optOutPhones) {
+    const optedOutAt = new Date().toISOString();
+    await supabase.from("supplier_contacts").update({
+      whatsapp_opt_in: false,
+      whatsapp_opt_out_at: optedOutAt,
+      whatsapp_consent_source: "Inbound WhatsApp opt-out keyword",
+    }).eq("whatsapp_phone_e164", phone);
+    const { data: pending } = await supabase.from("whatsapp_messages")
+      .select("id,campaign_id")
+      .eq("recipient_phone", phone)
+      .in("status", ["PENDING", "AWAITING_APPROVAL"]);
+    const pendingIds = (pending || []).map((row) => row.id);
+    if (pendingIds.length) {
+      await supabase.from("whatsapp_messages").update({
+        status: "CANCELLED", error_message: "Recipient opted out via inbound WhatsApp keyword.",
+      }).in("id", pendingIds);
+      for (const row of pending || []) changedCampaigns.add(row.campaign_id);
+    }
+  }
   const rank: Record<string, number> = { SENT: 1, DELIVERED: 2, FAILED: 3, READ: 4 };
 
   for (const update of updates) {
@@ -102,5 +130,5 @@ export async function POST(request: NextRequest) {
   for (const campaignId of changedCampaigns) {
     await refreshWhatsAppCampaignStatus(supabase, campaignId);
   }
-  return NextResponse.json({ received: true, statusUpdates: updates.length });
+  return NextResponse.json({ received: true, statusUpdates: updates.length, optOutsProcessed: optOutPhones.size });
 }
