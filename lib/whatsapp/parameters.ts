@@ -16,7 +16,7 @@ export function renderWhatsAppTemplateParameters(
     phone: String(contact.whatsapp_phone_e164 || ""),
   };
   return templates.map((template) => template.replace(/\{\{\s*(contact_name|supplier_name|supplier_code|phone)\s*\}\}/gi, (match, key: string) => {
-    const value = values[key.toLowerCase()];
+    const value = values[key.toLowerCase() as keyof typeof values];
     return value === undefined ? match : value;
   }));
 }
