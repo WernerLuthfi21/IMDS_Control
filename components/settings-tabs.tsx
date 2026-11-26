@@ -4,10 +4,10 @@ import { useEffect, useId, useState, type ReactNode, type KeyboardEvent } from "
 export type SettingsTab = { id: string; label: string; hint: string; content: ReactNode };
 
 /** Settings grouped by what you are setting up. The tab is kept in the URL hash (#judgement, #tracker …). */
-export function SettingsTabs({ tabs, compact = false, syncHash = true, label = "Settings sections" }: { tabs: SettingsTab[]; compact?: boolean; syncHash?: boolean; label?: string }) {
+export function SettingsTabs({ tabs, compact = false, syncHash = true, label = "Settings sections", initialId }: { tabs: SettingsTab[]; compact?: boolean; syncHash?: boolean; label?: string; initialId?: string }) {
   const prefix = useId();
-  const [active, setActive] = useState(tabs[0]?.id || "");
-  const [visited, setVisited] = useState<string[]>([tabs[0]?.id || ""]);
+  const [active, setActive] = useState(initialId || tabs[0]?.id || "");
+  const [visited, setVisited] = useState<string[]>([initialId || tabs[0]?.id || ""]);
   const selected = tabs.find((t) => t.id === active) || tabs[0];
   useEffect(() => {
     if (!syncHash) return;
