@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { NextRequest, NextResponse } from "next/server";
 import { internalContext } from "@/lib/automation/auth";
 import { sameOrigin } from "@/lib/security/request";
