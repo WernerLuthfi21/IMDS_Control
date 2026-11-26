@@ -4,6 +4,8 @@ import { getWhatsAppSender } from "@/lib/whatsapp/config";
 import { fetchApprovedTemplates } from "@/lib/whatsapp/cloud-api";
 import { sameOrigin } from "@/lib/security/request";
 
+export const maxDuration = 30;
+
 export async function GET(request: NextRequest) {
   const ctx = await internalContext();
   if ("error" in ctx) return ctx.error;
