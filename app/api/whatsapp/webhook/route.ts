@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { refreshWhatsAppCampaignStatus } from "@/lib/whatsapp/queue";
 import { isWhatsAppOptOutText, normalizeWhatsAppE164 } from "@/lib/whatsapp/inbound";
 
+export const maxDuration = 60;
+
 type StatusItem = {
   id?: string;
   status?: string;
