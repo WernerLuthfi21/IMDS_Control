@@ -21,7 +21,15 @@ export function toWorkbenchRows(parts: WorkbenchPart[], due: DueDates, today: st
 export function communicationState(status: unknown, response: unknown): string {
   const s=norm(status).toUpperCase(), p=response&&typeof response==="object"?response as Record<string,unknown>:{};
   if(p.handedOff===true||p.httpStatus===202||s==="HANDED_OFF")return "HANDED_OFF";
+  if(p.outcome==="UNKNOWN"||p.outcome==="PROVIDER_ACCEPTED")return p.outcome;
   if(s==="SENT")return "LEGACY_SENT_UNVERIFIED";
   if(s==="FAILED"&&p.httpStatus===0)return "UNKNOWN";
   return s||"UNKNOWN";
+}
+
+/** Quoted CSV text with formula injection protection, never used for external supplier sending. */
+const csvCell=(v:unknown)=>{let s=String(v??"");if(/^[\s\uFEFF]*[=+\-@]/.test(s)||/^[\t\r\n]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};
+export function buildWorkbenchCsv(rows:WorkbenchRow[]):string{
+ const headers=["Supplier","Supplier identity","Model","Part number","Status","Deadline","Promise date","Overdue","Missed promise"];
+ return "\uFEFF"+[headers.map(csvCell).join(","),...rows.map(r=>[r.supplier,r.supplierKey,r.model,r.part,r.status,r.deadline,r.promise,r.overdue?"Yes":"No",r.missedPromise?"Yes":"No"].map(csvCell).join(","))].join("\r\n");
 }

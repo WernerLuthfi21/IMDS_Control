@@ -1493,7 +1493,7 @@
     }
     var sel = 0;
     function chip(p) {
-      return p.skip ? '<span class="au-st held">Skipped</span>' : p.status === "FAILED" ? '<span class="au-st err">Failed</span>' : p.status === "HANDED_OFF" ? '<span class="au-st ok">Handed off</span>' : p.status === "SENT" ? '<span class="au-st ok">Sent</span>' : '<span class="au-st go">Will send</span>';
+      return p.skip ? '<span class="au-st held">Skipped</span>' : p.status === "UNKNOWN" ? '<span class="au-st err">Unknown — reconcile</span>' : p.status === "FAILED" ? '<span class="au-st err">Failed</span>' : p.status === "HANDED_OFF" ? '<span class="au-st ok">Handed off</span>' : p.status === "SENT" ? '<span class="au-st ok">Sent</span>' : '<span class="au-st go">Will send</span>';
     }
     function showPlan(r, title) {
       plan = r; var rows = r.planned || [], box = $("au-prev"); box.hidden = false;
@@ -1525,7 +1525,7 @@
         '<span>Files</span><b class="au-files-l">' + (p.attachments.length ? p.attachments.map(function (n) { return '<span class="au-file">📎 ' + esc(n) + "</span>"; }).join("") : "none") + "</b></div>" +
         (p.info ? '<p class="small muted" style="margin:0 0 8px">' + esc(p.info) + "</p>" : "") +
         (p.skip ? '<p class="fu-res held" style="margin:0 0 8px">Not sent: ' + esc(p.skip) + "</p>" : "") +
-        (p.status === "FAILED" ? '<p class="fu-res err" style="margin:0 0 8px">' + esc(p.error || "Failed") + "</p>" : "") +
+        ((p.status === "FAILED" || p.status === "UNKNOWN") ? '<p class="fu-res err" style="margin:0 0 8px">' + esc(p.error || "Failed") + "</p>" : "") +
         (p.body ? '<div class="fs-preview au-body">' + previewHtml(p.body) + "</div>" : "") +
         (p.body && !p.skip ? '<div class="fu-bar" style="margin:10px 0 0"><button type="button" class="btn btn-secondary btn-sm" data-draft="' + esc(p.supplier) + '">Download as Outlook draft (with the real files)</button><span class="muted small" id="au-draft-msg"></span></div>' : "");
     }

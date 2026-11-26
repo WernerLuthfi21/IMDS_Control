@@ -15,3 +15,9 @@ export function groupRows(rows: WorkbenchRow[], by:"model"|"supplier"): Workbenc
   return [...groups].map(([key,g])=>({...countRows(g),key,name:by==="model"?key:g[0].supplier,code:by==="supplier"&&key.startsWith("code:")?key.slice(5):"",contact:g.some(r=>r.contact)}))
     .sort((a,b)=>b.overdue-a.overdue||b.missedPromise-a.missedPromise||b.rejected-a.rejected||b.missing-a.missing||a.name.localeCompare(b.name));
 }
+
+export type WorkbenchScope={model:string;search:string;status:string};
+export function filterWorkbenchRows(rows:WorkbenchRow[],scope:WorkbenchScope):WorkbenchRow[]{
+ const q=scope.search.trim().toLowerCase();
+ return rows.filter(r=>(!scope.model||r.model===scope.model)&&(!q||[r.supplier,r.supplierKey,r.part,r.model].join(" ").toLowerCase().includes(q))&&(!scope.status||(scope.status==="overdue"?r.overdue:scope.status==="missed"?r.missedPromise:r.status===scope.status)));
+}

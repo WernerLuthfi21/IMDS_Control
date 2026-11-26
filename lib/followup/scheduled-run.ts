@@ -151,6 +151,7 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
   if (!o.dryRun && !canSend) result.note = "Power Automate is not configured (POWER_AUTOMATE_EMAIL_URL + POWER_AUTOMATE_SECRET). Nothing was sent.";
   if (a.kind !== "recap" && built.total > a.maxSuppliers) result.note = [result.note, `${built.total - a.maxSuppliers} more supplier(s) are over the per-run limit (${a.maxSuppliers}).`].filter(Boolean).join(" ");
 
+  let uncertainPersist = false;
   for (const raw of built.out) {
     const item = { ...raw, body: raw.plan.body || "" };
     const plan = item.plan, logName = a.kind === "recap" ? "ALL SUPPLIERS (RECAP)" : plan.supplier;
@@ -159,11 +160,13 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
     result.planned.push(plan);
     if (plan.skip) { plan.status = "SKIPPED"; result.skipped++; continue; }
     if (o.dryRun || !canSend) continue;
-    if (Date.now() - started > budget) { plan.status = "SKIPPED"; plan.skip = "Time limit reached; not sent. Review and reschedule explicitly."; result.skipped++; continue; }
+    if (uncertainPersist) { plan.status="SKIPPED"; plan.skip="Earlier provider outcome could not be recorded; review before sending."; result.skipped++; continue; }
+    if (Date.now() - started > Math.max(0,budget-25_000)) { plan.status = "SKIPPED"; plan.skip = "Time limit reached; not sent. Review and reschedule explicitly."; result.skipped++; continue; }
     const one = item;
     let attachments: Attachment[] = [];
     try { attachments = await item.files(); }
     catch (e) { plan.status = "FAILED"; plan.error = "Attachments could not be built: " + (e instanceof Error ? e.message : String(e)); result.failed++; continue; }
+    if (Date.now()-started>Math.max(0,budget-25_000)) { plan.status="SKIPPED"; plan.skip="Time limit reached after preparing attachments; not sent."; result.skipped++; continue; }
     const body = item.body;
     const { data: log, error: logError } = await db.from("imds_tracker_followup_logs").insert({
       supplier_code: plan.code || null, supplier_name: logName, recipient_email: plan.to.join(";"), cc_emails: plan.cc, subject: plan.subject, message_body: body,
@@ -186,7 +189,7 @@ export async function runAutomation(db: Db, a: Automation, o: RunOptions, ctxIn?
       error_message: d.error || `Automation "${a.name}"${d.handedOff ? ": accepted by the flow (HTTP 202); check the flow run history for the actual send." : "."}`,
       provider_response: { httpStatus: d.status, ok: d.ok, handedOff: Boolean(d.handedOff), outcome, automation: a.id, slot }
     }).eq("id", log.id);
-    if (persistError) { plan.status = "UNKNOWN"; plan.error = "Provider outcome could not be recorded; reconcile before retry."; result.failed++; break; }
+    if (persistError) { plan.status = "UNKNOWN"; plan.error = "Provider outcome could not be recorded; reconcile before retry."; result.failed++; uncertainPersist=true; continue; }
     if (d.ok) { plan.status = d.handedOff ? "HANDED_OFF" : "SENT"; result.sent++; } else { plan.status = outcome === "UNKNOWN" ? "UNKNOWN" : "FAILED"; plan.error = outcome === "UNKNOWN" ? "Provider outcome uncertain; reconcile before retry." : "Provider rejected the request."; result.failed++; }
   }
   return result;
