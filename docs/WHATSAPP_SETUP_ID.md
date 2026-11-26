@@ -130,7 +130,7 @@ UI menampilkan SENT sebagai pesan diterima API Meta, bukan bukti pesan sudah mas
 3. Tambahkan satu nomor uji milik penerima yang secara eksplisit menyetujui pengujian.
 4. Uji mode semi-automatic, pastikan campaign diam sebelum approval, lalu approve.
 5. Pastikan message ID dari Meta tersimpan dan webhook mengubah status menjadi DELIVERED/READ.
-6. Uji opt-out dengan menghapus centang consent; kontak harus tidak masuk campaign baru.
+6. Uji opt-out dengan menghapus centang consent; kontak harus tidak masuk campaign baru. Pesan masuk berisi STOP, UNSUBSCRIBE, BERHENTI, STOP WA atau HAPUS SAYA juga otomatis menonaktifkan consent dan membatalkan antrean yang belum dikirim.
 7. Baru jalankan campaign yang lebih besar. Periksa kategori biaya, messaging limit WABA, template, opt-in, dan rate limit sebelum mengirim.
 
 Jangan menguji dengan data CONFIDENTIAL/UNKNOWN atau mengunggah data internal yang tidak diizinkan ke layanan eksternal. Untuk IMDS Control Center, pastikan data kontak dan isi pesan telah disetujui pemilik data sebelum diproses melalui Meta.
