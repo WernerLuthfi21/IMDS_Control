@@ -60,7 +60,8 @@ create table if not exists public.whatsapp_messages (
   last_status_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (campaign_id, supplier_contact_id)
+  unique (campaign_id, supplier_contact_id),
+  unique (campaign_id, recipient_phone)
 );
 
 create index if not exists whatsapp_messages_queue_idx
