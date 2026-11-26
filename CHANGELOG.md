@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-26
+
+### Workspace navigation and compact follow-up
+- Tracker Settings: Data source, Models & display, Appearance; searchable model table with sticky headers and direct shortcut from System Settings.
+- Tracker Follow-up: email templates and rules now grouped by editor/preview, recipients/files, and signature/layout; existing save handler and controls retained. Optional CC/attachments fold away; recipient table stays bounded.
+- System Settings, Team & access, Pre-check and Supplier Follow-up share keyboard-accessible navigation. Visited forms stay mounted while hidden.
+- Supplier Follow-up includes free WhatsApp drafts with manual recipient input and a session review queue; no paid API or automatic send. Tracker links to this workspace.
+- No migration, authentication change, or modification to Power Automate transport, judgement rules, or tracker calculations. Review CI and authenticated preview before merging.
+
+
 ## 2026-11-25
 
 ### Tracker: add part numbers by pasting, change a part number, search finds part numbers

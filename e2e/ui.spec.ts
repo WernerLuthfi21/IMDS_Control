@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { auditContrast } from "./contrast";
 
 /** Dev mode shows server HTML before React is interactive: repeat the action until it takes effect. */
@@ -130,4 +131,40 @@ test("every page sends the security headers (CSP, no framing, nosniff)", async (
   expect(h["x-content-type-options"]).toBe("nosniff");
   expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   await expect(page.getByRole("heading").first()).toBeVisible();
+});
+
+test("settings tabs support keyboard navigation and direct model options", async ({ page }) => {
+  await page.goto("/settings");
+  await untilItWorks(() => page.getByRole("tab", {name:/IMDS Tracker/}).click(), async () => {
+    await expect(page.getByRole("link",{name:/Models and deadlines/})).toHaveAttribute("href","/imds-tracker?section=models#settings");
+  });
+  await expect(page.getByRole("link",{name:/Email templates and rules/})).toHaveAttribute("href","/imds-tracker?section=templates#followup");
+  await page.getByRole("tab",{name:/IMDS Tracker/}).press("Home");
+  await expect(page.getByRole("tab",{name:/My account/})).toHaveAttribute("aria-selected","true");
+  await expect(page.getByRole("link",{name:/Models and deadlines/})).toBeHidden();
+});
+
+test("tracker compact settings and template editor preserve original controls and unsaved input", async ({page}) => {
+  const src=readFileSync("private/shared-master-sync.js","utf8");
+  const start=src.indexOf("  function compactTabs(");
+  const end=src.indexOf("  // ---- Directory: saved",start);
+  expect(start).toBeGreaterThan(-1); expect(end).toBeGreaterThan(start);
+  await page.setContent('<div id="settings"><header class="view-head">Settings</header><section id="shared">Shared master</section><p><button id="sm-legacy">Advanced</button></p><section id="legacy" hidden>Local file</section><section id="settings-models"><div class="panel-head">Models</div><table><tbody id="model-config-tbody"><tr><td>Model A</td><td><input type="checkbox" checked></td></tr><tr><td>Model B</td></tr></tbody></table></section><section aria-labelledby="h-appearance">Appearance</section></div><section id="template"><div class="panel-head">Email templates</div><div class="fu-grid"><select id="fs-tsel"><option>Default</option></select></div><div class="fu-box"><textarea id="fs-body"></textarea></div><div class="fu-grid"><textarea id="fs-req"></textarea></div><div class="fu-grid"><textarea id="fs-sig"></textarea></div><div class="fu-grid"><div class="fu-box"><textarea id="fs-foot"></textarea></div><div class="fu-box"><div id="fs-prev">Preview</div></div></div><div class="fu-bar"><button id="fs-save">Save</button></div></section>');
+  await page.addScriptTag({content:src.slice(start,end)+'\ninitWorkspaceSettingsTabs(document.getElementById("settings"),document.getElementById("shared"),document.getElementById("legacy"));initTemplateWorkspaceTabs(document.getElementById("template"));'});
+  await page.getByRole("button",{name:"Models & display"}).click();
+  await expect(page.locator("#settings-models")).toBeVisible();
+  await expect(page.locator("#shared")).toBeHidden();
+  await page.getByRole("searchbox",{name:"Find a model"}).fill("Model B");
+  await expect(page.getByText("Model A",{exact:true})).toBeHidden();
+  await expect(page.getByText("Model B",{exact:true})).toBeVisible();
+  await page.locator("#fs-body").fill("Unsaved email");
+  await page.getByRole("button",{name:"Recipients & files"}).click();
+  await expect(page.locator("#fs-body")).toBeHidden();
+  await page.locator("#fs-req").fill("test@example.com");
+  await page.getByRole("button",{name:"Edit template"}).click();
+  await expect(page.locator("#fs-body")).toHaveValue("Unsaved email");
+  await expect(page.locator("#fs-prev")).toBeVisible();
+  await expect(page.locator("#fs-save")).toBeVisible();
+  await page.getByRole("button",{name:"Recipients & files"}).click();
+  await expect(page.locator("#fs-req")).toHaveValue("test@example.com");
 });
