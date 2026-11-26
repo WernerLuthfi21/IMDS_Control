@@ -32,7 +32,7 @@ export async function dispatchWhatsAppQueue(
   options: { limit?: number; campaignId?: string; fetchImpl?: typeof fetch } = {},
 ) {
   const summary = { accepted: 0, failed: 0, skipped: 0, processed: 0 };
-  const limit = Math.max(1, Math.min(options.limit ?? 20, 50));
+  const limit = Math.max(1, Math.min(options.limit ?? 6, 6));
 
   let query = supabase
     .from("whatsapp_messages")
